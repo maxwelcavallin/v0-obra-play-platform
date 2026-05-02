@@ -3,9 +3,10 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff, HardHat, Loader2, Check, X } from "lucide-react"
+import { Eye, EyeOff, Loader2, Check, X, Info } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
+import Image from "next/image"
 
 function formatPhone(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 11)
@@ -35,8 +36,10 @@ export default function CadastroPage() {
     name: "",
     email: "",
     phone: "",
+    cpf: "",
     password: "",
     confirmPassword: "",
+    terms: false,
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -44,7 +47,7 @@ export default function CadastroPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [passwordFocus, setPasswordFocus] = useState(false)
 
-  function update(field: string, value: string) {
+  function update(field: string, value: string | boolean) {
     setForm((p) => ({ ...p, [field]: value }))
     if (errors[field]) setErrors((p) => ({ ...p, [field]: "" }))
   }
@@ -58,8 +61,8 @@ export default function CadastroPage() {
       errs.phone = "Celular inválido"
     if (!form.password) errs.password = "Senha obrigatória"
     else if (form.password.length < 8) errs.password = "Mínimo 8 caracteres"
-    if (!form.confirmPassword) errs.confirmPassword = "Confirme a senha"
-    else if (form.password !== form.confirmPassword) errs.confirmPassword = "As senhas não conferem"
+    if (form.password !== form.confirmPassword) errs.confirmPassword = "As senhas não conferem"
+    if (!form.terms) errs.terms = "Aceite os termos para continuar"
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -85,115 +88,140 @@ export default function CadastroPage() {
   }
 
   return (
-    <main className="min-h-screen op-gradient-bg flex items-center justify-center p-4">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-white/5" />
-        <div className="absolute -bottom-20 -left-20 w-72 h-72 rounded-full bg-white/5" />
-        <div className="absolute top-1/2 left-10 w-40 h-40 rounded-full bg-[#1565C0]/30" />
-      </div>
+    <main className="op-auth-page">
+      {/* AppBar azul com logo */}
+      <header className="op-appbar flex items-center justify-center px-4">
+        <Image
+          src="/logo.svg"
+          alt="Obra Play"
+          width={150}
+          height={24}
+          className="h-7 w-auto"
+          priority
+        />
+      </header>
 
-      <div className="relative w-full max-w-sm">
-        {/* Logo */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-sm mb-3 border border-white/20">
-            <HardHat className="w-7 h-7 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-white">OBRA PLAY</h1>
-          <p className="text-white/60 text-sm">Gestão de obras e compras</p>
+      {/* Conteudo com scroll */}
+      <div className="flex-1 flex flex-col px-6 pt-8 pb-6 overflow-y-auto">
+        <div className="mb-7">
+          <h1 className="text-2xl font-bold text-[#212121]">Crie seu usuário</h1>
+          <p className="text-sm text-[#757575] mt-1">
+            Confirme seus dados pessoais para criar uma conta no Obra Play.
+          </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-2xl p-6">
-          <h2 className="text-xl font-bold text-[#1A1A2E] mb-1">Criar conta</h2>
-          <p className="text-[#607D8B] text-sm mb-5">Preencha os dados para se cadastrar</p>
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+          {/* Nome completo */}
+          <div>
+            <input
+              type="text"
+              autoComplete="name"
+              value={form.name}
+              onChange={(e) => update("name", e.target.value)}
+              placeholder="Qual seu nome completo?*"
+              className={`op-input-underline ${errors.name ? "op-input-error" : ""}`}
+            />
+            {errors.name && <p className="text-[#F44336] text-xs mt-1">{errors.name}</p>}
+          </div>
 
-          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-            {/* Nome */}
-            <div>
-              <label className="block text-sm font-medium text-[#1A1A2E] mb-1.5">
-                Nome completo
-              </label>
-              <input
-                type="text"
-                autoComplete="name"
-                value={form.name}
-                onChange={(e) => update("name", e.target.value)}
-                placeholder="Seu nome completo"
-                className={`w-full px-3.5 py-2.5 rounded-lg border text-sm outline-none transition-colors bg-white text-[#1A1A2E] placeholder:text-[#B0BEC5] focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/20 ${
-                  errors.name ? "border-[#F44336]" : "border-[#E0E0E0]"
-                }`}
-              />
-              {errors.name && <p className="text-[#F44336] text-xs mt-1">{errors.name}</p>}
-            </div>
-
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-[#1A1A2E] mb-1.5">
-                E-mail
-              </label>
-              <input
-                type="email"
-                autoComplete="email"
-                value={form.email}
-                onChange={(e) => update("email", e.target.value)}
-                placeholder="seu@email.com"
-                className={`w-full px-3.5 py-2.5 rounded-lg border text-sm outline-none transition-colors bg-white text-[#1A1A2E] placeholder:text-[#B0BEC5] focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/20 ${
-                  errors.email ? "border-[#F44336]" : "border-[#E0E0E0]"
-                }`}
-              />
-              {errors.email && <p className="text-[#F44336] text-xs mt-1">{errors.email}</p>}
-            </div>
-
-            {/* Celular */}
-            <div>
-              <label className="block text-sm font-medium text-[#1A1A2E] mb-1.5">
-                Celular
-              </label>
+          {/* Celular com bandeira */}
+          <div>
+            <div className="flex items-center border-b border-[#E0E0E0] focus-within:border-[#1565C0] transition-colors pb-[10px]">
+              <span className="text-lg mr-2 flex-shrink-0">🇧🇷</span>
+              <span className="text-sm text-[#757575] mr-2">+55</span>
               <input
                 type="tel"
                 autoComplete="tel"
                 value={form.phone}
                 onChange={(e) => update("phone", formatPhone(e.target.value))}
-                placeholder="(00) 00000-0000"
-                className={`w-full px-3.5 py-2.5 rounded-lg border text-sm outline-none transition-colors bg-white text-[#1A1A2E] placeholder:text-[#B0BEC5] focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/20 ${
-                  errors.phone ? "border-[#F44336]" : "border-[#E0E0E0]"
-                }`}
+                placeholder="Qual o número do seu celular?"
+                className="flex-1 bg-transparent border-none outline-none text-sm text-[#212121] placeholder:text-[#9E9E9E]"
               />
-              {errors.phone && <p className="text-[#F44336] text-xs mt-1">{errors.phone}</p>}
             </div>
+            {errors.phone && <p className="text-[#F44336] text-xs mt-1">{errors.phone}</p>}
+          </div>
 
-            {/* Senha */}
-            <div>
-              <label className="block text-sm font-medium text-[#1A1A2E] mb-1.5">
-                Senha
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="new-password"
-                  value={form.password}
-                  onChange={(e) => update("password", e.target.value)}
-                  onFocus={() => setPasswordFocus(true)}
-                  onBlur={() => setPasswordFocus(false)}
-                  placeholder="Mínimo 8 caracteres"
-                  className={`w-full px-3.5 py-2.5 pr-10 rounded-lg border text-sm outline-none transition-colors bg-white text-[#1A1A2E] placeholder:text-[#B0BEC5] focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/20 ${
-                    errors.password ? "border-[#F44336]" : "border-[#E0E0E0]"
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607D8B] hover:text-[#1565C0] transition-colors"
-                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="text-[#F44336] text-xs mt-1">{errors.password}</p>
-              )}
-              {/* Password rules */}
-              {(passwordFocus || form.password.length > 0) && (
-                <div className="mt-2 flex flex-col gap-1">
+          {/* CPF */}
+          <div>
+            <input
+              type="text"
+              value={form.cpf}
+              onChange={(e) => update("cpf", e.target.value)}
+              placeholder="Qual o seu CPF?*"
+              className={`op-input-underline ${errors.cpf ? "op-input-error" : ""}`}
+            />
+            {errors.cpf && <p className="text-[#F44336] text-xs mt-1">{errors.cpf}</p>}
+          </div>
+
+          {/* E-mail */}
+          <div>
+            <input
+              type="email"
+              autoComplete="email"
+              value={form.email}
+              onChange={(e) => update("email", e.target.value)}
+              placeholder="Qual o seu e-mail? (Que só você tenha acesso)*"
+              className={`op-input-underline ${errors.email ? "op-input-error" : ""}`}
+            />
+            {errors.email && <p className="text-[#F44336] text-xs mt-1">{errors.email}</p>}
+          </div>
+
+          {/* Senha */}
+          <div>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                value={form.password}
+                onChange={(e) => update("password", e.target.value)}
+                onFocus={() => setPasswordFocus(true)}
+                onBlur={() => setPasswordFocus(false)}
+                placeholder="Defina uma senha de acesso"
+                className={`op-input-underline pr-10 ${errors.password ? "op-input-error" : ""}`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-0 top-1/2 -translate-y-1/2 text-[#9E9E9E] hover:text-[#1565C0] transition-colors"
+                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+            {errors.password && <p className="text-[#F44336] text-xs mt-1">{errors.password}</p>}
+          </div>
+
+          {/* Confirmar senha */}
+          <div>
+            <div className="relative">
+              <input
+                type={showConfirm ? "text" : "password"}
+                autoComplete="new-password"
+                value={form.confirmPassword}
+                onChange={(e) => update("confirmPassword", e.target.value)}
+                placeholder="Repita a senha"
+                className={`op-input-underline pr-10 ${errors.confirmPassword ? "op-input-error" : ""}`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm((v) => !v)}
+                className="absolute right-0 top-1/2 -translate-y-1/2 text-[#9E9E9E] hover:text-[#1565C0] transition-colors"
+              >
+                {showConfirm ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+            {errors.confirmPassword && (
+              <p className="text-[#F44336] text-xs mt-1">{errors.confirmPassword}</p>
+            )}
+          </div>
+
+          {/* Info box de senha */}
+          {(passwordFocus || form.password.length > 0) && (
+            <div className="op-info-box">
+              <Info size={16} className="text-[#9E9E9E] flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="mb-2">Utilize letras maiúsculas, letras minúsculas, números, símbolos e no mínimo 8 caracteres.</p>
+                <div className="flex flex-col gap-1">
                   {PASSWORD_RULES.map((rule) => {
                     const ok = rule.ok(form.password)
                     return (
@@ -201,75 +229,71 @@ export default function CadastroPage() {
                         {ok ? (
                           <Check size={12} className="text-[#4CAF50]" />
                         ) : (
-                          <X size={12} className="text-[#B0BEC5]" />
+                          <X size={12} className="text-[#9E9E9E]" />
                         )}
-                        <span
-                          className={`text-xs ${ok ? "text-[#4CAF50]" : "text-[#B0BEC5]"}`}
-                        >
+                        <span className={`text-xs ${ok ? "text-[#4CAF50]" : "text-[#9E9E9E]"}`}>
                           {rule.label}
                         </span>
                       </div>
                     )
                   })}
                 </div>
-              )}
-            </div>
-
-            {/* Confirmar senha */}
-            <div>
-              <label className="block text-sm font-medium text-[#1A1A2E] mb-1.5">
-                Confirmar senha
-              </label>
-              <div className="relative">
-                <input
-                  type={showConfirm ? "text" : "password"}
-                  autoComplete="new-password"
-                  value={form.confirmPassword}
-                  onChange={(e) => update("confirmPassword", e.target.value)}
-                  placeholder="Repita a senha"
-                  className={`w-full px-3.5 py-2.5 pr-10 rounded-lg border text-sm outline-none transition-colors bg-white text-[#1A1A2E] placeholder:text-[#B0BEC5] focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/20 ${
-                    errors.confirmPassword ? "border-[#F44336]" : "border-[#E0E0E0]"
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607D8B] hover:text-[#1565C0] transition-colors"
-                >
-                  {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
               </div>
-              {errors.confirmPassword && (
-                <p className="text-[#F44336] text-xs mt-1">{errors.confirmPassword}</p>
-              )}
             </div>
+          )}
 
+          {/* Link CPF */}
+          <button
+            type="button"
+            className="flex items-center gap-1.5 text-[#1565C0] text-sm font-medium text-left"
+          >
+            <Info size={15} />
+            Por que preciso informar o meu CPF?
+          </button>
+
+          {/* Termos */}
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.terms}
+              onChange={(e) => update("terms", e.target.checked)}
+              className="w-4 h-4 mt-0.5 rounded border-[#E0E0E0] accent-[#1565C0] flex-shrink-0"
+            />
+            <span className="text-sm text-[#757575]">
+              Li e concordo com os{" "}
+              <Link href="/termos" className="text-[#1565C0] hover:underline">
+                Termos de uso
+              </Link>{" "}
+              e{" "}
+              <Link href="/privacidade" className="text-[#1565C0] hover:underline">
+                Política de Privacidade
+              </Link>
+            </span>
+          </label>
+          {errors.terms && <p className="text-[#F44336] text-xs -mt-3">{errors.terms}</p>}
+
+          {/* Botão */}
+          <div className="mt-2">
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-lg bg-[#1565C0] text-white font-semibold text-sm hover:bg-[#0D1B3E] active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-1"
+              className="op-btn-primary"
             >
               {loading ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  Criando conta...
-                </>
+                <><Loader2 size={18} className="animate-spin" /> Criando conta...</>
               ) : (
-                "Criar conta"
+                "CADASTRAR"
               )}
             </button>
-          </form>
 
-          <p className="text-center text-sm text-[#607D8B] mt-5">
-            Já tem uma conta?{" "}
-            <Link
-              href="/login"
-              className="text-[#1565C0] font-semibold hover:text-[#0D1B3E] transition-colors"
-            >
-              Entrar
-            </Link>
-          </p>
-        </div>
+            <p className="text-center text-sm text-[#757575] mt-5">
+              Já tem uma conta?{" "}
+              <Link href="/login" className="text-[#1565C0] font-semibold hover:underline">
+                Entrar
+              </Link>
+            </p>
+          </div>
+        </form>
       </div>
     </main>
   )

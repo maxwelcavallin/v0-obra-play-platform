@@ -2,9 +2,10 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { HardHat, Loader2, ArrowLeft, CheckCircle, Building2, MapPin, Phone } from "lucide-react"
+import { ArrowLeft, Loader2, CheckCircle } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
+import Image from "next/image"
 
 // --- Masks ---
 function formatCNPJ(v: string) {
@@ -35,97 +36,57 @@ const BR_STATES = [
   "PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO",
 ]
 
-// Step indicator component
-function StepIndicator({ current }: { current: number }) {
-  const steps = [
-    { label: "Empresa", icon: Building2 },
-    { label: "Endereço", icon: MapPin },
-    { label: "Contatos", icon: Phone },
-  ]
-  return (
-    <div className="flex items-center justify-center gap-0 mb-8">
-      {steps.map((step, idx) => {
-        const num = idx + 1
-        const done = num < current
-        const active = num === current
-        const Icon = step.icon
-        return (
-          <div key={step.label} className="flex items-center">
-            <div className="flex flex-col items-center gap-1">
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                  done
-                    ? "bg-[#4CAF50] text-white"
-                    : active
-                    ? "bg-[#1565C0] text-white shadow-lg shadow-[#1565C0]/30"
-                    : "bg-white/20 text-white/50 border border-white/20"
-                }`}
-              >
-                {done ? <CheckCircle size={18} /> : <Icon size={16} />}
-              </div>
-              <span
-                className={`text-xs font-medium transition-colors ${
-                  active ? "text-white" : done ? "text-[#4CAF50]" : "text-white/40"
-                }`}
-              >
-                {step.label}
-              </span>
-            </div>
-            {idx < steps.length - 1 && (
-              <div
-                className={`h-0.5 w-16 mx-1 mb-5 transition-colors ${
-                  done ? "bg-[#4CAF50]" : "bg-white/20"
-                }`}
-              />
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// Input component
-function FormField({
-  label,
-  error,
-  required,
+// --- Sub-input component (underline style) ---
+function UInput({
+  placeholder,
+  value,
+  onChange,
+  type = "text",
+  hasError = false,
+  className = "",
   children,
 }: {
-  label: string
-  error?: string
-  required?: boolean
-  children: React.ReactNode
+  placeholder?: string
+  value: string
+  onChange: (v: string) => void
+  type?: string
+  hasError?: boolean
+  className?: string
+  children?: React.ReactNode
 }) {
   return (
-    <div>
-      <label className="block text-sm font-medium text-[#1A1A2E] mb-1.5">
-        {label}
-        {required && <span className="text-[#F44336] ml-0.5">*</span>}
-      </label>
+    <div className={`relative ${className}`}>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`op-input-underline ${hasError ? "op-input-error" : ""}`}
+      />
       {children}
-      {error && <p className="text-[#F44336] text-xs mt-1">{error}</p>}
     </div>
   )
 }
 
-function Input(props: React.InputHTMLAttributes<HTMLInputElement> & { hasError?: boolean }) {
-  const { hasError, className, ...rest } = props
+// --- Section label ---
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <input
-      {...rest}
-      className={`w-full px-3.5 py-2.5 rounded-lg border text-sm outline-none transition-colors bg-white text-[#1A1A2E] placeholder:text-[#B0BEC5] focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/20 ${
-        hasError ? "border-[#F44336]" : "border-[#E0E0E0]"
-      } ${className ?? ""}`}
-    />
+    <p className="text-base font-medium text-[#9E9E9E] mb-3">{children}</p>
   )
 }
 
-// --- Passo 1: Dados da Empresa ---
+// --- Field error ---
+function FieldError({ msg }: { msg?: string }) {
+  if (!msg) return null
+  return <p className="text-[#F44336] text-xs mt-1">{msg}</p>
+}
+
+// ===== STEP 1: Informe o CNPJ (passo 1/3) =====
 interface Step1Data {
   cnpj: string
   companyName: string
   fantasyName: string
+  stateRegistration: string
 }
 
 function Step1({
@@ -138,18 +99,20 @@ function Step1({
   errors: Record<string, string>
 }) {
   const [loadingCNPJ, setLoadingCNPJ] = useState(false)
+  const [confirmed, setConfirmed] = useState(false)
 
   async function fetchCNPJ() {
     const digits = data.cnpj.replace(/\D/g, "")
-    if (digits.length !== 14) {
-      toast.error("CNPJ incompleto")
-      return
-    }
+    if (digits.length !== 14) { toast.error("CNPJ incompleto"); return }
     setLoadingCNPJ(true)
     try {
-      // Mock CNPJ lookup
       await new Promise((r) => setTimeout(r, 800))
-      onChange({ companyName: "Construtora Exemplo Ltda" })
+      onChange({
+        companyName: "Tosel Materiais de Construção LTDA",
+        fantasyName: "Tosel",
+        stateRegistration: "1121543.1248.127",
+      })
+      setConfirmed(true)
       toast.success("Dados do CNPJ preenchidos")
     } catch {
       toast.error("CNPJ não encontrado")
@@ -158,50 +121,78 @@ function Step1({
     }
   }
 
-  return (
-    <div className="flex flex-col gap-4">
-      <FormField label="CNPJ" required error={errors.cnpj}>
-        <div className="flex gap-2">
-          <Input
-            value={data.cnpj}
-            onChange={(e) => onChange({ cnpj: formatCNPJ(e.target.value) })}
-            placeholder="00.000.000/0000-00"
-            hasError={!!errors.cnpj}
-          />
-          <button
-            type="button"
-            onClick={fetchCNPJ}
-            disabled={loadingCNPJ}
-            className="px-4 py-2.5 rounded-lg bg-[#1565C0] text-white text-sm font-medium hover:bg-[#0D1B3E] transition-all disabled:opacity-60 whitespace-nowrap flex items-center gap-1.5"
-          >
-            {loadingCNPJ ? <Loader2 size={15} className="animate-spin" /> : null}
-            Buscar
-          </button>
+  // Após busca, mostrar tela de confirmação dos dados
+  if (confirmed && data.companyName) {
+    return (
+      <div className="flex flex-col gap-0">
+        <SectionLabel>Confirme os dados</SectionLabel>
+        <div className="flex flex-col">
+          {[
+            { label: "CNPJ", value: data.cnpj },
+            { label: "Razão Social", value: data.companyName },
+            { label: "Nome fantasia", value: data.fantasyName },
+            { label: "Inscrição estadual", value: data.stateRegistration },
+          ].map((row) => (
+            <div key={row.label} className="flex items-center justify-between py-3 border-b border-[#EEEEEE]">
+              <span className="text-sm text-[#9E9E9E]">{row.label}</span>
+              <span className="text-sm text-[#212121] font-medium text-right max-w-[55%]">{row.value}</span>
+            </div>
+          ))}
         </div>
-      </FormField>
+        <button
+          type="button"
+          onClick={() => setConfirmed(false)}
+          className="text-sm text-[#1565C0] mt-4 text-left"
+        >
+          Editar dados
+        </button>
+      </div>
+    )
+  }
 
-      <FormField label="Razão Social" error={errors.companyName}>
-        <Input
-          value={data.companyName}
-          onChange={(e) => onChange({ companyName: e.target.value })}
-          placeholder="Preenchida automaticamente"
-          hasError={!!errors.companyName}
+  return (
+    <div className="flex flex-col gap-6">
+      <SectionLabel>Informe o CNPJ</SectionLabel>
+      <div>
+        <UInput
+          placeholder="CNPJ"
+          value={data.cnpj}
+          onChange={(v) => onChange({ cnpj: formatCNPJ(v) })}
+          hasError={!!errors.cnpj}
         />
-      </FormField>
-
-      <FormField label="Nome Fantasia" required error={errors.fantasyName}>
-        <Input
+        <FieldError msg={errors.cnpj} />
+      </div>
+      <div>
+        <UInput
+          placeholder="Razão Social"
+          value={data.companyName}
+          onChange={(v) => onChange({ companyName: v })}
+        />
+      </div>
+      <div>
+        <UInput
+          placeholder="Nome Fantasia"
           value={data.fantasyName}
-          onChange={(e) => onChange({ fantasyName: e.target.value })}
-          placeholder="Como a empresa é conhecida"
+          onChange={(v) => onChange({ fantasyName: v })}
           hasError={!!errors.fantasyName}
         />
-      </FormField>
+        <FieldError msg={errors.fantasyName} />
+      </div>
+      {/* Botão buscar inline */}
+      <button
+        type="button"
+        onClick={fetchCNPJ}
+        disabled={loadingCNPJ || data.cnpj.replace(/\D/g, "").length !== 14}
+        className="self-start flex items-center gap-2 text-sm font-semibold text-[#1565C0] disabled:opacity-40"
+      >
+        {loadingCNPJ && <Loader2 size={14} className="animate-spin" />}
+        Buscar CNPJ
+      </button>
     </div>
   )
 }
 
-// --- Passo 2: Endereço ---
+// ===== STEP 2: Endereço (passo 2/3) =====
 interface Step2Data {
   zipcode: string
   street: string
@@ -246,99 +237,104 @@ function Step2({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <FormField label="CEP" required error={errors.zipcode}>
-        <div className="flex gap-2">
-          <Input
-            value={data.zipcode}
-            onChange={(e) => onChange({ zipcode: formatCEP(e.target.value) })}
-            placeholder="00000-000"
-            hasError={!!errors.zipcode}
-          />
+    <div className="flex flex-col gap-5">
+      <SectionLabel>Informe o endereço</SectionLabel>
+
+      {/* CEP */}
+      <div>
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <UInput
+              placeholder="CEP"
+              value={data.zipcode}
+              onChange={(v) => onChange({ zipcode: formatCEP(v) })}
+              hasError={!!errors.zipcode}
+            />
+          </div>
           <button
             type="button"
             onClick={fetchCEP}
-            disabled={loadingCEP}
-            className="px-4 py-2.5 rounded-lg bg-[#1565C0] text-white text-sm font-medium hover:bg-[#0D1B3E] transition-all disabled:opacity-60 whitespace-nowrap flex items-center gap-1.5"
+            disabled={loadingCEP || data.zipcode.replace(/\D/g, "").length !== 8}
+            className="text-sm font-semibold text-[#1565C0] pb-2.5 flex-shrink-0 disabled:opacity-40 flex items-center gap-1"
           >
-            {loadingCEP ? <Loader2 size={15} className="animate-spin" /> : null}
+            {loadingCEP && <Loader2 size={14} className="animate-spin" />}
             Buscar
           </button>
         </div>
-      </FormField>
-
-      <FormField label="Logradouro" required error={errors.street}>
-        <Input
-          value={data.street}
-          onChange={(e) => onChange({ street: e.target.value })}
-          placeholder="Rua, Avenida, etc."
-          hasError={!!errors.street}
-        />
-      </FormField>
-
-      <div className="grid grid-cols-2 gap-3">
-        <FormField label="Número" required error={errors.number}>
-          <Input
-            value={data.number}
-            onChange={(e) => onChange({ number: e.target.value })}
-            placeholder="000"
-            hasError={!!errors.number}
-          />
-        </FormField>
-        <FormField label="Complemento">
-          <Input
-            value={data.complement}
-            onChange={(e) => onChange({ complement: e.target.value })}
-            placeholder="Sala, Bloco..."
-          />
-        </FormField>
+        <FieldError msg={errors.zipcode} />
       </div>
 
-      <FormField label="Bairro" required error={errors.neighbourhood}>
-        <Input
-          value={data.neighbourhood}
-          onChange={(e) => onChange({ neighbourhood: e.target.value })}
+      <div>
+        <UInput
+          placeholder="Logradouro"
+          value={data.street}
+          onChange={(v) => onChange({ street: v })}
+          hasError={!!errors.street}
+        />
+        <FieldError msg={errors.street} />
+      </div>
+
+      <div className="flex gap-4">
+        <div className="flex-1">
+          <UInput
+            placeholder="Número"
+            value={data.number}
+            onChange={(v) => onChange({ number: v })}
+            hasError={!!errors.number}
+          />
+          <FieldError msg={errors.number} />
+        </div>
+        <div className="flex-1">
+          <UInput
+            placeholder="Complemento"
+            value={data.complement}
+            onChange={(v) => onChange({ complement: v })}
+          />
+        </div>
+      </div>
+
+      <div>
+        <UInput
           placeholder="Bairro"
+          value={data.neighbourhood}
+          onChange={(v) => onChange({ neighbourhood: v })}
           hasError={!!errors.neighbourhood}
         />
-      </FormField>
+        <FieldError msg={errors.neighbourhood} />
+      </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <div className="col-span-2">
-          <FormField label="Cidade" required error={errors.city}>
-            <Input
-              value={data.city}
-              onChange={(e) => onChange({ city: e.target.value })}
-              placeholder="Cidade"
-              hasError={!!errors.city}
-            />
-          </FormField>
+      <div className="flex gap-4">
+        <div className="flex-1">
+          <UInput
+            placeholder="Cidade"
+            value={data.city}
+            onChange={(v) => onChange({ city: v })}
+            hasError={!!errors.city}
+          />
+          <FieldError msg={errors.city} />
         </div>
-        <FormField label="UF" required error={errors.state}>
+        <div className="w-20">
           <select
             value={data.state}
             onChange={(e) => onChange({ state: e.target.value })}
-            className={`w-full px-3 py-2.5 rounded-lg border text-sm outline-none transition-colors bg-white text-[#1A1A2E] focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/20 ${
-              errors.state ? "border-[#F44336]" : "border-[#E0E0E0]"
-            }`}
+            className={`op-input-underline ${errors.state ? "op-input-error" : ""}`}
           >
             <option value="">UF</option>
             {BR_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
-        </FormField>
+          <FieldError msg={errors.state} />
+        </div>
       </div>
     </div>
   )
 }
 
-// --- Passo 3: Contatos ---
+// ===== STEP 3: Contatos (passo 3/3) =====
 interface Step3Data {
-  phonePrimary: string
-  phoneSecondary: string
-  email: string
-  website: string
-  instagram: string
   whatsapp: string
+  email: string
+  cities: string[]
+  cityInput: string
 }
 
 function Step3({
@@ -350,83 +346,145 @@ function Step3({
   onChange: (d: Partial<Step3Data>) => void
   errors: Record<string, string>
 }) {
+  function addCity() {
+    if (!data.cityInput.trim()) return
+    onChange({
+      cities: [...data.cities, data.cityInput.trim()],
+      cityInput: "",
+    })
+  }
+
+  function removeCity(idx: number) {
+    onChange({ cities: data.cities.filter((_, i) => i !== idx) })
+  }
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <FormField label="Telefone principal" required error={errors.phonePrimary}>
-          <Input
-            value={data.phonePrimary}
-            onChange={(e) => onChange({ phonePrimary: formatPhone(e.target.value) })}
-            placeholder="(00) 00000-0000"
-            hasError={!!errors.phonePrimary}
-          />
-        </FormField>
-        <FormField label="Telefone secundário">
-          <Input
-            value={data.phoneSecondary}
-            onChange={(e) => onChange({ phoneSecondary: formatPhone(e.target.value) })}
-            placeholder="(00) 00000-0000"
-          />
-        </FormField>
+    <div className="flex flex-col gap-5">
+      <SectionLabel>Informe os dados de contato</SectionLabel>
+
+      <div>
+        <UInput
+          placeholder="WhatsApp do negócio"
+          value={data.whatsapp}
+          onChange={(v) => onChange({ whatsapp: formatPhone(v) })}
+          hasError={!!errors.whatsapp}
+          type="tel"
+        />
+        <FieldError msg={errors.whatsapp} />
       </div>
 
-      <FormField label="E-mail comercial" required error={errors.email}>
-        <Input
-          type="email"
+      <div>
+        <UInput
+          placeholder="E-mail"
           value={data.email}
-          onChange={(e) => onChange({ email: e.target.value })}
-          placeholder="contato@empresa.com"
+          onChange={(v) => onChange({ email: v })}
           hasError={!!errors.email}
+          type="email"
         />
-      </FormField>
+        <FieldError msg={errors.email} />
+      </div>
 
-      <FormField label="Site">
-        <Input
-          value={data.website}
-          onChange={(e) => onChange({ website: e.target.value })}
-          placeholder="www.empresa.com.br"
-        />
-      </FormField>
+      {/* Locais de atuação */}
+      <div>
+        <p className="text-sm text-[#212121] font-medium mb-1">Locais de atuação</p>
+        <p className="text-xs text-[#9E9E9E] mb-2">Nome da cidade, estado ou região que atua</p>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <FormField label="Instagram">
-          <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#607D8B] text-sm">@</span>
+        {/* Chips de cidades */}
+        {data.cities.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {data.cities.map((city, idx) => (
+              <span
+                key={idx}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#F5F5F5] text-sm text-[#212121] border border-[#E0E0E0]"
+              >
+                {city}
+                <button
+                  type="button"
+                  onClick={() => removeCity(idx)}
+                  className="text-[#9E9E9E] hover:text-[#F44336] ml-0.5"
+                  aria-label={`Remover ${city}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
             <input
-              value={data.instagram}
-              onChange={(e) => onChange({ instagram: e.target.value })}
-              placeholder="empresa"
-              className="w-full pl-7 pr-3.5 py-2.5 rounded-lg border border-[#E0E0E0] text-sm outline-none transition-colors bg-white text-[#1A1A2E] placeholder:text-[#B0BEC5] focus:border-[#1565C0] focus:ring-2 focus:ring-[#1565C0]/20"
+              type="text"
+              value={data.cityInput}
+              onChange={(e) => onChange({ cityInput: e.target.value })}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCity() } }}
+              placeholder="Pesquise..."
+              className="op-input-underline"
             />
           </div>
-        </FormField>
-        <FormField label="WhatsApp">
-          <Input
-            value={data.whatsapp}
-            onChange={(e) => onChange({ whatsapp: formatPhone(e.target.value) })}
-            placeholder="(00) 00000-0000"
-          />
-        </FormField>
+          <button
+            type="button"
+            onClick={addCity}
+            className="text-sm font-semibold text-[#1565C0] pb-2.5 flex-shrink-0"
+          >
+            Adicionar
+          </button>
+        </div>
+      </div>
+
+      {/* Foto de perfil */}
+      <div>
+        <p className="text-sm text-[#212121] font-medium mb-3">Foto de perfil do negócio</p>
+        <div className="flex justify-center">
+          <div className="relative">
+            <div className="w-20 h-20 rounded-full bg-[#EEEEEE] flex items-center justify-center">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9E9E9E" strokeWidth="1.5">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+            </div>
+            <button
+              type="button"
+              className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-white border border-[#E0E0E0] flex items-center justify-center shadow-sm"
+              aria-label="Adicionar foto"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1565C0" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
-// --- Main Page ---
+// ===== MAIN PAGE =====
 export default function OnboardingPage() {
   const router = useRouter()
   const { completeOnboarding } = useAuth()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
 
-  const [step1, setStep1] = useState<Step1Data>({ cnpj: "", companyName: "", fantasyName: "" })
+  const [step1, setStep1] = useState<Step1Data>({
+    cnpj: "", companyName: "", fantasyName: "", stateRegistration: "",
+  })
   const [step2, setStep2] = useState<Step2Data>({
     zipcode: "", street: "", number: "", complement: "", neighbourhood: "", city: "", state: "",
   })
   const [step3, setStep3] = useState<Step3Data>({
-    phonePrimary: "", phoneSecondary: "", email: "", website: "", instagram: "", whatsapp: "",
+    whatsapp: "", email: "", cities: [], cityInput: "",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const TOTAL_STEPS = 3
+  const progressPct = (step / TOTAL_STEPS) * 100
+
+  const stepTitles = [
+    "Configure seu negócio",
+    "Configure seu negócio",
+    "Configure seu negócio",
+  ]
 
   function validateStep1(): boolean {
     const errs: Record<string, string> = {}
@@ -450,8 +508,6 @@ export default function OnboardingPage() {
 
   function validateStep3(): boolean {
     const errs: Record<string, string> = {}
-    if (!step3.phonePrimary || step3.phonePrimary.replace(/\D/g, "").length < 10)
-      errs.phonePrimary = "Telefone inválido"
     if (!step3.email) errs.email = "E-mail obrigatório"
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(step3.email)) errs.email = "E-mail inválido"
     setErrors(errs)
@@ -481,94 +537,79 @@ export default function OnboardingPage() {
     setLoading(false)
   }
 
-  const stepTitles = [
-    { title: "Dados da empresa", subtitle: "Informe os dados da sua construtora" },
-    { title: "Endereço", subtitle: "Onde fica sua empresa?" },
-    { title: "Contatos e redes", subtitle: "Como seus clientes podem te contatar?" },
-  ]
-
   return (
-    <main className="min-h-screen op-gradient-bg flex items-center justify-center p-4">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-white/5" />
-        <div className="absolute -bottom-20 -left-20 w-72 h-72 rounded-full bg-white/5" />
+    <main className="min-h-dvh bg-white flex flex-col">
+      {/* Sub-header com seta + título centralizado */}
+      <header className="op-subheader border-b border-[#EEEEEE]">
+        {step > 1 && (
+          <button
+            onClick={() => { setErrors({}); setStep((s) => s - 1) }}
+            className="absolute left-4 flex items-center justify-center w-9 h-9 rounded-full hover:bg-[#F5F5F5] transition-colors"
+            aria-label="Voltar"
+          >
+            <ArrowLeft size={20} className="text-[#212121]" />
+          </button>
+        )}
+        <span className="op-subheader-title">{stepTitles[step - 1]}</span>
+      </header>
+
+      {/* Barra de progresso fina */}
+      <div className="op-progress-bar-track">
+        <div className="op-progress-bar-fill" style={{ width: `${progressPct}%` }} />
       </div>
 
-      <div className="relative w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-2">
-          <div className="inline-flex items-center gap-2 mb-2">
-            <HardHat className="w-6 h-6 text-white" />
-            <span className="text-white font-bold text-xl">OBRA PLAY</span>
-          </div>
-          <p className="text-white/60 text-sm">Vamos configurar sua empresa</p>
-        </div>
+      {/* Conteúdo scrollável */}
+      <div className="flex-1 px-6 pt-8 pb-28 overflow-y-auto">
+        {step === 1 && (
+          <Step1
+            data={step1}
+            onChange={(d) => setStep1((p) => ({ ...p, ...d }))}
+            errors={errors}
+          />
+        )}
+        {step === 2 && (
+          <Step2
+            data={step2}
+            onChange={(d) => setStep2((p) => ({ ...p, ...d }))}
+            errors={errors}
+          />
+        )}
+        {step === 3 && (
+          <Step3
+            data={step3}
+            onChange={(d) => setStep3((p) => ({ ...p, ...d }))}
+            errors={errors}
+          />
+        )}
+      </div>
 
-        {/* Step Indicator */}
-        <StepIndicator current={step} />
-
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-6">
-          <div className="mb-5">
-            <h2 className="text-xl font-bold text-[#1A1A2E]">
-              {stepTitles[step - 1].title}
-            </h2>
-            <p className="text-[#607D8B] text-sm mt-0.5">
-              {stepTitles[step - 1].subtitle}
-            </p>
-          </div>
-
-          {step === 1 && (
-            <Step1 data={step1} onChange={(d) => setStep1((p) => ({ ...p, ...d }))} errors={errors} />
-          )}
-          {step === 2 && (
-            <Step2 data={step2} onChange={(d) => setStep2((p) => ({ ...p, ...d }))} errors={errors} />
-          )}
-          {step === 3 && (
-            <Step3 data={step3} onChange={(d) => setStep3((p) => ({ ...p, ...d }))} errors={errors} />
-          )}
-
-          {/* Navigation buttons */}
-          <div className="flex gap-3 mt-6">
-            {step > 1 && (
-              <button
-                type="button"
-                onClick={() => { setErrors({}); setStep((s) => s - 1) }}
-                className="flex-1 py-2.5 rounded-lg border border-[#E0E0E0] text-[#607D8B] font-semibold text-sm hover:border-[#1565C0] hover:text-[#1565C0] transition-all flex items-center justify-center gap-2"
-              >
-                <ArrowLeft size={16} />
-                Voltar
-              </button>
-            )}
-            {step < 3 ? (
-              <button
-                type="button"
-                onClick={handleNext}
-                className="flex-1 py-2.5 rounded-lg bg-[#1565C0] text-white font-semibold text-sm hover:bg-[#0D1B3E] active:scale-[0.98] transition-all"
-              >
-                Continuar
-              </button>
+      {/* Botão fixo na base */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white px-6 pb-6 pt-3 border-t border-[#EEEEEE]">
+        {step < TOTAL_STEPS ? (
+          <button
+            type="button"
+            onClick={handleNext}
+            className="op-btn-primary"
+          >
+            PRÓXIMO
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleFinish}
+            disabled={loading}
+            className="op-btn-primary"
+          >
+            {loading ? (
+              <><Loader2 size={18} className="animate-spin" /> Concluindo...</>
             ) : (
-              <button
-                type="button"
-                onClick={handleFinish}
-                disabled={loading}
-                className="flex-1 py-2.5 rounded-lg bg-[#1565C0] text-white font-semibold text-sm hover:bg-[#0D1B3E] active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                {loading ? (
-                  <><Loader2 size={18} className="animate-spin" /> Concluindo...</>
-                ) : (
-                  <><CheckCircle size={18} /> Concluir</>
-                )}
-              </button>
+              <>
+                <CheckCircle size={18} />
+                CADASTRAR
+              </>
             )}
-          </div>
-        </div>
-
-        {/* Step counter */}
-        <p className="text-center text-white/40 text-xs mt-3">
-          Passo {step} de 3 — Este processo não pode ser pulado
-        </p>
+          </button>
+        )}
       </div>
     </main>
   )

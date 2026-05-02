@@ -1,58 +1,31 @@
 "use client"
 
-import { FileText, ShoppingCart, DollarSign, TrendingUp, Plus, ArrowUpRight, Clock } from "lucide-react"
+import {
+  FileText,
+  ShoppingCart,
+  DollarSign,
+  BarChart3,
+  Plus,
+  Clock,
+  ChevronRight,
+  Building2,
+  Settings,
+} from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/lib/auth-context"
 
-// --- Mock data ---
-const MOCK_METRICS = [
-  {
-    label: "Cotações ativas",
-    value: "7",
-    change: "+2 esta semana",
-    positive: true,
-    icon: FileText,
-    color: "#1565C0",
-    bg: "#E3F2FD",
-  },
-  {
-    label: "OCs pendentes",
-    value: "3",
-    change: "1 vence amanhã",
-    positive: null,
-    icon: ShoppingCart,
-    color: "#FF9800",
-    bg: "#FFF3E0",
-  },
-  {
-    label: "A pagar este mês",
-    value: "R$ 48.750",
-    change: "3 vencimentos",
-    positive: null,
-    icon: DollarSign,
-    color: "#F44336",
-    bg: "#FFEBEE",
-  },
-  {
-    label: "Receita do mês",
-    value: "R$ 120.000",
-    change: "+12% vs mês anterior",
-    positive: true,
-    icon: TrendingUp,
-    color: "#4CAF50",
-    bg: "#E8F5E9",
-  },
-]
-
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  new:       { label: "Nova",               color: "#1565C0", bg: "#E3F2FD" },
-  answered:  { label: "Respondida",         color: "#4CAF50", bg: "#E8F5E9" },
-  pending:   { label: "Pendente revisão",   color: "#FF9800", bg: "#FFF3E0" },
-  converted: { label: "Convertida",         color: "#2E7D32", bg: "#E8F5E9" },
-  partial:   { label: "Parcialmente conv.", color: "#42A5F5", bg: "#E3F2FD" },
-  canceled:  { label: "Cancelada",          color: "#F44336", bg: "#FFEBEE" },
-  expired:   { label: "Expirada",           color: "#607D8B", bg: "#ECEFF1" },
+// --- Status config ---
+const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
+  new:       { label: "Nova",               cls: "op-chip op-chip-primary" },
+  answered:  { label: "Respondida",         cls: "op-chip op-chip-success" },
+  pending:   { label: "Pendente revisão",   cls: "op-chip op-chip-warning" },
+  converted: { label: "Convertida",         cls: "op-chip op-chip-success" },
+  partial:   { label: "Parcialmente conv.", cls: "op-chip op-chip-primary" },
+  canceled:  { label: "Cancelada",          cls: "op-chip op-chip-error" },
+  expired:   { label: "Expirada",           cls: "op-chip op-chip-neutral" },
 }
 
+// --- Mock data ---
 const MOCK_QUOTATIONS = [
   {
     id: "COT-2024-007",
@@ -61,7 +34,6 @@ const MOCK_QUOTATIONS = [
     cidade: "Curitiba · PR",
     status: "answered",
     itens: 12,
-    date: "28/04/2025",
     expires: "10/05/2025",
   },
   {
@@ -71,7 +43,6 @@ const MOCK_QUOTATIONS = [
     cidade: "São José dos Pinhais · PR",
     status: "new",
     itens: 8,
-    date: "25/04/2025",
     expires: "05/05/2025",
   },
   {
@@ -81,7 +52,6 @@ const MOCK_QUOTATIONS = [
     cidade: "Curitiba · PR",
     status: "pending",
     itens: 5,
-    date: "22/04/2025",
     expires: "02/05/2025",
   },
   {
@@ -91,7 +61,6 @@ const MOCK_QUOTATIONS = [
     cidade: "Colombo · PR",
     status: "converted",
     itens: 20,
-    date: "18/04/2025",
     expires: "28/04/2025",
   },
 ]
@@ -102,7 +71,6 @@ const MOCK_FINANCIALS = [
     description: "Compra OC-ZMSDNDL — Cimento e Areia Ltda",
     obra: "Residência João Pizzini",
     value: "R$ 15.200,00",
-    due: "30/04/2025",
     status: "overdue",
     daysLabel: "2 dias atrasado",
   },
@@ -111,7 +79,6 @@ const MOCK_FINANCIALS = [
     description: "Mão de obra — Pedreiros",
     obra: "Edifício Comercial Centro",
     value: "R$ 8.500,00",
-    due: "05/05/2025",
     status: "pending",
     daysLabel: "Vence em 5 dias",
   },
@@ -120,182 +87,247 @@ const MOCK_FINANCIALS = [
     description: "Compra OC-ABCDEF — Hidráulica Norte",
     obra: "Reforma Sobrado Batel",
     value: "R$ 3.750,00",
-    due: "08/05/2025",
     status: "pending",
     daysLabel: "Vence em 8 dias",
   },
 ]
 
+// Atalhos rápidos — estilo círculos azuis com ícone branco
+const QUICK_ACTIONS = [
+  { label: "Cotações",    href: "/cotacoes",  icon: FileText },
+  { label: "Financeiro",  href: "/financeiro", icon: DollarSign },
+  { label: "Minhas obras",href: "/obras",      icon: Building2 },
+  { label: "Configurar",  href: "/configuracoes", icon: Settings },
+]
+
 function StatusChip({ status }: { status: string }) {
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.new
-  return (
-    <span
-      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
-      style={{ color: cfg.color, backgroundColor: cfg.bg }}
-    >
-      {cfg.label}
-    </span>
-  )
+  return <span className={cfg.cls}>{cfg.label}</span>
 }
 
 export default function DashboardPage() {
+  const { user, activeCompany } = useAuth()
+
+  const initials = user?.name
+    ? user.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
+    : "U"
+
   return (
-    <div>
-      {/* Page header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1A1A2E]">Início</h1>
-          <p className="text-[#607D8B] text-sm mt-0.5">Visão geral da sua empresa</p>
-        </div>
-        <Link
-          href="/cotacoes/nova"
-          className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1565C0] text-white text-sm font-semibold hover:bg-[#0D1B3E] transition-all"
-        >
-          <Plus size={16} />
-          Nova cotação
-        </Link>
-      </div>
+    <div className="op-page-bg min-h-full">
 
-      {/* Metrics grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        {MOCK_METRICS.map((m) => {
-          const Icon = m.icon
-          return (
-            <div key={m.label} className="bg-white rounded-xl p-4 shadow-sm border border-[#E0E0E0]/50">
-              <div className="flex items-start justify-between mb-3">
-                <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: m.bg }}
-                >
-                  <Icon size={18} style={{ color: m.color }} />
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-[#1A1A2E]">{m.value}</p>
-              <p className="text-[#607D8B] text-xs mt-0.5 leading-tight">{m.label}</p>
-              <p
-                className="text-xs mt-1 font-medium"
-                style={{ color: m.positive === true ? "#4CAF50" : m.positive === false ? "#F44336" : "#FF9800" }}
-              >
-                {m.change}
-              </p>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Main content grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Últimas cotações — 2/3 */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl shadow-sm border border-[#E0E0E0]/50">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#F4F6F8]">
-              <div>
-                <h2 className="font-bold text-[#1A1A2E] text-base">Últimas cotações</h2>
-                <p className="text-[#607D8B] text-xs">Suas cotações mais recentes</p>
-              </div>
-              <Link
-                href="/cotacoes"
-                className="flex items-center gap-1 text-xs text-[#1565C0] hover:text-[#0D1B3E] font-medium transition-colors"
-              >
-                Ver todas <ArrowUpRight size={14} />
-              </Link>
-            </div>
-            <div className="divide-y divide-[#F4F6F8]">
-              {MOCK_QUOTATIONS.map((q) => (
-                <Link
-                  key={q.id}
-                  href={`/cotacoes/${q.id}`}
-                  className="flex items-start gap-3 px-5 py-4 hover:bg-[#F8FAFE] transition-colors block"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-mono text-[#607D8B]">{q.id}</span>
-                      <StatusChip status={q.status} />
-                    </div>
-                    <p className="text-sm font-semibold text-[#1A1A2E] mt-1 truncate">{q.obra}</p>
-                    <p className="text-xs text-[#607D8B] truncate">{q.cliente} · {q.cidade}</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-xs text-[#607D8B]">{q.itens} itens</p>
-                    <p className="text-xs text-[#B0BEC5] mt-0.5">Vence {q.expires}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-            <div className="px-5 py-3 border-t border-[#F4F6F8]">
-              <Link
-                href="/cotacoes/nova"
-                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border-2 border-dashed border-[#E0E0E0] text-[#607D8B] text-sm hover:border-[#1565C0] hover:text-[#1565C0] transition-all"
-              >
-                <Plus size={16} />
-                Nova cotação
-              </Link>
-            </div>
+      {/* Cabeçalho hero — fundo azul estendido (padrão home Obra Play) */}
+      <div className="bg-[#1565C0] px-5 pt-5 pb-8">
+        <div className="flex items-center gap-4">
+          {/* Avatar empresa */}
+          <div className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <span className="text-white font-bold text-xl">
+              {activeCompany?.fantasyName?.[0] ?? initials}
+            </span>
           </div>
-        </div>
-
-        {/* Pendências financeiras — 1/3 */}
-        <div>
-          <div className="bg-white rounded-xl shadow-sm border border-[#E0E0E0]/50">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#F4F6F8]">
-              <div>
-                <h2 className="font-bold text-[#1A1A2E] text-base">Pendências</h2>
-                <p className="text-[#607D8B] text-xs">Vencimentos próximos</p>
-              </div>
-              <Link
-                href="/financeiro"
-                className="flex items-center gap-1 text-xs text-[#1565C0] font-medium hover:text-[#0D1B3E] transition-colors"
-              >
-                Ver tudo <ArrowUpRight size={14} />
-              </Link>
-            </div>
-            <div className="divide-y divide-[#F4F6F8]">
-              {MOCK_FINANCIALS.map((lc) => (
-                <div key={lc.id} className="px-5 py-4">
-                  <div className="flex items-start gap-2">
-                    <div
-                      className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
-                        lc.status === "overdue" ? "bg-[#F44336]" : "bg-[#FF9800]"
-                      }`}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[#1A1A2E] truncate leading-tight">
-                        {lc.description}
-                      </p>
-                      <p className="text-xs text-[#607D8B] truncate mt-0.5">{lc.obra}</p>
-                      <div className="flex items-center justify-between mt-1.5">
-                        <p className="text-sm font-bold text-[#1A1A2E]">{lc.value}</p>
-                        <div
-                          className={`flex items-center gap-1 text-xs font-medium ${
-                            lc.status === "overdue" ? "text-[#F44336]" : "text-[#FF9800]"
-                          }`}
-                        >
-                          <Clock size={11} />
-                          {lc.daysLabel}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="px-5 py-3 border-t border-[#F4F6F8]">
-              <Link
-                href="/financeiro/novo"
-                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border-2 border-dashed border-[#E0E0E0] text-[#607D8B] text-sm hover:border-[#1565C0] hover:text-[#1565C0] transition-all"
-              >
-                <Plus size={16} />
-                Novo lançamento
-              </Link>
-            </div>
+          <div>
+            <p className="text-white font-bold text-base leading-tight">
+              {activeCompany?.fantasyName ?? "Obra Play"}
+            </p>
+            <p className="text-white/70 text-sm mt-0.5">
+              {user?.name ?? "Bem-vindo"}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Mobile FAB */}
+      {/* Atalhos rápidos (círculos azuis) — sobrepostos ao hero */}
+      <div className="bg-white mx-4 -mt-5 rounded-xl shadow-sm px-4 py-5">
+        <div className="grid grid-cols-4 gap-2">
+          {QUICK_ACTIONS.map((item) => {
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex flex-col items-center gap-2 group"
+              >
+                <div className="op-icon-circle group-hover:opacity-80 transition-opacity">
+                  <Icon size={22} className="text-white" />
+                </div>
+                <span className="text-[11px] text-[#757575] text-center leading-tight">
+                  {item.label}
+                </span>
+              </Link>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="px-4 mt-4 pb-24 flex flex-col gap-4">
+
+        {/* Saldo geral */}
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <p className="text-sm text-[#757575] mb-0.5">Saldo geral</p>
+          <p className="text-2xl font-bold text-[#212121]">R$ 59.256,32</p>
+          <div className="flex gap-6 mt-3">
+            <div>
+              <p className="text-xs text-[#9E9E9E]">Receitas</p>
+              <p className="text-sm font-bold text-[#4CAF50]">R$ 9.625,76</p>
+            </div>
+            <div>
+              <p className="text-xs text-[#9E9E9E]">Despesas</p>
+              <p className="text-sm font-bold text-[#F44336]">- R$ 7.625,76</p>
+            </div>
+            <div>
+              <p className="text-xs text-[#9E9E9E]">Saldo</p>
+              <p className="text-sm font-bold text-[#1565C0]">R$ 925,76</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Últimas cotações */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#EEEEEE]">
+            <p className="op-section-title text-base">Últimas cotações</p>
+            <Link
+              href="/cotacoes"
+              className="flex items-center gap-0.5 text-sm text-[#1565C0] font-medium"
+            >
+              Ver todas <ChevronRight size={16} />
+            </Link>
+          </div>
+
+          {MOCK_QUOTATIONS.map((q, idx) => (
+            <Link
+              key={q.id}
+              href={`/cotacoes/${q.id}`}
+              className={`flex items-start gap-3 px-4 py-3 hover:bg-[#F9F9F9] transition-colors block ${
+                idx < MOCK_QUOTATIONS.length - 1 ? "border-b border-[#EEEEEE]" : ""
+              }`}
+            >
+              {/* Ícone de cotação */}
+              <div className="op-icon-circle-sm flex-shrink-0 mt-0.5">
+                <FileText size={18} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-[#212121] truncate">{q.obra}</p>
+                <p className="text-xs text-[#9E9E9E] truncate">{q.cliente}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <StatusChip status={q.status} />
+                  <span className="text-xs text-[#9E9E9E]">{q.itens} itens</span>
+                </div>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="text-xs text-[#9E9E9E]">Vence</p>
+                <p className="text-xs text-[#757575]">{q.expires}</p>
+              </div>
+            </Link>
+          ))}
+
+          <div className="px-4 py-3 border-t border-[#EEEEEE]">
+            <Link
+              href="/cotacoes/nova"
+              className="flex items-center justify-center gap-2 py-2 rounded-lg border border-dashed border-[#E0E0E0] text-sm text-[#1565C0] hover:bg-[#E3F2FD] transition-colors"
+            >
+              <Plus size={16} />
+              Nova cotação
+            </Link>
+          </div>
+        </div>
+
+        {/* Histórico de transações */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <Link
+            href="/financeiro/historico"
+            className="flex items-center justify-between px-4 py-4 hover:bg-[#F9F9F9] transition-colors"
+          >
+            <div>
+              <p className="text-[#1565C0] font-semibold text-sm">Histórico de transações</p>
+              <p className="text-xs text-[#9E9E9E] mt-0.5">Toque aqui para acessar o histórico de transações de suas contas.</p>
+            </div>
+            <ChevronRight size={18} className="text-[#9E9E9E] flex-shrink-0" />
+          </Link>
+        </div>
+
+        {/* Pendências financeiras */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#EEEEEE]">
+            <p className="op-section-title text-base">Pendências</p>
+            <Link
+              href="/financeiro"
+              className="flex items-center gap-0.5 text-sm text-[#1565C0] font-medium"
+            >
+              Ver tudo <ChevronRight size={16} />
+            </Link>
+          </div>
+
+          {MOCK_FINANCIALS.map((lc, idx) => (
+            <div
+              key={lc.id}
+              className={`flex items-start gap-3 px-4 py-3 ${
+                idx < MOCK_FINANCIALS.length - 1 ? "border-b border-[#EEEEEE]" : ""
+              }`}
+            >
+              <div
+                className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                  lc.status === "overdue" ? "bg-[#F44336]" : "bg-[#FF9800]"
+                }`}
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-[#212121] truncate leading-snug">
+                  {lc.description}
+                </p>
+                <p className="text-xs text-[#9E9E9E] truncate mt-0.5">{lc.obra}</p>
+                <div className="flex items-center justify-between mt-1.5">
+                  <p className="text-sm font-bold text-[#212121]">{lc.value}</p>
+                  <div
+                    className={`flex items-center gap-1 text-xs font-medium ${
+                      lc.status === "overdue" ? "text-[#F44336]" : "text-[#FF9800]"
+                    }`}
+                  >
+                    <Clock size={11} />
+                    {lc.daysLabel}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Minhas obras preview */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#EEEEEE]">
+            <p className="op-section-title text-base">Minhas obras</p>
+            <Link
+              href="/obras"
+              className="flex items-center gap-0.5 text-sm text-[#1565C0] font-medium"
+            >
+              Ver todas <ChevronRight size={16} />
+            </Link>
+          </div>
+          {[
+            { name: "Meio Terreno", responsavel: "Lucas Silva", value: "R$ 58.563,63" },
+            { name: "Meio Terreno", responsavel: "Leonardo", value: "R$ 8.563,63" },
+            { name: "Meio Terreno", responsavel: "Marcia Leão", value: "R$ 105.542,44" },
+          ].map((obra, idx, arr) => (
+            <div
+              key={idx}
+              className={`flex items-center gap-3 px-4 py-3 ${
+                idx < arr.length - 1 ? "border-b border-[#EEEEEE]" : ""
+              }`}
+            >
+              <div className="op-icon-circle-sm flex-shrink-0">
+                <Building2 size={18} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-[#212121]">{obra.name}</p>
+                <p className="text-xs text-[#9E9E9E]">{obra.responsavel}</p>
+              </div>
+              <p className="text-sm font-bold text-[#4CAF50] flex-shrink-0">{obra.value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* FAB mobile */}
       <Link
         href="/cotacoes/nova"
-        className="fixed bottom-20 right-4 w-14 h-14 rounded-full bg-[#1565C0] text-white flex items-center justify-center shadow-xl md:hidden hover:bg-[#0D1B3E] transition-all active:scale-95"
+        className="op-fab fixed bottom-20 right-4 md:hidden"
         aria-label="Nova cotação"
       >
         <Plus size={24} />

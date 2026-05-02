@@ -4,88 +4,105 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Obra Play Design System */
-  --op-primary:       #1565C0;
-  --op-primary-dark:  #0D1B3E;
-  --op-primary-light: #1976D2;
-  --op-accent:        #42A5F5;
-  --op-success:       #4CAF50;
-  --op-warning:       #FF9800;
-  --op-error:         #F44336;
-  --op-surface:       #FFFFFF;
-  --op-bg:            #F4F6F8;
-  --op-text-primary:  #1A1A2E;
-  --op-text-secondary:#607D8B;
-  --op-border:        #E0E0E0;
+  /* ============================================
+   * OBRA PLAY — Design System Tokens
+   * Baseado nos protótipos oficiais do app
+   * Cor primária: azul escuro #1565C0 (nossa variante)
+   * ============================================ */
 
-  /* shadcn tokens mapeados ao tema Obra Play */
-  --background: #F4F6F8;
-  --foreground: #1A1A2E;
-  --card: #FFFFFF;
-  --card-foreground: #1A1A2E;
-  --popover: #FFFFFF;
-  --popover-foreground: #1A1A2E;
-  --primary: #1565C0;
-  --primary-foreground: #FFFFFF;
-  --secondary: #F4F6F8;
-  --secondary-foreground: #1A1A2E;
-  --muted: #F4F6F8;
-  --muted-foreground: #607D8B;
-  --accent: #42A5F5;
-  --accent-foreground: #FFFFFF;
-  --destructive: #F44336;
+  /* Brand colors */
+  --op-primary:          #1565C0;   /* Azul principal (nossa variante mais escura) */
+  --op-primary-dark:     #0D1B3E;   /* Azul muito escuro — hover / sidebar */
+  --op-primary-light:    #1976D2;   /* Azul médio */
+  --op-primary-bg:       #E3F2FD;   /* Azul claro de fundo — item ativo */
+
+  /* Status colors */
+  --op-success:          #4CAF50;   /* Verde — Ativo / Pago / Menor preço */
+  --op-success-bg:       #E8F5E9;   /* Verde claro de fundo */
+  --op-warning:          #FF9800;   /* Laranja — Parado / Não pago / Badge */
+  --op-warning-bg:       #FFF3E0;   /* Laranja claro de fundo */
+  --op-error:            #F44336;   /* Vermelho — Encerrado / Excluir */
+  --op-error-bg:         #FFEBEE;   /* Vermelho claro de fundo */
+  --op-info:             #2196F3;   /* Azul info */
+  --op-info-bg:          #E3F2FD;
+
+  /* Neutrals */
+  --op-surface:          #FFFFFF;   /* Branco — cards, modais, inputs */
+  --op-bg:               #F5F5F5;   /* Cinza levíssimo — fundo de página */
+  --op-text-primary:     #212121;   /* Quase preto — títulos principais */
+  --op-text-secondary:   #757575;   /* Cinza médio — subtítulos, labels */
+  --op-text-hint:        #9E9E9E;   /* Cinza claro — placeholders, hints */
+  --op-divider:          #EEEEEE;   /* Divisor entre itens */
+  --op-border:           #E0E0E0;   /* Borda de cards e inputs */
+
+  /* shadcn/Tailwind token mapping */
+  --background:          #F5F5F5;
+  --foreground:          #212121;
+  --card:                #FFFFFF;
+  --card-foreground:     #212121;
+  --popover:             #FFFFFF;
+  --popover-foreground:  #212121;
+  --primary:             #1565C0;
+  --primary-foreground:  #FFFFFF;
+  --secondary:           #F5F5F5;
+  --secondary-foreground:#212121;
+  --muted:               #F5F5F5;
+  --muted-foreground:    #757575;
+  --accent:              #E3F2FD;
+  --accent-foreground:   #1565C0;
+  --destructive:         #F44336;
   --destructive-foreground: #FFFFFF;
-  --border: #E0E0E0;
-  --input: #E0E0E0;
-  --ring: #1565C0;
-  --radius: 0.75rem;
+  --border:              #E0E0E0;
+  --input:               #E0E0E0;
+  --ring:                #1565C0;
+  --radius:              0.5rem;
 
-  /* sidebar tokens */
-  --sidebar: #0D1B3E;
-  --sidebar-foreground: #FFFFFF;
-  --sidebar-primary: #1565C0;
+  /* Sidebar tokens */
+  --sidebar:             #FFFFFF;
+  --sidebar-foreground:  #212121;
+  --sidebar-primary:     #1565C0;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #1565C0;
-  --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: rgba(255,255,255,0.08);
-  --sidebar-ring: #42A5F5;
+  --sidebar-accent:      #E3F2FD;
+  --sidebar-accent-foreground: #1565C0;
+  --sidebar-border:      #EEEEEE;
+  --sidebar-ring:        #1565C0;
 }
 
 @theme inline {
   --font-sans: 'Roboto', 'Inter', sans-serif;
   --font-mono: 'Geist Mono', monospace;
 
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+  --color-background:              var(--background);
+  --color-foreground:              var(--foreground);
+  --color-card:                    var(--card);
+  --color-card-foreground:         var(--card-foreground);
+  --color-popover:                 var(--popover);
+  --color-popover-foreground:      var(--popover-foreground);
+  --color-primary:                 var(--primary);
+  --color-primary-foreground:      var(--primary-foreground);
+  --color-secondary:               var(--secondary);
+  --color-secondary-foreground:    var(--secondary-foreground);
+  --color-muted:                   var(--muted);
+  --color-muted-foreground:        var(--muted-foreground);
+  --color-accent:                  var(--accent);
+  --color-accent-foreground:       var(--accent-foreground);
+  --color-destructive:             var(--destructive);
+  --color-destructive-foreground:  var(--destructive-foreground);
+  --color-border:                  var(--border);
+  --color-input:                   var(--input);
+  --color-ring:                    var(--ring);
+  --radius-sm:   calc(var(--radius) - 2px);
+  --radius-md:   var(--radius);
+  --radius-lg:   calc(var(--radius) + 4px);
+  --radius-xl:   calc(var(--radius) + 8px);
+  --color-sidebar:                     var(--sidebar);
+  --color-sidebar-foreground:          var(--sidebar-foreground);
+  --color-sidebar-primary:             var(--sidebar-primary);
+  --color-sidebar-primary-foreground:  var(--sidebar-primary-foreground);
+  --color-sidebar-accent:              var(--sidebar-accent);
+  --color-sidebar-accent-foreground:   var(--sidebar-accent-foreground);
+  --color-sidebar-border:              var(--sidebar-border);
+  --color-sidebar-ring:                var(--sidebar-ring);
 }
 
 @layer base {
@@ -95,32 +112,398 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Roboto', 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
-/* Obra Play custom utilities */
+/* ============================================
+ * OBRA PLAY — Utility Classes
+ * Padroes visuais extraídos dos protótipos
+ * ============================================ */
 @layer utilities {
-  .op-card {
-    background: var(--op-surface);
-    border-radius: 12px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 2px 12px rgba(0,0,0,0.04);
-  }
 
+  /* --- AppBar --- */
+  /* Fundo azul principal, altura 56px, logo centralizado */
   .op-appbar {
-    background: var(--op-primary-dark);
+    background-color: var(--op-primary);
+    height: 56px;
   }
 
-  .op-sidebar {
-    background: var(--op-primary-dark);
-  }
-
-  .op-btn-primary {
-    background: var(--op-primary);
-    color: #fff;
+  /* --- Cards --- */
+  /* Card branco com bordas levemente arredondadas e sombra sutil */
+  .op-card {
+    background-color: var(--op-surface);
     border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   }
 
-  .op-gradient-bg {
-    background: linear-gradient(135deg, #0D1B3E 0%, #1565C0 100%);
+  /* Card de item de lista (sem sombra, apenas separador) */
+  .op-list-card {
+    background-color: var(--op-surface);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+
+  /* --- Inputs --- */
+  /* Input sublinhado — padrão do app Obra Play */
+  .op-input-underline {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--op-border);
+    border-radius: 0;
+    padding: 10px 0;
+    font-size: 14px;
+    color: var(--op-text-primary);
+    outline: none;
+    transition: border-color 0.15s;
+    font-family: 'Roboto', 'Inter', sans-serif;
+  }
+  .op-input-underline::placeholder {
+    color: var(--op-text-hint);
+  }
+  .op-input-underline:focus {
+    border-bottom-color: var(--op-primary);
+  }
+  .op-input-underline.op-input-error {
+    border-bottom-color: var(--op-error);
+  }
+
+  /* --- Buttons --- */
+  /* Botão primário: azul cheio, uppercase, letras espaçadas, full-width */
+  .op-btn-primary {
+    width: 100%;
+    background-color: var(--op-primary);
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 14px 24px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.15s, transform 0.1s;
+    font-family: 'Roboto', 'Inter', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .op-btn-primary:hover {
+    background-color: var(--op-primary-dark);
+  }
+  .op-btn-primary:active {
+    transform: scale(0.98);
+  }
+  .op-btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Botão secundário: outline azul, uppercase */
+  .op-btn-secondary {
+    width: 100%;
+    background-color: transparent;
+    color: var(--op-primary);
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 13px 24px;
+    border-radius: 4px;
+    border: 1.5px solid var(--op-primary);
+    cursor: pointer;
+    transition: background-color 0.15s;
+    font-family: 'Roboto', 'Inter', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .op-btn-secondary:hover {
+    background-color: var(--op-primary-bg);
+  }
+
+  /* Botão FAB circular */
+  .op-fab {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: var(--op-primary);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(21,101,192,0.4);
+    cursor: pointer;
+    transition: background-color 0.15s, transform 0.1s;
+    border: none;
+  }
+  .op-fab:hover {
+    background-color: var(--op-primary-dark);
+  }
+  .op-fab:active {
+    transform: scale(0.95);
+  }
+
+  /* --- Status chips / pills --- */
+  .op-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .op-chip-success  { background-color: var(--op-success-bg);  color: var(--op-success); }
+  .op-chip-warning  { background-color: var(--op-warning-bg);  color: var(--op-warning); }
+  .op-chip-error    { background-color: var(--op-error-bg);    color: var(--op-error); }
+  .op-chip-primary  { background-color: var(--op-primary-bg);  color: var(--op-primary); }
+  .op-chip-neutral  { background-color: #F5F5F5;               color: #757575; }
+
+  /* Filtro chip outline (horizontal scroll) */
+  .op-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--op-border);
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--op-text-primary);
+    background-color: var(--op-surface);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s;
+  }
+  .op-filter-chip:hover,
+  .op-filter-chip.active {
+    border-color: var(--op-primary);
+    color: var(--op-primary);
+    background-color: var(--op-primary-bg);
+  }
+
+  /* --- Ícone circular azul --- */
+  /* Círculo azul com ícone branco — padrão de atalhos rápidos */
+  .op-icon-circle {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background-color: var(--op-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .op-icon-circle-sm {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--op-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* --- Progress bar (onboarding) --- */
+  /* Barra fina no topo das telas de wizard */
+  .op-progress-bar-track {
+    width: 100%;
+    height: 3px;
+    background-color: var(--op-border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .op-progress-bar-fill {
+    height: 100%;
+    background-color: var(--op-primary);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
+  /* --- Sub-header (inner pages) --- */
+  /* Header branco com seta voltar + título centralizado */
+  .op-subheader {
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    height: 52px;
+    background-color: var(--op-surface);
+    position: relative;
+  }
+  .op-subheader-title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--op-text-primary);
+    white-space: nowrap;
+  }
+
+  /* --- Section header --- */
+  .op-section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--op-text-primary);
+    margin-bottom: 4px;
+  }
+
+  /* --- List item divider --- */
+  .op-divider {
+    border: none;
+    border-top: 1px solid var(--op-divider);
+  }
+
+  /* --- Settings menu card (Configuracoes) --- */
+  .op-settings-card {
+    background-color: var(--op-surface);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    cursor: pointer;
+  }
+  .op-settings-card-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--op-primary);
+  }
+  .op-settings-card-desc {
+    font-size: 12px;
+    color: var(--op-text-secondary);
+    margin-top: 2px;
+  }
+
+  /* --- User list item --- */
+  .op-user-card {
+    background-color: var(--op-surface);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+
+  /* --- Financial totals bar --- */
+  .op-totals-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    background-color: var(--op-surface);
+    padding: 12px 16px;
+    border-top: 1px solid var(--op-divider);
+  }
+
+  /* --- Search bar --- */
+  .op-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background-color: var(--op-surface);
+    border-bottom: 1px solid var(--op-divider);
+  }
+  .op-search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    color: var(--op-text-primary);
+    font-family: 'Roboto', 'Inter', sans-serif;
+  }
+  .op-search-input::placeholder {
+    color: var(--op-text-hint);
+  }
+
+  /* --- Info box (dica/aviso) --- */
+  .op-info-box {
+    background-color: #F5F5F5;
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 12px;
+    color: var(--op-text-secondary);
+    line-height: 1.5;
+  }
+
+  /* --- Checkbox item (status selection) --- */
+  .op-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--op-border);
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
+    margin-bottom: 8px;
+  }
+  .op-checkbox-item.selected {
+    background-color: #E8F5E9;
+    border-color: var(--op-success);
+  }
+
+  /* --- Product list item --- */
+  .op-product-item {
+    background-color: var(--op-surface);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--op-divider);
+  }
+  .op-product-thumbnail {
+    width: 64px;
+    height: 64px;
+    border-radius: 4px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background-color: var(--op-bg);
+  }
+
+  /* --- Transaction item --- */
+  .op-transaction-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    background-color: var(--op-surface);
+    border-bottom: 1px solid var(--op-divider);
+  }
+  .op-transaction-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* --- Page background --- */
+  .op-page-bg {
+    min-height: 100dvh;
+    background-color: var(--op-bg);
+  }
+
+  /* --- Auth page (login / cadastro) --- */
+  .op-auth-page {
+    min-height: 100dvh;
+    background-color: var(--op-surface);
+    display: flex;
+    flex-direction: column;
   }
 }

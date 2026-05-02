@@ -8,11 +8,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   return (
-    <div className="min-h-screen bg-[#F4F6F8]">
+    <div className="min-h-screen bg-[#F5F5F5]">
       <AppBar onMenuOpen={() => setDrawerOpen(true)} />
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       <main className="pt-14 md:pl-[260px] pb-16 md:pb-0 min-h-screen">
-        <div className="p-4 md:p-6 max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           {children}
         </div>
       </main>
