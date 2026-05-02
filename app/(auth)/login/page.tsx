@@ -150,10 +150,10 @@ export default function LoginPage() {
         </form>
       </div>
 
-      {/* Botão ENTRAR — rodapé fixo, fora do scroll, mesmo padrão do Cadastro */}
+      {/* Botão ENTRAR — rodapé fixo, fora do scroll */}
       <div
         className="flex-shrink-0 bg-white border-t border-[#EEEEEE]"
-        style={{ padding: "12px 16px 24px" }}
+        style={{ padding: "16px 16px 20px" }}
       >
         <button
           type="submit"

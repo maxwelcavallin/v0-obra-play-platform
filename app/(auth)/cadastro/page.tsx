@@ -452,7 +452,7 @@ export default function CadastroPage() {
       {/* Botão CADASTRAR — fixo na base, largura total menos 16px de cada lado */}
       <div
         className="flex-shrink-0 bg-white border-t border-[#EEEEEE]"
-        style={{ padding: "12px 16px 24px" }}
+        style={{ padding: "16px 16px 20px" }}
       >
         <button
           type="submit"
