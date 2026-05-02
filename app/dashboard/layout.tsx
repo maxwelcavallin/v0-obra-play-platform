@@ -12,9 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <AppBar onMenuOpen={() => setDrawerOpen(true)} />
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       <main className="pt-14 md:pl-[260px] min-h-screen">
-        <div className="max-w-7xl mx-auto">
-          {children}
-        </div>
+        {children}
       </main>
     </div>
   )

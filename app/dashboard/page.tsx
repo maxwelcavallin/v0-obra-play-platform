@@ -120,7 +120,7 @@ export default function DashboardPage() {
     <div className="op-page-bg min-h-full">
 
       {/* Cabeçalho hero — fundo azul estendido (padrão home Obra Play) */}
-      <div className="bg-[#1565C0] px-5 pt-5 pb-8">
+      <div className="bg-[#1565C0] px-3 pt-4 pb-8">
         <div className="flex items-center gap-4">
           {/* Avatar empresa */}
           <div className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -140,7 +140,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Atalhos rápidos (círculos azuis) — sobrepostos ao hero */}
-      <div className="bg-white mx-4 -mt-5 rounded-xl shadow-sm px-4 py-5">
+      <div className="bg-white mx-2 -mt-5 rounded-xl shadow-sm px-3 py-4">
         <div className="grid grid-cols-4 gap-2">
           {QUICK_ACTIONS.map((item) => {
             const Icon = item.icon
@@ -162,10 +162,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="px-4 mt-4 pb-24 flex flex-col gap-4">
+      <div className="px-2 mt-3 pb-6 flex flex-col gap-3">
 
         {/* Saldo geral */}
-        <div className="bg-white rounded-xl shadow-sm p-4">
+        <div className="bg-white rounded-xl shadow-sm p-3">
           <div className="flex items-center gap-2 mb-0.5">
             <p className="text-sm text-[#757575]">Saldo geral</p>
             <button
@@ -203,7 +203,7 @@ export default function DashboardPage() {
 
         {/* Últimas cotações */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#EEEEEE]">
+          <div className="flex items-center justify-between px-3 py-2.5 border-b border-[#EEEEEE]">
             <p className="op-section-title text-base">Últimas cotações</p>
             <Link
               href="/cotacoes"
@@ -217,7 +217,7 @@ export default function DashboardPage() {
             <Link
               key={q.id}
               href={`/cotacoes/${q.id}`}
-              className={`flex items-start gap-3 px-4 py-3 hover:bg-[#F9F9F9] transition-colors block ${
+              className={`flex items-start gap-3 px-3 py-2.5 hover:bg-[#F9F9F9] transition-colors block ${
                 idx < MOCK_QUOTATIONS.length - 1 ? "border-b border-[#EEEEEE]" : ""
               }`}
             >
@@ -240,7 +240,7 @@ export default function DashboardPage() {
             </Link>
           ))}
 
-          <div className="px-4 py-3 border-t border-[#EEEEEE]">
+          <div className="px-3 py-2.5 border-t border-[#EEEEEE]">
             <Link
               href="/cotacoes/nova"
               className="flex items-center justify-center gap-2 py-2 rounded-lg border border-dashed border-[#E0E0E0] text-sm text-[#1565C0] hover:bg-[#E3F2FD] transition-colors"
@@ -255,7 +255,7 @@ export default function DashboardPage() {
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <Link
             href="/financeiro/historico"
-            className="flex items-center justify-between px-4 py-4 hover:bg-[#F9F9F9] transition-colors"
+            className="flex items-center justify-between px-3 py-3 hover:bg-[#F9F9F9] transition-colors"
           >
             <div>
               <p className="text-[#1565C0] font-semibold text-sm">Histórico de transações</p>
@@ -267,7 +267,7 @@ export default function DashboardPage() {
 
         {/* Pendências financeiras */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#EEEEEE]">
+          <div className="flex items-center justify-between px-3 py-2.5 border-b border-[#EEEEEE]">
             <p className="op-section-title text-base">Pendências</p>
             <Link
               href="/financeiro"
@@ -280,7 +280,7 @@ export default function DashboardPage() {
           {MOCK_FINANCIALS.map((lc, idx) => (
             <div
               key={lc.id}
-              className={`flex items-start gap-3 px-4 py-3 ${
+              className={`flex items-start gap-3 px-3 py-2.5 ${
                 idx < MOCK_FINANCIALS.length - 1 ? "border-b border-[#EEEEEE]" : ""
               }`}
             >
@@ -312,7 +312,7 @@ export default function DashboardPage() {
 
         {/* Minhas obras preview */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#EEEEEE]">
+          <div className="flex items-center justify-between px-3 py-2.5 border-b border-[#EEEEEE]">
             <p className="op-section-title text-base">Minhas obras</p>
             <Link
               href="/obras"
@@ -328,7 +328,7 @@ export default function DashboardPage() {
           ].map((obra, idx, arr) => (
             <div
               key={idx}
-              className={`flex items-center gap-3 px-4 py-3 ${
+              className={`flex items-center gap-3 px-3 py-2.5 ${
                 idx < arr.length - 1 ? "border-b border-[#EEEEEE]" : ""
               }`}
             >

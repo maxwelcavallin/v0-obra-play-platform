@@ -120,11 +120,11 @@ export default function CadastroPage() {
       </header>
 
       {/* Conteúdo scrollável */}
-      <div className="flex-1 flex flex-col items-center px-4 py-6 overflow-y-auto">
-        <div className="w-full" style={{ maxWidth: 444 }}>
+      <div className="flex-1 flex flex-col items-center px-2 py-4 overflow-y-auto">
+        <div className="w-full max-w-md">
 
           {/* Card principal */}
-          <div className="bg-white rounded-lg shadow-sm" style={{ padding: "24px 24px" }}>
+          <div className="bg-white rounded-lg shadow-sm" style={{ padding: "20px 16px" }}>
             <h1
               className="font-bold text-[#212121] mb-1"
               style={{ fontSize: "1.25rem", lineHeight: 1.3 }}

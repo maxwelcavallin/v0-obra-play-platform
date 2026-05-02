@@ -43,8 +43,8 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-dvh bg-[#F5F5F5] flex flex-col items-center justify-center px-4 py-10">
-      <div className="w-full" style={{ maxWidth: 444 }}>
+    <main className="min-h-dvh bg-[#F5F5F5] flex flex-col items-center justify-center px-2 py-6">
+      <div className="w-full max-w-md">
 
         {/* Logo centralizada — sem AppBar, padrão de tela de auth */}
         <div className="flex justify-center mb-10">
@@ -59,7 +59,7 @@ export default function LoginPage() {
         </div>
 
         {/* Card branco */}
-        <div className="bg-white rounded-lg shadow-sm" style={{ padding: "32px 24px" }}>
+        <div className="bg-white rounded-lg shadow-sm" style={{ padding: "24px 16px" }}>
           <h1
             className="font-bold text-[#212121] mb-1"
             style={{ fontSize: "1.375rem", lineHeight: 1.3 }}
