@@ -1,11 +1,34 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff, Loader2, Check, X, Info, ArrowLeft } from "lucide-react"
+import { Eye, EyeOff, Loader2, Check, X, Info, ArrowLeft, ChevronDown } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
+
+const COUNTRY_CODES = [
+  { code: "+55", flag: "🇧🇷", name: "Brasil" },
+  { code: "+1",  flag: "🇺🇸", name: "EUA / Canadá" },
+  { code: "+54", flag: "🇦🇷", name: "Argentina" },
+  { code: "+56", flag: "🇨🇱", name: "Chile" },
+  { code: "+57", flag: "🇨🇴", name: "Colômbia" },
+  { code: "+51", flag: "🇵🇪", name: "Peru" },
+  { code: "+598", flag: "🇺🇾", name: "Uruguai" },
+  { code: "+595", flag: "🇵🇾", name: "Paraguai" },
+  { code: "+591", flag: "🇧🇴", name: "Bolívia" },
+  { code: "+593", flag: "🇪🇨", name: "Equador" },
+  { code: "+58",  flag: "🇻🇪", name: "Venezuela" },
+  { code: "+351", flag: "🇵🇹", name: "Portugal" },
+  { code: "+34",  flag: "🇪🇸", name: "Espanha" },
+  { code: "+44",  flag: "🇬🇧", name: "Reino Unido" },
+  { code: "+49",  flag: "🇩🇪", name: "Alemanha" },
+  { code: "+33",  flag: "🇫🇷", name: "França" },
+  { code: "+39",  flag: "🇮🇹", name: "Itália" },
+  { code: "+81",  flag: "🇯🇵", name: "Japão" },
+  { code: "+86",  flag: "🇨🇳", name: "China" },
+  { code: "+91",  flag: "🇮🇳", name: "Índia" },
+]
 
 function formatPhone(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 11)
@@ -51,6 +74,9 @@ export default function CadastroPage() {
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [passwordFocus, setPasswordFocus] = useState(false)
+  const [countryCode, setCountryCode] = useState(COUNTRY_CODES[0])
+  const [countryOpen, setCountryOpen] = useState(false)
+  const countryRef = useRef<HTMLDivElement>(null)
 
   function update(field: string, value: string | boolean) {
     setForm((p) => ({ ...p, [field]: value }))
@@ -154,7 +180,7 @@ export default function CadastroPage() {
             )}
           </div>
 
-          {/* Celular com bandeira */}
+          {/* Celular com seletor de código de país */}
           <div>
             <label className="block text-[#757575] mb-0" style={{ fontSize: "0.75rem" }}>
               Celular*
@@ -167,10 +193,60 @@ export default function CadastroPage() {
               }`}
               style={{ paddingTop: 12, paddingBottom: 8 }}
             >
-              <span className="text-base mr-1.5 flex-shrink-0 leading-none">🇧🇷</span>
-              <span className="text-[#9E9E9E] mr-2 flex-shrink-0" style={{ fontSize: "0.9375rem" }}>
-                +55
-              </span>
+              {/* Seletor de país */}
+              <div className="relative flex-shrink-0" ref={countryRef}>
+                <button
+                  type="button"
+                  onClick={() => setCountryOpen((v) => !v)}
+                  className="flex items-center gap-1 pr-2 border-r border-[#E0E0E0] mr-2 hover:opacity-70 transition-opacity"
+                  aria-label="Selecionar código de país"
+                  aria-expanded={countryOpen}
+                >
+                  <span className="text-base leading-none">{countryCode.flag}</span>
+                  <span className="text-[#212121] font-medium" style={{ fontSize: "0.9375rem" }}>
+                    {countryCode.code}
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    className="text-[#9E9E9E] transition-transform"
+                    style={{ transform: countryOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+                  />
+                </button>
+
+                {/* Dropdown */}
+                {countryOpen && (
+                  <div
+                    className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-[#EEEEEE] overflow-y-auto z-50"
+                    style={{ minWidth: 220, maxHeight: 240 }}
+                  >
+                    {COUNTRY_CODES.map((c) => (
+                      <button
+                        key={c.code + c.name}
+                        type="button"
+                        onClick={() => {
+                          setCountryCode(c)
+                          setCountryOpen(false)
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#F5F5F5] transition-colors ${
+                          countryCode.code === c.code && countryCode.name === c.name
+                            ? "bg-[#E3F2FD]"
+                            : ""
+                        }`}
+                      >
+                        <span className="text-lg leading-none flex-shrink-0">{c.flag}</span>
+                        <span className="flex-1 text-[#212121]" style={{ fontSize: "0.875rem" }}>
+                          {c.name}
+                        </span>
+                        <span className="text-[#9E9E9E] font-medium" style={{ fontSize: "0.8125rem" }}>
+                          {c.code}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Input do número */}
               <input
                 type="tel"
                 autoComplete="tel"
