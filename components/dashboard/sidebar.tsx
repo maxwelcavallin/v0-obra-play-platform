@@ -36,7 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Compras", href: "/cotacoes", icon: ShoppingCart },
   { label: "Financeiro", href: "/financeiro", icon: DollarSign },
   { label: "Página institucional", href: "/institucional", icon: Building2 },
-  { label: "Minha empresa", href: "/empresa", icon: HardHat },
+  { label: "Minha empresa", href: "/dashboard/empresa", icon: HardHat },
   { label: "Histórico de preços", href: "/historico-precos", icon: BarChart3 },
   { label: "Conheça o Obra Play", href: "/sobre", icon: Info },
 ]

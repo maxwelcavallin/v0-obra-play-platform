@@ -1,16 +1,17 @@
 "use client"
 
 import { useState } from "react"
-import { Bell, Menu, HelpCircle } from "lucide-react"
+import { Bell, Menu, HelpCircle, UserCircle } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import Image from "next/image"
+import Link from "next/link"
 
 interface AppBarProps {
   onMenuOpen?: () => void
 }
 
 export function AppBar({ onMenuOpen }: AppBarProps) {
-  const { } = useAuth()
+  const { user } = useAuth()
   const [notifOpen, setNotifOpen] = useState(false)
 
   return (
@@ -46,8 +47,19 @@ export function AppBar({ onMenuOpen }: AppBarProps) {
           />
         </div>
 
-        {/* Coluna 3: Ajuda + Notificações */}
+        {/* Coluna 3: Perfil + Ajuda + Notificações */}
         <div className="flex items-center justify-end gap-0.5">
+          <Link
+            href="/dashboard/perfil"
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+            aria-label="Meu perfil"
+          >
+            {user?.avatar ? (
+              <img src={user.avatar} alt="perfil" className="w-7 h-7 rounded-full object-cover border-2 border-white/50" />
+            ) : (
+              <UserCircle size={22} className="text-white" />
+            )}
+          </Link>
           <button
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
             aria-label="Ajuda"
