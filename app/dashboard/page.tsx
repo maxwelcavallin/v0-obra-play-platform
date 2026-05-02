@@ -121,18 +121,53 @@ export default function DashboardPage() {
 
       {/* Cabeçalho hero — fundo azul estendido (padrão home Obra Play) */}
       <div className="bg-[#1565C0] px-3 pt-4 pb-8">
-        <div className="flex items-center gap-4">
-          {/* Avatar empresa */}
-          <div className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
-            <span className="text-white font-bold text-xl">
-              {activeCompany?.fantasyName?.[0] ?? initials}
-            </span>
+        <div className="flex items-center gap-3">
+
+          {/* Bloco de avatares sobrepostos: empresa grande + usuário pequeno */}
+          <div className="relative flex-shrink-0" style={{ width: 64, height: 64 }}>
+            {/* Logo da empresa — círculo grande branco */}
+            <div
+              className="w-16 h-16 rounded-full bg-white border-2 border-white shadow-md flex items-center justify-center overflow-hidden"
+              style={{ width: 64, height: 64 }}
+            >
+              {activeCompany?.logoUrl ? (
+                <img
+                  src={activeCompany.logoUrl}
+                  alt={activeCompany.fantasyName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-[#1565C0] font-bold text-2xl leading-none">
+                  {(activeCompany?.fantasyName?.[0] ?? "O").toUpperCase()}
+                </span>
+              )}
+            </div>
+
+            {/* Avatar do usuário — círculo menor sobreposto no canto inferior-esquerdo */}
+            <div
+              className="absolute -bottom-1 -right-1 rounded-full bg-white border-2 border-[#1565C0] overflow-hidden flex items-center justify-center shadow"
+              style={{ width: 26, height: 26 }}
+            >
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-[#1565C0] font-bold leading-none" style={{ fontSize: 10 }}>
+                  {initials}
+                </span>
+              )}
+            </div>
           </div>
-          <div>
-            <p className="text-white font-bold text-base leading-tight">
+
+          {/* Textos à direita */}
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-bold text-base leading-tight truncate">
               {activeCompany?.fantasyName ?? "Obra Play"}
             </p>
-            <p className="text-white/70 text-sm mt-0.5">
+            <p className="text-white/80 text-sm mt-0.5 truncate">
               {user?.name ?? "Bem-vindo"}
             </p>
           </div>
