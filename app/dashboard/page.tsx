@@ -10,8 +10,11 @@ import {
   ChevronRight,
   Building2,
   Settings,
+  Eye,
+  EyeOff,
 } from "lucide-react"
 import Link from "next/link"
+import { useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 
 // --- Status config ---
@@ -107,6 +110,7 @@ function StatusChip({ status }: { status: string }) {
 
 export default function DashboardPage() {
   const { user, activeCompany } = useAuth()
+  const [balanceVisible, setBalanceVisible] = useState(false)
 
   const initials = user?.name
     ? user.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
@@ -162,20 +166,37 @@ export default function DashboardPage() {
 
         {/* Saldo geral */}
         <div className="bg-white rounded-xl shadow-sm p-4">
-          <p className="text-sm text-[#757575] mb-0.5">Saldo geral</p>
-          <p className="text-2xl font-bold text-[#212121]">R$ 59.256,32</p>
+          <div className="flex items-center gap-2 mb-0.5">
+            <p className="text-sm text-[#757575]">Saldo geral</p>
+            <button
+              onClick={() => setBalanceVisible((v) => !v)}
+              className="text-[#9E9E9E] hover:text-[#1565C0] transition-colors"
+              aria-label={balanceVisible ? "Ocultar saldo" : "Mostrar saldo"}
+            >
+              {balanceVisible ? <EyeOff size={17} /> : <Eye size={17} />}
+            </button>
+          </div>
+          <p className="text-2xl font-bold text-[#212121]">
+            {balanceVisible ? "R$ 59.256,32" : "R$ ••••••"}
+          </p>
           <div className="flex gap-6 mt-3">
             <div>
               <p className="text-xs text-[#9E9E9E]">Receitas</p>
-              <p className="text-sm font-bold text-[#4CAF50]">R$ 9.625,76</p>
+              <p className="text-sm font-bold text-[#4CAF50]">
+                {balanceVisible ? "R$ 9.625,76" : "R$ •••"}
+              </p>
             </div>
             <div>
               <p className="text-xs text-[#9E9E9E]">Despesas</p>
-              <p className="text-sm font-bold text-[#F44336]">- R$ 7.625,76</p>
+              <p className="text-sm font-bold text-[#F44336]">
+                {balanceVisible ? "- R$ 7.625,76" : "- R$ •••"}
+              </p>
             </div>
             <div>
               <p className="text-xs text-[#9E9E9E]">Saldo</p>
-              <p className="text-sm font-bold text-[#1565C0]">R$ 925,76</p>
+              <p className="text-sm font-bold text-[#1565C0]">
+                {balanceVisible ? "R$ 925,76" : "R$ •••"}
+              </p>
             </div>
           </div>
         </div>
