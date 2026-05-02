@@ -109,10 +109,15 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* MUI usa 14px como base — todos os valores rem ficam proporcionais ao original */
+  html {
+    font-size: 14px;
+  }
   body {
     @apply bg-background text-foreground;
     font-family: 'Roboto', 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
+    font-size: 1rem; /* 14px */
   }
 }
 

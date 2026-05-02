@@ -204,7 +204,7 @@ export default function CadastroPage() {
                   aria-expanded={countryOpen}
                 >
                   <span className="text-base leading-none">{countryCode.flag}</span>
-                  <span className="text-[#212121] font-medium" style={{ fontSize: "0.9375rem" }}>
+                  <span className="text-[#212121] font-medium" style={{ fontSize: "1rem" }}>
                     {countryCode.code}
                   </span>
                   <ChevronDown

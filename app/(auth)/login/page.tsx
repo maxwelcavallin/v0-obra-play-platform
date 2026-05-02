@@ -62,7 +62,7 @@ export default function LoginPage() {
 
         <h1
           className="font-bold text-[#212121] mb-1"
-          style={{ fontSize: "1.375rem", lineHeight: 1.3 }}
+          style={{ fontSize: "1.25rem", lineHeight: 1.3 }}
         >
           Entrar
         </h1>
