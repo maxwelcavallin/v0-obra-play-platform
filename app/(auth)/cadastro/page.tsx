@@ -146,7 +146,8 @@ export default function CadastroPage() {
       </header>
 
       {/* Formulário — direto no fundo branco, sem card wrapper */}
-      <div className="flex-1 overflow-y-auto" style={{ padding: "24px 24px 40px" }}>
+      {/* padding-bottom 96px para não sobrepor o botão fixo */}
+      <div className="flex-1 overflow-y-auto" style={{ padding: "24px 24px 96px" }}>
 
         <h1
           className="font-bold text-[#212121] mb-1"
@@ -158,7 +159,7 @@ export default function CadastroPage() {
           Confirme seus dados pessoais para criar uma conta no Obra Play.
         </p>
 
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+        <form id="cadastro-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
 
           {/* Nome completo */}
           <div>
@@ -437,20 +438,8 @@ export default function CadastroPage() {
             </p>
           )}
 
-          {/* Botão CADASTRAR */}
-          <button type="submit" disabled={loading} className="op-btn-primary mt-2">
-            {loading ? (
-              <>
-                <Loader2 size={18} className="animate-spin" />
-                Criando conta...
-              </>
-            ) : (
-              "CADASTRAR"
-            )}
-          </button>
-
           {/* Link para login */}
-          <p className="text-center text-[#757575] mt-2" style={{ fontSize: "0.875rem" }}>
+          <p className="text-center text-[#757575]" style={{ fontSize: "0.875rem" }}>
             Já tem uma conta?{" "}
             <Link href="/login" className="text-[#1565C0] font-semibold hover:underline">
               Entrar
@@ -458,6 +447,28 @@ export default function CadastroPage() {
           </p>
 
         </form>
+      </div>
+
+      {/* Botão CADASTRAR — fixo na base, largura total menos 16px de cada lado */}
+      <div
+        className="flex-shrink-0 bg-white border-t border-[#EEEEEE]"
+        style={{ padding: "12px 16px 24px" }}
+      >
+        <button
+          type="submit"
+          form="cadastro-form"
+          disabled={loading}
+          className="op-btn-primary"
+        >
+          {loading ? (
+            <>
+              <Loader2 size={18} className="animate-spin" />
+              Criando conta...
+            </>
+          ) : (
+            "CADASTRAR"
+          )}
+        </button>
       </div>
     </main>
   )
