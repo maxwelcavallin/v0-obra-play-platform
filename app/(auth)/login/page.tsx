@@ -43,137 +43,116 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-dvh bg-[#F5F5F5] flex flex-col items-center justify-center px-2 py-6">
-      <div className="w-full max-w-md">
+    <main className="op-auth-page">
 
-        {/* Logo centralizada — sem AppBar, padrão de tela de auth */}
-        <div className="flex justify-center mb-10">
-          <Image
-            src="/logo.svg"
-            alt="Obra Play"
-            width={180}
-            height={48}
-            priority
-            style={{ width: 180, height: "auto" }}
-          />
-        </div>
+      {/* Logo centralizada no topo */}
+      <div className="flex justify-center" style={{ paddingTop: 56, paddingBottom: 40 }}>
+        <Image
+          src="/logo.svg"
+          alt="Obra Play"
+          width={200}
+          height={52}
+          priority
+          style={{ width: 200, height: "auto" }}
+        />
+      </div>
 
-        {/* Card branco */}
-        <div className="bg-white rounded-lg shadow-sm" style={{ padding: "24px 16px" }}>
-          <h1
-            className="font-bold text-[#212121] mb-1"
-            style={{ fontSize: "1.375rem", lineHeight: 1.3 }}
-          >
-            Entrar
-          </h1>
-          <p className="text-[#757575] mb-7" style={{ fontSize: "0.875rem" }}>
-            Entre com sua conta para continuar no Obra Play.
-          </p>
+      {/* Conteúdo do formulário — direto no fundo branco, sem card */}
+      <div className="flex-1 flex flex-col" style={{ padding: "0 24px" }}>
 
-          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
-            {/* E-mail */}
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-[#757575] mb-0"
-                style={{ fontSize: "0.75rem" }}
-              >
-                E-mail
-              </label>
+        <h1
+          className="font-bold text-[#212121] mb-1"
+          style={{ fontSize: "1.375rem", lineHeight: 1.3 }}
+        >
+          Entrar
+        </h1>
+        <p className="text-[#9E9E9E] mb-6" style={{ fontSize: "0.875rem" }}>
+          Entre com sua conta para continuar no Obra Play.
+        </p>
+
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-1">
+
+          {/* E-mail */}
+          <div className="mb-2">
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value)
+                if (errors.email) setErrors((p) => ({ ...p, email: undefined }))
+              }}
+              placeholder="Qual o seu e-mail?"
+              className={`op-input-underline ${errors.email ? "op-input-error" : ""}`}
+            />
+            {errors.email && (
+              <p className="text-[#F44336] mt-1" style={{ fontSize: "0.75rem" }}>
+                {errors.email}
+              </p>
+            )}
+          </div>
+
+          {/* Senha */}
+          <div className="mb-1">
+            <div className="relative">
               <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                value={password}
                 onChange={(e) => {
-                  setEmail(e.target.value)
-                  if (errors.email) setErrors((p) => ({ ...p, email: undefined }))
+                  setPassword(e.target.value)
+                  if (errors.password) setErrors((p) => ({ ...p, password: undefined }))
                 }}
-                placeholder="Qual o seu e-mail?"
-                className={`op-input-underline ${errors.email ? "op-input-error" : ""}`}
+                placeholder="Sua senha de acesso"
+                className={`op-input-underline pr-10 ${errors.password ? "op-input-error" : ""}`}
               />
-              {errors.email && (
-                <p className="text-[#F44336] mt-1" style={{ fontSize: "0.75rem" }}>
-                  {errors.email}
-                </p>
-              )}
-            </div>
-
-            {/* Senha */}
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-[#757575] mb-0"
-                style={{ fontSize: "0.75rem" }}
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-0 top-1/2 -translate-y-1/2 text-[#9E9E9E] hover:text-[#1565C0] transition-colors p-1"
+                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                tabIndex={-1}
               >
-                Senha
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value)
-                    if (errors.password) setErrors((p) => ({ ...p, password: undefined }))
-                  }}
-                  placeholder="Sua senha de acesso"
-                  className={`op-input-underline pr-10 ${errors.password ? "op-input-error" : ""}`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 text-[#9E9E9E] hover:text-[#1565C0] transition-colors p-1"
-                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="text-[#F44336] mt-1" style={{ fontSize: "0.75rem" }}>
-                  {errors.password}
-                </p>
-              )}
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
+            {errors.password && (
+              <p className="text-[#F44336] mt-1" style={{ fontSize: "0.75rem" }}>
+                {errors.password}
+              </p>
+            )}
+          </div>
 
-            {/* Esqueceu a senha */}
-            <div className="flex justify-end -mt-2">
-              <Link
-                href="/recuperar-senha"
-                className="text-[#1565C0] font-medium hover:underline"
-                style={{ fontSize: "0.8125rem" }}
-              >
-                Esqueci minha senha
-              </Link>
-            </div>
-
-            {/* Botão ENTRAR — height 56px exato, border-radius 4px */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="op-btn-primary mt-1"
+          {/* Esqueci a senha */}
+          <div className="flex justify-end mb-6">
+            <Link
+              href="/recuperar-senha"
+              className="text-[#1565C0] font-medium hover:underline"
+              style={{ fontSize: "0.875rem" }}
             >
-              {loading ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  Entrando...
-                </>
-              ) : (
-                "ENTRAR"
-              )}
-            </button>
-          </form>
-        </div>
+              Esqueci minha senha
+            </Link>
+          </div>
+
+          {/* Botão ENTRAR — op-btn-primary: height 56px, border-radius 4px, uppercase */}
+          <button type="submit" disabled={loading} className="op-btn-primary">
+            {loading ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                Entrando...
+              </>
+            ) : (
+              "ENTRAR"
+            )}
+          </button>
+        </form>
 
         {/* Criar conta */}
         <p className="text-center text-[#757575] mt-6" style={{ fontSize: "0.875rem" }}>
           Ainda não tem conta?{" "}
-          <Link
-            href="/cadastro"
-            className="text-[#1565C0] font-semibold hover:underline"
-          >
+          <Link href="/cadastro" className="text-[#1565C0] font-semibold hover:underline">
             Criar conta
           </Link>
         </p>

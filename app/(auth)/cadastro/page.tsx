@@ -97,12 +97,12 @@ export default function CadastroPage() {
   const showPasswordRules = passwordFocus || form.password.length > 0
 
   return (
-    <main className="min-h-dvh bg-[#F5F5F5] flex flex-col">
+    <main className="op-auth-page">
 
-      {/* Sub-header branco — height 52px com seta + título centralizado */}
+      {/* Sub-header — height 52px, fundo branco, seta + título centralizado */}
       <header
-        className="flex-shrink-0 bg-white flex items-center px-4 relative border-b border-[#EEEEEE]"
-        style={{ height: 52 }}
+        className="flex-shrink-0 flex items-center px-4 relative border-b border-[#EEEEEE]"
+        style={{ height: 52, backgroundColor: "#fff" }}
       >
         <button
           onClick={() => router.back()}
@@ -119,19 +119,16 @@ export default function CadastroPage() {
         </span>
       </header>
 
-      {/* Conteúdo scrollável */}
-      <div className="flex-1 flex flex-col items-center px-2 py-4 overflow-y-auto">
-        <div className="w-full max-w-md">
+      {/* Formulário — direto no fundo branco, sem card wrapper */}
+      <div className="flex-1 overflow-y-auto" style={{ padding: "24px 24px 40px" }}>
 
-          {/* Card principal */}
-          <div className="bg-white rounded-lg shadow-sm" style={{ padding: "20px 16px" }}>
             <h1
               className="font-bold text-[#212121] mb-1"
               style={{ fontSize: "1.25rem", lineHeight: 1.3 }}
             >
               Crie seu usuário
             </h1>
-            <p className="text-[#757575] mb-6" style={{ fontSize: "0.875rem" }}>
+            <p className="text-[#9E9E9E] mb-6" style={{ fontSize: "0.875rem" }}>
               Confirme seus dados pessoais para criar uma conta no Obra Play.
             </p>
 
@@ -382,13 +379,12 @@ export default function CadastroPage() {
           </div>
 
           {/* Link para login */}
-          <p className="text-center text-[#757575] mt-5 mb-6" style={{ fontSize: "0.875rem" }}>
+          <p className="text-center text-[#757575] mt-5" style={{ fontSize: "0.875rem" }}>
             Já tem uma conta?{" "}
             <Link href="/login" className="text-[#1565C0] font-semibold hover:underline">
               Entrar
             </Link>
           </p>
-        </div>
       </div>
     </main>
   )
