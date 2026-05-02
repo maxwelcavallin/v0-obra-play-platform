@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff, Loader2, Check, X, Info } from "lucide-react"
+import { Eye, EyeOff, Loader2, Check, X, Info, ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
 import Image from "next/image"
@@ -88,212 +88,239 @@ export default function CadastroPage() {
   }
 
   return (
-    <main className="op-auth-page">
-      {/* AppBar azul com logo */}
-      <header className="op-appbar flex items-center justify-center px-4">
-        <Image
-          src="/logo.svg"
-          alt="Obra Play"
-          width={150}
-          height={24}
-          className="h-7 w-auto"
-          priority
-        />
+    <main className="min-h-dvh bg-white flex flex-col">
+      {/* Sub-header branco com seta + título — height 52px, conforme HTML */}
+      <header
+        className="flex-shrink-0 bg-white flex items-center px-4 relative border-b border-[#EEEEEE]"
+        style={{ height: 52 }}
+      >
+        <button
+          onClick={() => router.back()}
+          className="absolute left-4 w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors"
+          aria-label="Voltar"
+        >
+          <ArrowLeft size={20} className="text-[#212121]" />
+        </button>
       </header>
 
-      {/* Conteudo com scroll */}
-      <div className="flex-1 flex flex-col px-6 pt-8 pb-6 overflow-y-auto">
-        <div className="mb-7">
-          <h1 className="text-2xl font-bold text-[#212121]">Crie seu usuário</h1>
-          <p className="text-sm text-[#757575] mt-1">
-            Confirme seus dados pessoais para criar uma conta no Obra Play.
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
-          {/* Nome completo */}
-          <div>
-            <input
-              type="text"
-              autoComplete="name"
-              value={form.name}
-              onChange={(e) => update("name", e.target.value)}
-              placeholder="Qual seu nome completo?*"
-              className={`op-input-underline ${errors.name ? "op-input-error" : ""}`}
-            />
-            {errors.name && <p className="text-[#F44336] text-xs mt-1">{errors.name}</p>}
-          </div>
-
-          {/* Celular com bandeira */}
-          <div>
-            <div className="flex items-center border-b border-[#E0E0E0] focus-within:border-[#1565C0] transition-colors pb-[10px]">
-              <span className="text-lg mr-2 flex-shrink-0">🇧🇷</span>
-              <span className="text-sm text-[#757575] mr-2">+55</span>
-              <input
-                type="tel"
-                autoComplete="tel"
-                value={form.phone}
-                onChange={(e) => update("phone", formatPhone(e.target.value))}
-                placeholder="Qual o número do seu celular?"
-                className="flex-1 bg-transparent border-none outline-none text-sm text-[#212121] placeholder:text-[#9E9E9E]"
-              />
-            </div>
-            {errors.phone && <p className="text-[#F44336] text-xs mt-1">{errors.phone}</p>}
-          </div>
-
-          {/* CPF */}
-          <div>
-            <input
-              type="text"
-              value={form.cpf}
-              onChange={(e) => update("cpf", e.target.value)}
-              placeholder="Qual o seu CPF?*"
-              className={`op-input-underline ${errors.cpf ? "op-input-error" : ""}`}
-            />
-            {errors.cpf && <p className="text-[#F44336] text-xs mt-1">{errors.cpf}</p>}
-          </div>
-
-          {/* E-mail */}
-          <div>
-            <input
-              type="email"
-              autoComplete="email"
-              value={form.email}
-              onChange={(e) => update("email", e.target.value)}
-              placeholder="Qual o seu e-mail? (Que só você tenha acesso)*"
-              className={`op-input-underline ${errors.email ? "op-input-error" : ""}`}
-            />
-            {errors.email && <p className="text-[#F44336] text-xs mt-1">{errors.email}</p>}
-          </div>
-
-          {/* Senha */}
-          <div>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                autoComplete="new-password"
-                value={form.password}
-                onChange={(e) => update("password", e.target.value)}
-                onFocus={() => setPasswordFocus(true)}
-                onBlur={() => setPasswordFocus(false)}
-                placeholder="Defina uma senha de acesso"
-                className={`op-input-underline pr-10 ${errors.password ? "op-input-error" : ""}`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-0 top-1/2 -translate-y-1/2 text-[#9E9E9E] hover:text-[#1565C0] transition-colors"
-                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-            {errors.password && <p className="text-[#F44336] text-xs mt-1">{errors.password}</p>}
-          </div>
-
-          {/* Confirmar senha */}
-          <div>
-            <div className="relative">
-              <input
-                type={showConfirm ? "text" : "password"}
-                autoComplete="new-password"
-                value={form.confirmPassword}
-                onChange={(e) => update("confirmPassword", e.target.value)}
-                placeholder="Repita a senha"
-                className={`op-input-underline pr-10 ${errors.confirmPassword ? "op-input-error" : ""}`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirm((v) => !v)}
-                className="absolute right-0 top-1/2 -translate-y-1/2 text-[#9E9E9E] hover:text-[#1565C0] transition-colors"
-              >
-                {showConfirm ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-            {errors.confirmPassword && (
-              <p className="text-[#F44336] text-xs mt-1">{errors.confirmPassword}</p>
-            )}
-          </div>
-
-          {/* Info box de senha */}
-          {(passwordFocus || form.password.length > 0) && (
-            <div className="op-info-box">
-              <Info size={16} className="text-[#9E9E9E] flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="mb-2">Utilize letras maiúsculas, letras minúsculas, números, símbolos e no mínimo 8 caracteres.</p>
-                <div className="flex flex-col gap-1">
-                  {PASSWORD_RULES.map((rule) => {
-                    const ok = rule.ok(form.password)
-                    return (
-                      <div key={rule.label} className="flex items-center gap-1.5">
-                        {ok ? (
-                          <Check size={12} className="text-[#4CAF50]" />
-                        ) : (
-                          <X size={12} className="text-[#9E9E9E]" />
-                        )}
-                        <span className={`text-xs ${ok ? "text-[#4CAF50]" : "text-[#9E9E9E]"}`}>
-                          {rule.label}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Link CPF */}
-          <button
-            type="button"
-            className="flex items-center gap-1.5 text-[#1565C0] text-sm font-medium text-left"
-          >
-            <Info size={15} />
-            Por que preciso informar o meu CPF?
-          </button>
-
-          {/* Termos */}
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.terms}
-              onChange={(e) => update("terms", e.target.checked)}
-              className="w-4 h-4 mt-0.5 rounded border-[#E0E0E0] accent-[#1565C0] flex-shrink-0"
-            />
-            <span className="text-sm text-[#757575]">
-              Li e concordo com os{" "}
-              <Link href="/termos" className="text-[#1565C0] hover:underline">
-                Termos de uso
-              </Link>{" "}
-              e{" "}
-              <Link href="/privacidade" className="text-[#1565C0] hover:underline">
-                Política de Privacidade
-              </Link>
-            </span>
-          </label>
-          {errors.terms && <p className="text-[#F44336] text-xs -mt-3">{errors.terms}</p>}
-
-          {/* Botão */}
-          <div className="mt-2">
-            <button
-              type="submit"
-              disabled={loading}
-              className="op-btn-primary"
+      {/* Conteúdo com scroll */}
+      <div className="flex-1 flex flex-col items-center px-6 py-8 overflow-y-auto">
+        <div className="w-full" style={{ maxWidth: 444 }}>
+          {/* Cabeçalho */}
+          <div className="mb-7">
+            <h1
+              className="font-bold text-[#212121]"
+              style={{ fontSize: "1.5rem", lineHeight: 1.3 }}
             >
-              {loading ? (
-                <><Loader2 size={18} className="animate-spin" /> Criando conta...</>
-              ) : (
-                "CADASTRAR"
-              )}
-            </button>
-
-            <p className="text-center text-sm text-[#757575] mt-5">
-              Já tem uma conta?{" "}
-              <Link href="/login" className="text-[#1565C0] font-semibold hover:underline">
-                Entrar
-              </Link>
+              Crie seu usuário
+            </h1>
+            <p className="text-[#757575] mt-1" style={{ fontSize: "0.875rem" }}>
+              Confirme seus dados pessoais para criar uma conta no Obra Play.
             </p>
           </div>
-        </form>
+
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-1">
+            {/* Nome completo */}
+            <div>
+              <input
+                type="text"
+                autoComplete="name"
+                value={form.name}
+                onChange={(e) => update("name", e.target.value)}
+                placeholder="Qual seu nome completo?*"
+                className={`op-input-underline ${errors.name ? "op-input-error" : ""}`}
+              />
+              {errors.name && <p className="text-[#F44336] mt-1" style={{ fontSize: "0.75rem" }}>{errors.name}</p>}
+            </div>
+
+            {/* Celular com bandeira — layout exato do HTML com flag + DDI */}
+            <div>
+              <div
+                className="flex items-center border-b border-[#E0E0E0] focus-within:border-[#1565C0] transition-colors"
+                style={{ paddingTop: 16, paddingBottom: 8 }}
+              >
+                <span className="text-base mr-1 flex-shrink-0">🇧🇷</span>
+                <span
+                  className="text-[#757575] mr-2 flex-shrink-0"
+                  style={{ fontSize: "1rem" }}
+                >
+                  +55 ›
+                </span>
+                <input
+                  type="tel"
+                  autoComplete="tel"
+                  value={form.phone}
+                  onChange={(e) => update("phone", formatPhone(e.target.value))}
+                  placeholder="Qual o número do seu celular?"
+                  className="flex-1 bg-transparent border-none outline-none text-[#212121] placeholder:text-[#9E9E9E]"
+                  style={{ fontSize: "1rem" }}
+                />
+              </div>
+              {errors.phone && <p className="text-[#F44336] mt-1" style={{ fontSize: "0.75rem" }}>{errors.phone}</p>}
+            </div>
+
+            {/* CPF */}
+            <div>
+              <input
+                type="text"
+                value={form.cpf}
+                onChange={(e) => update("cpf", e.target.value)}
+                placeholder="Qual o seu CPF?*"
+                className={`op-input-underline ${errors.cpf ? "op-input-error" : ""}`}
+              />
+              {errors.cpf && <p className="text-[#F44336] mt-1" style={{ fontSize: "0.75rem" }}>{errors.cpf}</p>}
+            </div>
+
+            {/* E-mail */}
+            <div>
+              <input
+                type="email"
+                autoComplete="email"
+                value={form.email}
+                onChange={(e) => update("email", e.target.value)}
+                placeholder="Qual o seu e-mail? (Que só você tenha acesso)*"
+                className={`op-input-underline ${errors.email ? "op-input-error" : ""}`}
+              />
+              {errors.email && <p className="text-[#F44336] mt-1" style={{ fontSize: "0.75rem" }}>{errors.email}</p>}
+            </div>
+
+            {/* Senha */}
+            <div>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  value={form.password}
+                  onChange={(e) => update("password", e.target.value)}
+                  onFocus={() => setPasswordFocus(true)}
+                  onBlur={() => setPasswordFocus(false)}
+                  placeholder="Defina uma senha de acesso"
+                  className={`op-input-underline pr-10 ${errors.password ? "op-input-error" : ""}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-[#9E9E9E] hover:text-[#1565C0] transition-colors"
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
+                </button>
+              </div>
+              {errors.password && <p className="text-[#F44336] mt-1" style={{ fontSize: "0.75rem" }}>{errors.password}</p>}
+            </div>
+
+            {/* Confirmar senha */}
+            <div>
+              <div className="relative">
+                <input
+                  type={showConfirm ? "text" : "password"}
+                  autoComplete="new-password"
+                  value={form.confirmPassword}
+                  onChange={(e) => update("confirmPassword", e.target.value)}
+                  placeholder="Repita a senha"
+                  className={`op-input-underline pr-10 ${errors.confirmPassword ? "op-input-error" : ""}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm((v) => !v)}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-[#9E9E9E] hover:text-[#1565C0] transition-colors"
+                  tabIndex={-1}
+                >
+                  {showConfirm ? <EyeOff size={22} /> : <Eye size={22} />}
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <p className="text-[#F44336] mt-1" style={{ fontSize: "0.75rem" }}>{errors.confirmPassword}</p>
+              )}
+            </div>
+
+            {/* Info box de senha — aparece ao focar ou digitar */}
+            {(passwordFocus || form.password.length > 0) && (
+              <div className="op-info-box mt-1">
+                <Info size={16} className="text-[#9E9E9E] flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="mb-2">
+                    Utilize letras maiúsculas, letras minúsculas, números, símbolos e no mínimo 8 caracteres.
+                  </p>
+                  <div className="flex flex-col gap-1">
+                    {PASSWORD_RULES.map((rule) => {
+                      const ok = rule.ok(form.password)
+                      return (
+                        <div key={rule.label} className="flex items-center gap-1.5">
+                          {ok ? (
+                            <Check size={12} className="text-[#4CAF50]" />
+                          ) : (
+                            <X size={12} className="text-[#9E9E9E]" />
+                          )}
+                          <span
+                            className={ok ? "text-[#4CAF50]" : "text-[#9E9E9E]"}
+                            style={{ fontSize: "0.75rem" }}
+                          >
+                            {rule.label}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Link CPF */}
+            <button
+              type="button"
+              className="flex items-center gap-1.5 text-[#1565C0] font-medium text-left mt-2"
+              style={{ fontSize: "0.875rem" }}
+            >
+              <Info size={15} />
+              Por que preciso informar o meu CPF?
+            </button>
+
+            {/* Termos */}
+            <label className="flex items-start gap-3 cursor-pointer mt-1">
+              <input
+                type="checkbox"
+                checked={form.terms}
+                onChange={(e) => update("terms", e.target.checked)}
+                className="w-4 h-4 mt-0.5 flex-shrink-0 accent-[#1565C0]"
+              />
+              <span className="text-[#757575]" style={{ fontSize: "0.875rem" }}>
+                Li e concordo com os{" "}
+                <Link href="/termos" className="text-[#1565C0] hover:underline">
+                  Termos de uso
+                </Link>{" "}
+                e{" "}
+                <Link href="/privacidade" className="text-[#1565C0] hover:underline">
+                  Política de Privacidade
+                </Link>
+              </span>
+            </label>
+            {errors.terms && <p className="text-[#F44336] -mt-1" style={{ fontSize: "0.75rem" }}>{errors.terms}</p>}
+
+            {/* Botão CADASTRAR — height 56px, border-radius 4px */}
+            <div className="mt-5">
+              <button
+                type="submit"
+                disabled={loading}
+                className="op-btn-primary"
+              >
+                {loading ? (
+                  <><Loader2 size={18} className="animate-spin" /> Criando conta...</>
+                ) : (
+                  "CADASTRAR"
+                )}
+              </button>
+
+              <p className="text-center text-[#757575] mt-5" style={{ fontSize: "0.875rem" }}>
+                Já tem uma conta?{" "}
+                <Link href="/login" className="text-[#1565C0] font-semibold hover:underline">
+                  Entrar
+                </Link>
+              </p>
+            </div>
+          </form>
+        </div>
       </div>
     </main>
   )

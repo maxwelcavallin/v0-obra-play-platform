@@ -539,8 +539,8 @@ export default function OnboardingPage() {
 
   return (
     <main className="min-h-dvh bg-white flex flex-col">
-      {/* Sub-header com seta + título centralizado */}
-      <header className="op-subheader border-b border-[#EEEEEE]">
+      {/* Sub-header com seta + título centralizado — height 52px conforme HTML */}
+      <header className="op-subheader border-b border-[#EEEEEE]" style={{ height: 52 }}>
         {step > 1 && (
           <button
             onClick={() => { setErrors({}); setStep((s) => s - 1) }}

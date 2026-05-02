@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
 import Image from "next/image"
@@ -43,105 +43,115 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="op-auth-page">
-      {/* AppBar azul com logo */}
-      <header className="op-appbar flex items-center justify-center px-4 relative">
+    <main className="min-h-dvh bg-white flex flex-col">
+      {/* AppBar azul com logo — medidas exatas do HTML: height 56px, logo 200x26 */}
+      <header
+        className="flex-shrink-0 bg-[#1565C0] flex items-center justify-center"
+        style={{ height: 56 }}
+      >
         <Image
           src="/logo.svg"
           alt="Obra Play"
-          width={150}
-          height={24}
-          className="h-7 w-auto"
+          width={200}
+          height={26}
+          style={{ height: 26, width: "auto" }}
           priority
         />
       </header>
 
-      {/* Conteudo */}
-      <div className="flex-1 flex flex-col px-6 pt-10 pb-6">
-        {/* Titulo */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[#212121]">
-            Crie seu usuário
-          </h1>
-          <p className="text-sm text-[#757575] mt-1">
-            Entre com sua conta para continuar no Obra Play.
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
-          {/* E-mail */}
-          <div>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value)
-                if (errors.email) setErrors((p) => ({ ...p, email: undefined }))
-              }}
-              placeholder="Qual o seu e-mail?"
-              className={`op-input-underline ${errors.email ? "op-input-error" : ""}`}
-            />
-            {errors.email && (
-              <p className="text-[#F44336] text-xs mt-1">{errors.email}</p>
-            )}
+      {/* Conteúdo centralizado — max-width 444px igual ao HTML original */}
+      <div className="flex-1 flex flex-col items-center px-6 py-8">
+        <div className="w-full" style={{ maxWidth: 444 }}>
+          {/* Título */}
+          <div className="mb-8">
+            <h1
+              className="font-bold text-[#212121]"
+              style={{ fontSize: "1.5rem", lineHeight: 1.3 }}
+            >
+              Crie seu usuário
+            </h1>
+            <p className="text-[#757575] mt-1" style={{ fontSize: "0.875rem" }}>
+              Entre com sua conta para continuar no Obra Play.
+            </p>
           </div>
 
-          {/* Senha */}
-          <div>
-            <div className="relative">
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-2">
+            {/* E-mail — input sublinhado, padding 16px 0 8px, font-size 1rem */}
+            <div>
               <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                value={password}
+                id="email"
+                type="email"
+                autoComplete="email"
+                value={email}
                 onChange={(e) => {
-                  setPassword(e.target.value)
-                  if (errors.password) setErrors((p) => ({ ...p, password: undefined }))
+                  setEmail(e.target.value)
+                  if (errors.email) setErrors((p) => ({ ...p, email: undefined }))
                 }}
-                placeholder="Defina uma senha de acesso"
-                className={`op-input-underline pr-10 ${errors.password ? "op-input-error" : ""}`}
+                placeholder="Qual o seu e-mail?"
+                className={`op-input-underline ${errors.email ? "op-input-error" : ""}`}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-0 top-1/2 -translate-y-1/2 text-[#9E9E9E] hover:text-[#1565C0] transition-colors"
-                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+              {errors.email && (
+                <p className="text-[#F44336] mt-1" style={{ fontSize: "0.75rem" }}>{errors.email}</p>
+              )}
+            </div>
+
+            {/* Senha */}
+            <div>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    if (errors.password) setErrors((p) => ({ ...p, password: undefined }))
+                  }}
+                  placeholder="Defina uma senha de acesso"
+                  className={`op-input-underline pr-10 ${errors.password ? "op-input-error" : ""}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-[#9E9E9E] hover:text-[#1565C0] transition-colors"
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-[#F44336] mt-1" style={{ fontSize: "0.75rem" }}>{errors.password}</p>
+              )}
+            </div>
+
+            {/* Esqueceu a senha */}
+            <div className="flex justify-end pt-1">
+              <Link
+                href="/recuperar-senha"
+                className="text-[#1565C0] font-medium hover:underline"
+                style={{ fontSize: "0.875rem" }}
               >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                Esqueci minha senha
+              </Link>
+            </div>
+
+            {/* Botão ENTRAR — height 56px, border-radius 4px, font-size 0.9375rem */}
+            <div className="mt-6">
+              <button
+                type="submit"
+                disabled={loading}
+                className="op-btn-primary"
+              >
+                {loading ? (
+                  <><Loader2 size={18} className="animate-spin" /> Entrando...</>
+                ) : (
+                  "ENTRAR"
+                )}
               </button>
             </div>
-            {errors.password && (
-              <p className="text-[#F44336] text-xs mt-1">{errors.password}</p>
-            )}
-          </div>
 
-          {/* Esqueceu a senha */}
-          <div className="flex justify-end -mt-2">
-            <Link
-              href="/recuperar-senha"
-              className="text-sm text-[#1565C0] font-medium hover:underline"
-            >
-              Esqueci minha senha
-            </Link>
-          </div>
-
-          {/* Botão */}
-          <div className="mt-auto pt-4">
-            <button
-              type="submit"
-              disabled={loading}
-              className="op-btn-primary"
-            >
-              {loading ? (
-                <><Loader2 size={18} className="animate-spin" /> Entrando...</>
-              ) : (
-                "ENTRAR"
-              )}
-            </button>
-
-            <p className="text-center text-sm text-[#757575] mt-6">
+            <p className="text-center text-[#757575] mt-6" style={{ fontSize: "0.875rem" }}>
               Não tem uma conta?{" "}
               <Link
                 href="/cadastro"
@@ -151,11 +161,11 @@ export default function LoginPage() {
               </Link>
             </p>
 
-            <p className="text-center text-xs text-[#9E9E9E] mt-4">
+            <p className="text-center text-[#9E9E9E] mt-2" style={{ fontSize: "0.75rem" }}>
               Demo: carlos@construtora.com / senha123
             </p>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </main>
   )
