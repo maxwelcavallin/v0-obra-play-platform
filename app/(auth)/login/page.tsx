@@ -45,20 +45,20 @@ export default function LoginPage() {
   return (
     <main className="op-auth-page">
 
-      {/* Logo centralizada no topo */}
-      <div className="flex justify-center" style={{ paddingTop: 56, paddingBottom: 40 }}>
-        <Image
-          src="/logo.svg"
-          alt="Obra Play"
-          width={200}
-          height={52}
-          priority
-          style={{ width: 200, height: "auto" }}
-        />
-      </div>
+      {/* Conteúdo scrollável */}
+      <div className="flex-1 overflow-y-auto" style={{ padding: "56px 24px 0" }}>
 
-      {/* Conteúdo do formulário — direto no fundo branco, sem card */}
-      <div className="flex-1 flex flex-col" style={{ padding: "0 24px" }}>
+        {/* Logo centralizada */}
+        <div className="flex justify-center" style={{ marginBottom: 40 }}>
+          <Image
+            src="/logo.svg"
+            alt="Obra Play"
+            width={200}
+            height={52}
+            priority
+            style={{ width: 200, height: "auto" }}
+          />
+        </div>
 
         <h1
           className="font-bold text-[#212121] mb-1"
@@ -70,7 +70,7 @@ export default function LoginPage() {
           Entre com sua conta para continuar no Obra Play.
         </p>
 
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-1">
+        <form id="login-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-1 pb-6">
 
           {/* E-mail */}
           <div className="mb-2">
@@ -126,7 +126,7 @@ export default function LoginPage() {
           </div>
 
           {/* Esqueci a senha */}
-          <div className="flex justify-end mb-6">
+          <div className="flex justify-end mb-4">
             <Link
               href="/recuperar-senha"
               className="text-[#1565C0] font-medium hover:underline"
@@ -136,30 +136,40 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          {/* Botão ENTRAR — op-btn-primary: height 56px, border-radius 4px, uppercase */}
-          <button type="submit" disabled={loading} className="op-btn-primary">
-            {loading ? (
-              <>
-                <Loader2 size={18} className="animate-spin" />
-                Entrando...
-              </>
-            ) : (
-              "ENTRAR"
-            )}
-          </button>
+          {/* Criar conta */}
+          <p className="text-center text-[#757575]" style={{ fontSize: "0.875rem" }}>
+            Ainda não tem conta?{" "}
+            <Link href="/cadastro" className="text-[#1565C0] font-semibold hover:underline">
+              Criar conta
+            </Link>
+          </p>
+
+          <p className="text-center text-[#BDBDBD] mt-2" style={{ fontSize: "0.75rem" }}>
+            Demo: carlos@construtora.com / senha123
+          </p>
         </form>
+      </div>
 
-        {/* Criar conta */}
-        <p className="text-center text-[#757575] mt-6" style={{ fontSize: "0.875rem" }}>
-          Ainda não tem conta?{" "}
-          <Link href="/cadastro" className="text-[#1565C0] font-semibold hover:underline">
-            Criar conta
-          </Link>
-        </p>
-
-        <p className="text-center text-[#BDBDBD] mt-3" style={{ fontSize: "0.75rem" }}>
-          Demo: carlos@construtora.com / senha123
-        </p>
+      {/* Botão ENTRAR — rodapé fixo, fora do scroll, mesmo padrão do Cadastro */}
+      <div
+        className="flex-shrink-0 bg-white border-t border-[#EEEEEE]"
+        style={{ padding: "12px 16px 24px" }}
+      >
+        <button
+          type="submit"
+          form="login-form"
+          disabled={loading}
+          className="op-btn-primary"
+        >
+          {loading ? (
+            <>
+              <Loader2 size={18} className="animate-spin" />
+              Entrando...
+            </>
+          ) : (
+            "ENTRAR"
+          )}
+        </button>
       </div>
     </main>
   )
