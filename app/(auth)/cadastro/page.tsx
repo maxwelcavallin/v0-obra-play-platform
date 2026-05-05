@@ -123,31 +123,37 @@ export default function CadastroPage() {
   const showPasswordRules = passwordFocus || form.password.length > 0
 
   return (
-    <main className="op-auth-page">
-
-      {/* Sub-header — height 52px, fundo branco, seta + título centralizado */}
+    <main
+      className="min-h-dvh flex flex-col"
+      style={{ backgroundColor: "#1565C0" }}
+    >
+      {/* Sub-header azul — seta + título brancos */}
       <header
-        className="flex-shrink-0 flex items-center px-4 relative border-b border-[#EEEEEE]"
-        style={{ height: 52, backgroundColor: "#fff" }}
+        className="flex-shrink-0 flex items-center px-2 relative"
+        style={{ height: 52 }}
       >
         <button
           onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors"
+          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
           aria-label="Voltar"
         >
-          <ArrowLeft size={20} className="text-[#212121]" />
+          <ArrowLeft size={20} className="text-white" />
         </button>
         <span
-          className="absolute left-1/2 -translate-x-1/2 font-medium text-[#212121]"
+          className="absolute left-1/2 -translate-x-1/2 font-medium text-white"
           style={{ fontSize: "1rem" }}
         >
           Criar conta
         </span>
       </header>
 
-      {/* Formulário — direto no fundo branco, sem card wrapper */}
-      {/* padding-bottom 96px para não sobrepor o botão fixo */}
-      <div className="flex-1 overflow-y-auto" style={{ padding: "24px 24px 96px" }}>
+      {/* Card branco — cantos superiores arredondados, cresce até o fim da tela */}
+      <div
+        className="flex flex-col flex-1"
+        style={{ backgroundColor: "#fff", borderRadius: "24px 24px 0 0" }}
+      >
+        {/* Formulário scrollável */}
+        <div className="flex-1 overflow-y-auto" style={{ padding: "24px 24px 0" }}>
 
         <h1
           className="font-bold text-[#212121] mb-1"
@@ -447,28 +453,29 @@ export default function CadastroPage() {
           </p>
 
         </form>
-      </div>
+        </div>
 
-      {/* Botão CADASTRAR — fixo na base, largura total menos 16px de cada lado */}
-      <div
-        className="flex-shrink-0 bg-white border-t border-[#EEEEEE]"
-        style={{ padding: "16px 16px 20px" }}
-      >
-        <button
-          type="submit"
-          form="cadastro-form"
-          disabled={loading}
-          className="op-btn-primary"
+        {/* Botão CADASTRAR — rodapé fixo dentro do card branco */}
+        <div
+          className="flex-shrink-0"
+          style={{ padding: "16px 24px 28px" }}
         >
-          {loading ? (
-            <>
-              <Loader2 size={18} className="animate-spin" />
-              Criando conta...
-            </>
-          ) : (
-            "CADASTRAR"
-          )}
-        </button>
+          <button
+            type="submit"
+            form="cadastro-form"
+            disabled={loading}
+            className="op-btn-primary"
+          >
+            {loading ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                Criando conta...
+              </>
+            ) : (
+              "CADASTRAR"
+            )}
+          </button>
+        </div>
       </div>
     </main>
   )

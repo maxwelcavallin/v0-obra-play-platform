@@ -43,133 +43,144 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="op-auth-page">
-
-      {/* Conteúdo scrollável */}
-      <div className="flex-1 overflow-y-auto" style={{ padding: "56px 24px 0" }}>
-
-        {/* Logo centralizada */}
-        <div className="flex justify-center" style={{ marginBottom: 40 }}>
-          <Image
-            src="/logo.svg"
-            alt="Obra Play"
-            width={200}
-            height={52}
-            priority
-            style={{ width: 200, height: "auto" }}
-          />
-        </div>
-
-        <h1
-          className="font-bold text-[#212121] mb-1"
-          style={{ fontSize: "1.25rem", lineHeight: 1.3 }}
-        >
-          Entrar
-        </h1>
-        <p className="text-[#9E9E9E] mb-6" style={{ fontSize: "0.875rem" }}>
-          Entre com sua conta para continuar no Obra Play.
-        </p>
-
-        <form id="login-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-1 pb-6">
-
-          {/* E-mail */}
-          <div className="mb-2">
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value)
-                if (errors.email) setErrors((p) => ({ ...p, email: undefined }))
-              }}
-              placeholder="Qual o seu e-mail?"
-              className={`op-input-underline ${errors.email ? "op-input-error" : ""}`}
-            />
-            {errors.email && (
-              <p className="text-[#F44336] mt-1" style={{ fontSize: "0.75rem" }}>
-                {errors.email}
-              </p>
-            )}
-          </div>
-
-          {/* Senha */}
-          <div className="mb-1">
-            <div className="relative">
-              <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value)
-                  if (errors.password) setErrors((p) => ({ ...p, password: undefined }))
-                }}
-                placeholder="Sua senha de acesso"
-                className={`op-input-underline pr-10 ${errors.password ? "op-input-error" : ""}`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-0 top-1/2 -translate-y-1/2 text-[#9E9E9E] hover:text-[#1565C0] transition-colors p-1"
-                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                tabIndex={-1}
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-            {errors.password && (
-              <p className="text-[#F44336] mt-1" style={{ fontSize: "0.75rem" }}>
-                {errors.password}
-              </p>
-            )}
-          </div>
-
-          {/* Esqueci a senha */}
-          <div className="flex justify-end mb-4">
-            <Link
-              href="/recuperar-senha"
-              className="text-[#1565C0] font-medium hover:underline"
-              style={{ fontSize: "0.875rem" }}
-            >
-              Esqueci minha senha
-            </Link>
-          </div>
-
-          {/* Criar conta */}
-          <p className="text-center text-[#757575]" style={{ fontSize: "0.875rem" }}>
-            Ainda não tem conta?{" "}
-            <Link href="/cadastro" className="text-[#1565C0] font-semibold hover:underline">
-              Criar conta
-            </Link>
-          </p>
-
-          <p className="text-center text-[#BDBDBD] mt-2" style={{ fontSize: "0.75rem" }}>
-            Demo: carlos@construtora.com / senha123
-          </p>
-        </form>
+    <main
+      className="min-h-dvh flex flex-col"
+      style={{ backgroundColor: "#1565C0" }}
+    >
+      {/* Área azul — logo centralizada */}
+      <div className="flex items-center justify-center" style={{ paddingTop: 56, paddingBottom: 40 }}>
+        <Image
+          src="/logo.svg"
+          alt="Obra Play"
+          width={200}
+          height={52}
+          priority
+          style={{ width: 200, height: "auto" }}
+        />
       </div>
 
-      {/* Botão ENTRAR — rodapé fixo, fora do scroll */}
+      {/* Card branco — cantos superiores arredondados, cresce até o fim da tela */}
       <div
-        className="flex-shrink-0 bg-white border-t border-[#EEEEEE]"
-        style={{ padding: "16px 16px 20px" }}
+        className="flex flex-col flex-1"
+        style={{
+          backgroundColor: "#fff",
+          borderRadius: "24px 24px 0 0",
+        }}
       >
-        <button
-          type="submit"
-          form="login-form"
-          disabled={loading}
-          className="op-btn-primary"
+        {/* Área scrollável */}
+        <div className="flex-1 overflow-y-auto" style={{ padding: "28px 24px 0" }}>
+
+          <h1
+            className="font-bold text-[#212121] mb-1"
+            style={{ fontSize: "1.25rem", lineHeight: 1.3 }}
+          >
+            Entrar
+          </h1>
+          <p className="text-[#9E9E9E] mb-6" style={{ fontSize: "0.875rem" }}>
+            Entre com sua conta para continuar no Obra Play.
+          </p>
+
+          <form id="login-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-1 pb-6">
+
+            {/* E-mail */}
+            <div className="mb-2">
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  if (errors.email) setErrors((p) => ({ ...p, email: undefined }))
+                }}
+                placeholder="Qual o seu e-mail?"
+                className={`op-input-underline ${errors.email ? "op-input-error" : ""}`}
+              />
+              {errors.email && (
+                <p className="text-[#F44336] mt-1" style={{ fontSize: "0.75rem" }}>
+                  {errors.email}
+                </p>
+              )}
+            </div>
+
+            {/* Senha */}
+            <div className="mb-1">
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    if (errors.password) setErrors((p) => ({ ...p, password: undefined }))
+                  }}
+                  placeholder="Sua senha de acesso"
+                  className={`op-input-underline pr-10 ${errors.password ? "op-input-error" : ""}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-[#9E9E9E] hover:text-[#1565C0] transition-colors p-1"
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-[#F44336] mt-1" style={{ fontSize: "0.75rem" }}>
+                  {errors.password}
+                </p>
+              )}
+            </div>
+
+            {/* Esqueci a senha */}
+            <div className="flex justify-end mb-4">
+              <Link
+                href="/recuperar-senha"
+                className="text-[#1565C0] font-medium hover:underline"
+                style={{ fontSize: "0.875rem" }}
+              >
+                Esqueci minha senha
+              </Link>
+            </div>
+
+            {/* Criar conta */}
+            <p className="text-center text-[#757575]" style={{ fontSize: "0.875rem" }}>
+              Ainda não tem conta?{" "}
+              <Link href="/cadastro" className="text-[#1565C0] font-semibold hover:underline">
+                Criar conta
+              </Link>
+            </p>
+
+            <p className="text-center text-[#BDBDBD] mt-2" style={{ fontSize: "0.75rem" }}>
+              Demo: carlos@construtora.com / senha123
+            </p>
+          </form>
+        </div>
+
+        {/* Botão ENTRAR — rodapé fixo dentro do card */}
+        <div
+          className="flex-shrink-0"
+          style={{ padding: "16px 24px 28px" }}
         >
-          {loading ? (
-            <>
-              <Loader2 size={18} className="animate-spin" />
-              Entrando...
-            </>
-          ) : (
-            "ENTRAR"
-          )}
-        </button>
+          <button
+            type="submit"
+            form="login-form"
+            disabled={loading}
+            className="op-btn-primary"
+          >
+            {loading ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                Entrando...
+              </>
+            ) : (
+              "ENTRAR"
+            )}
+          </button>
+        </div>
       </div>
     </main>
   )
