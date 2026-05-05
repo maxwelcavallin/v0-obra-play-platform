@@ -1,17 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { Bell, Menu, HelpCircle, UserCircle } from "lucide-react"
-import { useAuth } from "@/lib/auth-context"
+import { Bell, Menu } from "lucide-react"
 import Image from "next/image"
-import Link from "next/link"
 
 interface AppBarProps {
   onMenuOpen?: () => void
 }
 
 export function AppBar({ onMenuOpen }: AppBarProps) {
-  const { user } = useAuth()
   const [notifOpen, setNotifOpen] = useState(false)
 
   return (
@@ -19,13 +16,13 @@ export function AppBar({ onMenuOpen }: AppBarProps) {
       className="fixed top-0 left-0 right-0 z-50 bg-[#1565C0] shadow-md"
       style={{ height: 56 }}
     >
-      {/* Grid exato do HTML original: 3 colunas iguais */}
+      {/* Grid: 3 colunas iguais — menu | logo | notificação */}
       <div className="h-full grid grid-cols-3 items-center px-2">
 
-        {/* Coluna 1: Hambúrguer (mobile) / vazio (desktop) */}
+        {/* Coluna 1: Hambúrguer */}
         <div className="flex items-center justify-start">
           <button
-            className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors md:hidden"
+            className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
             onClick={onMenuOpen}
             aria-label="Abrir menu"
           >
@@ -33,8 +30,7 @@ export function AppBar({ onMenuOpen }: AppBarProps) {
           </button>
         </div>
 
-        {/* Coluna 2: Logo centralizado */}
-        {/* Medida exata do HTML: width=200 height=26 */}
+        {/* Coluna 2: Logo centralizada */}
         <div className="flex items-center justify-center">
           <Image
             src="/logo.svg"
@@ -47,26 +43,8 @@ export function AppBar({ onMenuOpen }: AppBarProps) {
           />
         </div>
 
-        {/* Coluna 3: Perfil + Ajuda + Notificações */}
+        {/* Coluna 3: Notificações */}
         <div className="flex items-center justify-end gap-0.5">
-          <Link
-            href="/dashboard/perfil"
-            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
-            aria-label="Meu perfil"
-          >
-            {user?.avatar ? (
-              <img src={user.avatar} alt="perfil" className="w-7 h-7 rounded-full object-cover border-2 border-white/50" />
-            ) : (
-              <UserCircle size={22} className="text-white" />
-            )}
-          </Link>
-          <button
-            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
-            aria-label="Ajuda"
-          >
-            <HelpCircle size={22} className="text-white" />
-          </button>
-
           <div className="relative">
             <button
               onClick={() => setNotifOpen((v) => !v)}

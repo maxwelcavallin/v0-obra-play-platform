@@ -13,6 +13,7 @@ import {
   Loader2,
   Check,
   Info,
+  Instagram,
 } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
@@ -75,10 +76,9 @@ export default function EmpresaPage() {
   const [state, setState] = useState(activeCompany?.state ?? "PR")
 
   // Contato
-  const [contactPhone, setContactPhone] = useState("")
-  const [contactPhone2, setContactPhone2] = useState("")
   const [contactEmail, setContactEmail] = useState("")
   const [contactWhatsapp, setContactWhatsapp] = useState("")
+  const [contactInstagram, setContactInstagram] = useState("")
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -298,19 +298,14 @@ export default function EmpresaPage() {
           {tab === "contato" && (
             <>
               <OpInput
-                label="Telefone principal"
+                label="WhatsApp"
                 type="tel"
-                value={contactPhone}
-                onChange={(e) => setContactPhone(formatPhone(e.target.value))}
+                value={contactWhatsapp}
+                onChange={(e) => setContactWhatsapp(formatPhone(e.target.value))}
                 placeholder="(00) 00000-0000"
-                suffix={<Phone size={16} className="text-[#9E9E9E]" />}
-              />
-              <OpInput
-                label="Telefone secundario"
-                type="tel"
-                value={contactPhone2}
-                onChange={(e) => setContactPhone2(formatPhone(e.target.value))}
-                placeholder="(00) 00000-0000"
+                suffix={
+                  <span style={{ fontSize: "0.75rem", color: "#25D366", fontWeight: 700 }}>WA</span>
+                }
               />
               <OpInput
                 label="E-mail de contato"
@@ -321,14 +316,12 @@ export default function EmpresaPage() {
                 suffix={<Mail size={16} className="text-[#9E9E9E]" />}
               />
               <OpInput
-                label="WhatsApp"
-                type="tel"
-                value={contactWhatsapp}
-                onChange={(e) => setContactWhatsapp(formatPhone(e.target.value))}
-                placeholder="(00) 00000-0000"
-                suffix={
-                  <span style={{ fontSize: "0.75rem", color: "#25D366", fontWeight: 600 }}>WA</span>
-                }
+                label="Instagram"
+                value={contactInstagram}
+                onChange={(e) => setContactInstagram(e.target.value.replace(/^@/, ""))}
+                placeholder="@suaempresa"
+                prefix={<span className="text-[#9E9E9E] pr-1" style={{ fontSize: "1rem" }}>@</span>}
+                suffix={<Instagram size={16} className="text-[#9E9E9E]" />}
               />
 
               <div className="op-info-box mt-3">

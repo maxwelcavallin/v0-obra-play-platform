@@ -21,6 +21,7 @@ import {
   Plus,
   X,
   Info,
+  UserCircle,
 } from "lucide-react"
 import { useAuth, type Company } from "@/lib/auth-context"
 
@@ -140,7 +141,7 @@ function SidebarContent({ onClose }: SidebarContentProps) {
 
       {/* Rodapé do drawer */}
       <div className="mt-auto">
-        {/* Dúvidas + Sair */}
+        {/* Dúvidas + Meu perfil + Sair */}
         <div className="border-t border-[#E0E0E0]">
           <Link
             href="/faq"
@@ -149,6 +150,18 @@ function SidebarContent({ onClose }: SidebarContentProps) {
           >
             <HelpCircle size={20} className="text-[#757575]" />
             <span className="text-sm font-medium">Dúvidas frequentes</span>
+          </Link>
+          <Link
+            href="/dashboard/perfil"
+            onClick={onClose}
+            className={`flex items-center gap-3 px-5 py-3 transition-colors ${
+              typeof window !== "undefined" && window.location.pathname === "/dashboard/perfil"
+                ? "text-[#1565C0] bg-[#E3F2FD]"
+                : "text-[#424242] hover:bg-[#F4F6F8]"
+            }`}
+          >
+            <UserCircle size={20} className="text-[#757575]" />
+            <span className="text-sm font-medium">Meu perfil</span>
           </Link>
           <button
             onClick={handleLogout}

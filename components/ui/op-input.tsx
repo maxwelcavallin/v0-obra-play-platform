@@ -8,10 +8,11 @@ interface OpInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: string
   hint?: string
   suffix?: React.ReactNode
+  prefix?: React.ReactNode
 }
 
 export const OpInput = forwardRef<HTMLInputElement, OpInputProps>(
-  ({ label, error, hint, suffix, type, className = "", ...props }, ref) => {
+  ({ label, error, hint, suffix, prefix, type, className = "", ...props }, ref) => {
     const [showPass, setShowPass] = useState(false)
     const isPassword = type === "password"
     const inputType = isPassword ? (showPass ? "text" : "password") : type
@@ -26,10 +27,13 @@ export const OpInput = forwardRef<HTMLInputElement, OpInputProps>(
         </label>
 
         <div className="relative flex items-center">
+          {prefix && (
+            <div className="absolute left-0 bottom-2 flex items-center">{prefix}</div>
+          )}
           <input
             ref={ref}
             type={inputType}
-            className={`op-input-underline ${error ? "op-input-error" : ""} ${isPassword ? "pr-8" : ""} ${className}`}
+            className={`op-input-underline ${error ? "op-input-error" : ""} ${isPassword ? "pr-8" : ""} ${prefix ? "pl-5" : ""} ${className}`}
             {...props}
           />
           {isPassword && (
