@@ -23,6 +23,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
   "Orçamento":    { label: "Orçamento",    color: "#1565C0", bg: "#E3F2FD" },
   "Pausada":      { label: "Pausada",      color: "#FF9800", bg: "#FFF3E0" },
   "Concluída":    { label: "Concluída",    color: "#757575", bg: "#F5F5F5" },
+  "Inativa":      { label: "Inativa",      color: "#F44336", bg: "#FFEBEE" },
   "Cancelada":    { label: "Cancelada",    color: "#F44336", bg: "#FFEBEE" },
 }
 
@@ -82,7 +83,7 @@ export default function ObraDetalhePage() {
     if (!confirmDeactivate) { setConfirmDeactivate(true); return }
     setDeactivating(true)
     try {
-      const newStatus = obra?.status === "Cancelada" ? "Orçamento" : "Cancelada"
+      const newStatus = isCancelled ? "Orçamento" : "Inativa"
       const res = await authFetch(`/api/obras/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -92,7 +93,7 @@ export default function ObraDetalhePage() {
       if (!res.ok) throw new Error(data.error)
       setObra((prev) => prev ? { ...prev, status: newStatus } : prev)
       setConfirmDeactivate(false)
-      toast.success(newStatus === "Cancelada" ? "Obra cancelada" : "Obra reativada")
+      toast.success(newStatus === "Inativa" ? "Obra inativada" : "Obra reativada")
     } catch (err: any) {
       toast.error(err.message)
     } finally {
@@ -114,7 +115,7 @@ export default function ObraDetalhePage() {
 
   const cfg = STATUS_CONFIG[obra.status] ?? { label: obra.status, color: "#757575", bg: "#F5F5F5" }
   const location = [obra.delivery_city, obra.delivery_state].filter(Boolean).join(" - ")
-  const isCancelled = obra.status === "Cancelada"
+  const isCancelled = obra.status === "Inativa" || obra.status === "Cancelada"
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] flex flex-col">
@@ -144,7 +145,7 @@ export default function ObraDetalhePage() {
             <button onClick={handleDeactivate} disabled={deactivating}
               className={`flex items-center gap-1.5 h-8 px-3 rounded-full transition-colors text-xs font-semibold ${confirmDeactivate ? "bg-red-500 text-white" : "bg-white/20 hover:bg-white/30 text-white"}`}>
               {deactivating ? <Loader2 size={13} className="animate-spin" /> : <PowerOff size={13} />}
-              {confirmDeactivate ? "Confirmar" : isCancelled ? "Reativar" : "Cancelar"}
+              {confirmDeactivate ? "Confirmar" : isCancelled ? "Reativar" : "Inativar"}
             </button>
           </div>
         </div>
@@ -175,7 +176,7 @@ export default function ObraDetalhePage() {
       {/* Confirmação de cancelamento */}
       {confirmDeactivate && (
         <div className="bg-red-50 border-b border-red-200 px-4 py-2 flex items-center justify-between gap-2">
-          <p className="text-xs text-red-700 font-medium">{isCancelled ? "Reativar esta obra?" : "Cancelar esta obra?"}</p>
+          <p className="text-xs text-red-700 font-medium">{isCancelled ? "Reativar esta obra?" : "Inativar esta obra?"}</p>
           <button onClick={() => setConfirmDeactivate(false)} className="text-xs text-red-500 underline">Cancelar</button>
         </div>
       )}

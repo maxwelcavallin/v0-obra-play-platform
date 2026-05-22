@@ -28,6 +28,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
   "Orçamento":    { label: "Orçamento",    color: "#1565C0", bg: "#E3F2FD" },
   "Pausada":      { label: "Pausada",      color: "#FF9800", bg: "#FFF3E0" },
   "Concluída":    { label: "Concluída",    color: "#757575", bg: "#F5F5F5" },
+  "Inativa":      { label: "Inativa",      color: "#F44336", bg: "#FFEBEE" },
   "Cancelada":    { label: "Cancelada",    color: "#F44336", bg: "#FFEBEE" },
 }
 
