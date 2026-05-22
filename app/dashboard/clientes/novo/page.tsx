@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Instagram, Mail } from "lucide-react"
+import { ArrowLeft, Instagram, Mail, Loader2 } from "lucide-react"
 import { OpInput } from "@/components/ui/op-input"
 import { fmtCPF, fmtCNPJ, fmtPhone, fmtCEP, fmtDate, type Client, type ClientType } from "@/lib/mock-data"
 import { toast } from "sonner"
@@ -30,6 +30,8 @@ export default function NovoClientePage() {
   const [form, setForm] = useState<FormData>(EMPTY_PF)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
+  const [cnpjLoading, setCnpjLoading] = useState(false)
+  const [cepLoading, setCepLoading] = useState(false)
 
   function switchType(t: ClientType) {
     setType(t)
@@ -40,6 +42,65 @@ export default function NovoClientePage() {
   function update(key: keyof FormData, value: string) {
     setForm((p) => ({ ...p, [key]: value }))
     if (errors[key]) setErrors((p) => { const n = { ...p }; delete n[key]; return n })
+  }
+
+  async function handleCnpjChange(raw: string) {
+    const formatted = fmtCNPJ(raw)
+    update("cnpj", formatted)
+    const digits = formatted.replace(/\D/g, "")
+    if (digits.length !== 14) return
+    setCnpjLoading(true)
+    try {
+      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`)
+      if (!res.ok) throw new Error()
+      const json = await res.json()
+      setForm((p) => ({
+        ...p,
+        cnpj: formatted,
+        companyName: json.razao_social ?? p.companyName,
+        fantasyName: json.nome_fantasia || json.razao_social || p.fantasyName,
+        // endereço
+        cep: fmtCEP(json.cep?.replace(/\D/g, "") ?? ""),
+        address: json.logradouro ?? p.address,
+        number: json.numero ?? p.number,
+        complement: json.complemento || p.complement,
+        neighborhood: json.bairro ?? p.neighborhood,
+        city: json.municipio ?? p.city,
+        state: json.uf ?? p.state,
+      }))
+      toast.success("Dados do CNPJ preenchidos automaticamente")
+    } catch {
+      toast.error("CNPJ não encontrado na Receita Federal")
+    } finally {
+      setCnpjLoading(false)
+    }
+  }
+
+  async function handleCepChange(raw: string) {
+    const formatted = fmtCEP(raw)
+    update("cep", formatted)
+    const digits = formatted.replace(/\D/g, "")
+    if (digits.length !== 8) return
+    setCepLoading(true)
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`)
+      if (!res.ok) throw new Error()
+      const json = await res.json()
+      if (json.erro) throw new Error()
+      setForm((p) => ({
+        ...p,
+        address: json.logradouro ?? p.address,
+        neighborhood: json.bairro ?? p.neighborhood,
+        city: json.localidade ?? p.city,
+        state: json.uf ?? p.state,
+        complement: json.complemento || p.complement,
+      }))
+      toast.success("Endereço preenchido automaticamente")
+    } catch {
+      toast.error("CEP não encontrado")
+    } finally {
+      setCepLoading(false)
+    }
   }
 
   function validate() {
@@ -99,15 +160,21 @@ export default function NovoClientePage() {
       <form id="cliente-form" onSubmit={handleSubmit} noValidate className="flex-1 overflow-y-auto" style={{ padding: "16px 16px 0" }}>
         {type === "PF" ? (
           <div className="flex flex-col gap-1">
-            <OpInput label="Nome completo*" value={form.fullName ?? ""} onChange={(e) => update("fullName", e.target.value)} placeholder="Nome e sobrenome" error={errors.fullName} />
             <OpInput label="CPF" value={form.cpf ?? ""} onChange={(e) => update("cpf", fmtCPF(e.target.value))} placeholder="000.000.000-00" />
+            <OpInput label="Nome completo*" value={form.fullName ?? ""} onChange={(e) => update("fullName", e.target.value)} placeholder="Nome e sobrenome" error={errors.fullName} />
             <OpInput label="Data de nascimento" value={form.birthDate ?? ""} onChange={(e) => update("birthDate", fmtDate(e.target.value))} placeholder="DD/MM/AAAA" />
           </div>
         ) : (
           <div className="flex flex-col gap-1">
+            <OpInput
+              label="CNPJ"
+              value={form.cnpj ?? ""}
+              onChange={(e) => handleCnpjChange(e.target.value)}
+              placeholder="00.000.000/0000-00"
+              suffix={cnpjLoading ? <Loader2 size={15} className="animate-spin text-[#1565C0]" /> : undefined}
+            />
+            <OpInput label="Razão social" value={form.companyName ?? ""} onChange={(e) => update("companyName", e.target.value)} placeholder="Preenchido automaticamente pelo CNPJ" />
             <OpInput label="Nome fantasia*" value={form.fantasyName ?? ""} onChange={(e) => update("fantasyName", e.target.value)} placeholder="Como a empresa é conhecida" error={errors.fantasyName} />
-            <OpInput label="CNPJ" value={form.cnpj ?? ""} onChange={(e) => update("cnpj", fmtCNPJ(e.target.value))} placeholder="00.000.000/0000-00" />
-            <OpInput label="Razão social" value={form.companyName ?? ""} onChange={(e) => update("companyName", e.target.value)} placeholder="Razão social" />
             <OpInput label="Nome do responsável" value={form.responsibleName ?? ""} onChange={(e) => update("responsibleName", e.target.value)} placeholder="Nome completo" />
           </div>
         )}
@@ -123,7 +190,13 @@ export default function NovoClientePage() {
         {/* Endereço */}
         <div className="flex flex-col gap-1 mt-3">
           <p className="text-[#9E9E9E] font-medium" style={{ fontSize: "0.75rem", marginBottom: 4 }}>ENDEREÇO</p>
-          <OpInput label="CEP" value={form.cep} onChange={(e) => update("cep", fmtCEP(e.target.value))} placeholder="00000-000" />
+          <OpInput
+            label="CEP"
+            value={form.cep}
+            onChange={(e) => handleCepChange(e.target.value)}
+            placeholder="00000-000"
+            suffix={cepLoading ? <Loader2 size={15} className="animate-spin text-[#1565C0]" /> : undefined}
+          />
           <OpInput label="Logradouro" value={form.address} onChange={(e) => update("address", e.target.value)} placeholder="Rua, Avenida..." />
           <div className="flex gap-4">
             <div className="flex-1"><OpInput label="Número" value={form.number} onChange={(e) => update("number", e.target.value)} placeholder="Nº" /></div>
