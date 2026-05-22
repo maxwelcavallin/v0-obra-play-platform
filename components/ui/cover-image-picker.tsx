@@ -54,12 +54,36 @@ export function CoverImagePicker({ value, objectPosition, onChange, onPositionCh
     fileInputRef.current.click()
   }, [])
 
+  // Redimensiona a imagem para no máximo 1600px de largura antes do upload,
+  // evitando erro 413 com fotos de câmera que podem ter vários MBs
+  function resizeImage(file: File, maxWidth = 1600): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      img.crossOrigin = "anonymous"
+      const url = URL.createObjectURL(file)
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        const scale = img.width > maxWidth ? maxWidth / img.width : 1
+        const w = Math.round(img.width * scale)
+        const h = Math.round(img.height * scale)
+        const canvas = document.createElement("canvas")
+        canvas.width = w
+        canvas.height = h
+        canvas.getContext("2d")!.drawImage(img, 0, 0, w, h)
+        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Falha ao processar imagem")), "image/jpeg", 0.88)
+      }
+      img.onerror = reject
+      img.src = url
+    })
+  }
+
   async function handleFile(file: File) {
     if (!file) return
     setUploading(true)
     try {
+      const resized = await resizeImage(file)
       const fd = new FormData()
-      fd.append("file", file)
+      fd.append("file", new File([resized], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }))
       const res = await fetch("/api/upload/obra-capa", { method: "POST", body: fd })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? "Falha no upload")
