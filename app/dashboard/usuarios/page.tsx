@@ -42,7 +42,20 @@ function InviteModal({ onClose }: { onClose: () => void }) {
   }
 
   function copyLink() {
-    navigator.clipboard.writeText(link)
+    try {
+      // Fallback via textarea para ambientes sem permissao de Clipboard API
+      const el = document.createElement("textarea")
+      el.value = link
+      el.style.position = "fixed"
+      el.style.opacity = "0"
+      document.body.appendChild(el)
+      el.focus()
+      el.select()
+      document.execCommand("copy")
+      document.body.removeChild(el)
+    } catch {
+      // silencia erros em ambientes restritos
+    }
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
     toast.success("Link copiado!")
