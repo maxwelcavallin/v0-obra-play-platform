@@ -75,10 +75,10 @@ function saveSession(user: User | null, companies: Company[], activeCompany: Com
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const session = loadSession()
-  const [user, setUser] = useState<User | null>(session.user)
-  const [companies, setCompanies] = useState<Company[]>(session.companies)
-  const [activeCompany, setActiveCompanyState] = useState<Company | null>(session.activeCompany)
+  // Lazy initializer — só executa no cliente, evita hydration mismatch
+  const [user, setUser] = useState<User | null>(() => loadSession().user)
+  const [companies, setCompanies] = useState<Company[]>(() => loadSession().companies)
+  const [activeCompany, setActiveCompanyState] = useState<Company | null>(() => loadSession().activeCompany)
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await fetch("/api/auth/login", {

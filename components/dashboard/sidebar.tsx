@@ -15,11 +15,9 @@ import {
   Settings,
   BarChart3,
   LogOut,
-  HelpCircle,
   ChevronRight,
   Plus,
   X,
-  Info,
   UserCircle,
 } from "lucide-react"
 import { useAuth, type Company } from "@/lib/auth-context"
@@ -34,17 +32,11 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Início", href: "/dashboard", icon: LayoutDashboard },
   { label: "Clientes", href: "/dashboard/clientes", icon: Users },
-  { label: "Compras", href: "/cotacoes", icon: ShoppingCart },
-  { label: "Financeiro", href: "/financeiro", icon: DollarSign },
+  { label: "Cotações", href: "/dashboard/cotacoes", icon: ShoppingCart },
+  { label: "Financeiro", href: "/dashboard/financeiro", icon: DollarSign },
   { label: "Empresas", href: "/dashboard/empresas", icon: Building2 },
   { label: "Usuários", href: "/dashboard/usuarios", icon: HardHat },
-  { label: "Histórico de preços", href: "/historico-precos", icon: BarChart3 },
-  { label: "Conheça o Obra Play", href: "/sobre", icon: Info },
-]
-
-const BOTTOM_NAV_ITEMS: NavItem[] = [
-  { label: "Dúvidas frequentes", href: "/faq", icon: HelpCircle },
-  { label: "Sair", href: "/sair", icon: LogOut },
+  { label: "Histórico de preços", href: "/dashboard/historico-precos", icon: BarChart3 },
 ]
 
 interface SidebarContentProps {
@@ -147,14 +139,7 @@ function SidebarContent({ onClose }: SidebarContentProps) {
       <div className="mt-auto">
         {/* Dúvidas + Trocar empresa + Meu perfil + Sair */}
         <div className="border-t border-[#E0E0E0]">
-          <Link
-            href="/faq"
-            onClick={onClose}
-            className="flex items-center gap-3 px-5 py-3 text-[#424242] hover:bg-[#F4F6F8] transition-colors"
-          >
-            <HelpCircle size={20} className="text-[#757575]" />
-            <span className="text-sm font-medium">Dúvidas frequentes</span>
-          </Link>
+
           {/* Seletor de empresa */}
           <button
             onClick={() => setCompanySheetOpen(true)}
@@ -173,7 +158,7 @@ function SidebarContent({ onClose }: SidebarContentProps) {
             href="/dashboard/perfil"
             onClick={onClose}
             className={`flex items-center gap-3 px-5 py-3 transition-colors ${
-              typeof window !== "undefined" && window.location.pathname === "/dashboard/perfil"
+              pathname === "/dashboard/perfil"
                 ? "text-[#1565C0] bg-[#E3F2FD]"
                 : "text-[#424242] hover:bg-[#F4F6F8]"
             }`}
@@ -308,8 +293,8 @@ export function BottomNav() {
 
   const mobileItems: NavItem[] = [
     { label: "Início", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Cotações", href: "/cotacoes", icon: FileText, badge: 3 },
-    { label: "Financeiro", href: "/financeiro", icon: DollarSign },
+    { label: "Cotações", href: "/dashboard/cotacoes", icon: FileText },
+    { label: "Financeiro", href: "/dashboard/financeiro", icon: DollarSign },
     { label: "Menu", href: "#menu", icon: Settings },
   ]
 
