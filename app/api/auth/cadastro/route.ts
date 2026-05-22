@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const users = await sql`
       INSERT INTO users (name, email, phone, password_hash)
       VALUES (${name.trim()}, ${email.toLowerCase().trim()}, ${phone ?? null}, ${passwordHash})
-      RETURNING id, name, email, phone, avatar
+      RETURNING id, name, email, phone
     `
     const user = users[0]
 
