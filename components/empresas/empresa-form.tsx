@@ -174,7 +174,6 @@ export function EmpresaForm({ initial = {}, onSave, loading, submitLabel = "SALV
               <p className="text-[#9E9E9E]" style={{ fontSize: "0.75rem" }}>Logo da empresa</p>
             </div>
 
-            <OpInput label="Nome fantasia*" value={form.fantasyName} onChange={(e) => update("fantasyName", e.target.value)} placeholder="Como a empresa é conhecida" error={errors.fantasyName} />
             <div className="relative">
               <OpInput
                 label="CNPJ*"
@@ -186,6 +185,7 @@ export function EmpresaForm({ initial = {}, onSave, loading, submitLabel = "SALV
               />
             </div>
             <OpInput label="Razão social" value={form.companyName} onChange={(e) => update("companyName", e.target.value)} placeholder="Preenchido automaticamente pelo CNPJ" />
+            <OpInput label="Nome fantasia*" value={form.fantasyName} onChange={(e) => update("fantasyName", e.target.value)} placeholder="Como a empresa é conhecida" error={errors.fantasyName} />
           </div>
         )}
 

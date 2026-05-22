@@ -73,10 +73,9 @@ function SidebarContent({ onClose }: SidebarContentProps) {
 
   return (
     <>
-      {/* Header do drawer — seletor de empresa */}
+      {/* Header do drawer */}
       <div className="bg-[#1565C0] px-4 pt-4 pb-3 flex-shrink-0">
-        {/* Linha superior: logo empresa + nome + fechar */}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             {/* Logo empresa */}
             <div className="w-11 h-11 rounded-full bg-white flex-shrink-0 flex items-center justify-center overflow-hidden shadow">
@@ -105,20 +104,6 @@ function SidebarContent({ onClose }: SidebarContentProps) {
             </button>
           )}
         </div>
-
-        {/* Botão seletor de empresa */}
-        <button
-          onClick={() => setCompanySheetOpen(true)}
-          className="w-full flex items-center gap-2 bg-white/10 hover:bg-white/20 transition-colors rounded-lg px-3 py-2 text-left"
-          aria-label="Trocar empresa"
-        >
-          <span className="text-white text-xs font-medium flex-1 truncate">
-            {companies.length > 1
-              ? `${companies.length} empresas vinculadas`
-              : activeCompany?.fantasyName ?? "Nenhuma empresa"}
-          </span>
-          <ChevronRight size={14} className="text-white/70 flex-shrink-0" />
-        </button>
       </div>
 
       {/* Nav items */}
@@ -160,7 +145,7 @@ function SidebarContent({ onClose }: SidebarContentProps) {
 
       {/* Rodapé do drawer */}
       <div className="mt-auto">
-        {/* Dúvidas + Meu perfil + Sair */}
+        {/* Dúvidas + Trocar empresa + Meu perfil + Sair */}
         <div className="border-t border-[#E0E0E0]">
           <Link
             href="/faq"
@@ -170,6 +155,20 @@ function SidebarContent({ onClose }: SidebarContentProps) {
             <HelpCircle size={20} className="text-[#757575]" />
             <span className="text-sm font-medium">Dúvidas frequentes</span>
           </Link>
+          {/* Seletor de empresa */}
+          <button
+            onClick={() => setCompanySheetOpen(true)}
+            className="w-full flex items-center gap-3 px-5 py-3 text-[#424242] hover:bg-[#F4F6F8] transition-colors"
+          >
+            <Building2 size={20} className="text-[#757575]" />
+            <div className="flex-1 text-left min-w-0">
+              <span className="text-sm font-medium block truncate">Trocar empresa</span>
+              {activeCompany && (
+                <span className="text-xs text-[#9E9E9E] truncate block">{activeCompany.fantasyName}</span>
+              )}
+            </div>
+            <ChevronRight size={16} className="text-[#BDBDBD] flex-shrink-0" />
+          </button>
           <Link
             href="/dashboard/perfil"
             onClick={onClose}
