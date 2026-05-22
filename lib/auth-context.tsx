@@ -72,10 +72,28 @@ const MOCK_COMPANIES: Company[] = [
   },
 ]
 
+function loadSession(): { user: User | null; companies: Company[]; activeCompany: Company | null } {
+  if (typeof window === "undefined") return { user: null, companies: [], activeCompany: null }
+  try {
+    const raw = localStorage.getItem("op_session")
+    if (!raw) return { user: null, companies: [], activeCompany: null }
+    return JSON.parse(raw)
+  } catch {
+    return { user: null, companies: [], activeCompany: null }
+  }
+}
+
+function saveSession(user: User | null, companies: Company[], activeCompany: Company | null) {
+  if (typeof window === "undefined") return
+  if (!user) { localStorage.removeItem("op_session"); return }
+  localStorage.setItem("op_session", JSON.stringify({ user, companies, activeCompany }))
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [companies, setCompanies] = useState<Company[]>([])
-  const [activeCompany, setActiveCompanyState] = useState<Company | null>(null)
+  const session = loadSession()
+  const [user, setUser] = useState<User | null>(session.user)
+  const [companies, setCompanies] = useState<Company[]>(session.companies)
+  const [activeCompany, setActiveCompanyState] = useState<Company | null>(session.activeCompany)
 
   const login = useCallback(async (email: string, password: string) => {
     await new Promise((r) => setTimeout(r, 800))
@@ -87,12 +105,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(userData)
     setCompanies(MOCK_COMPANIES)
     setActiveCompanyState(MOCK_COMPANIES[0])
+    saveSession(userData, MOCK_COMPANIES, MOCK_COMPANIES[0])
   }, [])
 
   const logout = useCallback(() => {
     setUser(null)
     setActiveCompanyState(null)
     setCompanies([])
+    saveSession(null, [], null)
   }, [])
 
   const register = useCallback(async (data: RegisterData) => {
@@ -112,12 +132,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const setActiveCompany = useCallback((company: Company) => {
     setActiveCompanyState(company)
-  }, [])
+    setCompanies((prev) => {
+      saveSession(user, prev, company)
+      return prev
+    })
+  }, [user])
 
   const completeOnboarding = useCallback((company: Company) => {
-    setCompanies((prev) => [...prev, company])
+    setCompanies((prev) => {
+      const updated = [...prev, company]
+      saveSession(user, updated, company)
+      return updated
+    })
     setActiveCompanyState(company)
-  }, [])
+  }, [user])
 
   return (
     <AuthContext.Provider
