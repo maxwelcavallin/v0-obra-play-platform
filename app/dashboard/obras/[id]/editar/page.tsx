@@ -37,7 +37,11 @@ const EMPTY: FormState = {
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="text-[#9E9E9E] font-semibold mt-5 mb-3" style={{ fontSize: "0.7rem", letterSpacing: "0.08em" }}>{children}</p>
+  return (
+    <p className="text-[#616161] font-bold mt-6 mb-3 border-b border-[#EEEEEE] pb-1.5" style={{ fontSize: "0.82rem", letterSpacing: "0.1em" }}>
+      {children}
+    </p>
+  )
 }
 
 export default function EditarObraPage() {
