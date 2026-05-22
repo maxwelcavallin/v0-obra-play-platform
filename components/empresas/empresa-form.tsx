@@ -32,6 +32,7 @@ export function EmpresaForm({ initial = {}, onSave, loading, submitLabel = "SALV
   const [form, setForm] = useState<FormData>({ ...EMPTY, ...initial })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [cnpjLoading, setCnpjLoading] = useState(false)
+  const [cepLoading, setCepLoading] = useState(false)
   const logoRef = useRef<HTMLInputElement>(null)
 
   function update(key: keyof FormData, value: string) {
@@ -59,6 +60,33 @@ export function EmpresaForm({ initial = {}, onSave, loading, submitLabel = "SALV
       toast.error("CNPJ não encontrado na Receita Federal")
     } finally {
       setCnpjLoading(false)
+    }
+  }
+
+  async function handleCepChange(raw: string) {
+    const formatted = fmtCEP(raw)
+    update("cep", formatted)
+    const digits = formatted.replace(/\D/g, "")
+    if (digits.length !== 8) return
+    setCepLoading(true)
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`)
+      if (!res.ok) throw new Error()
+      const json = await res.json()
+      if (json.erro) throw new Error()
+      setForm((p) => ({
+        ...p,
+        address: json.logradouro ?? p.address,
+        neighborhood: json.bairro ?? p.neighborhood,
+        city: json.localidade ?? p.city,
+        state: json.uf ?? p.state,
+        complement: json.complemento || p.complement,
+      }))
+      toast.success("Endereço preenchido automaticamente")
+    } catch {
+      toast.error("CEP não encontrado")
+    } finally {
+      setCepLoading(false)
     }
   }
 
@@ -164,7 +192,13 @@ export function EmpresaForm({ initial = {}, onSave, loading, submitLabel = "SALV
         {/* ── Endereço ── */}
         {tab === "Endereço" && (
           <div className="flex flex-col gap-1">
-            <OpInput label="CEP" value={form.cep} onChange={(e) => update("cep", fmtCEP(e.target.value))} placeholder="00000-000" />
+            <OpInput
+              label="CEP"
+              value={form.cep}
+              onChange={(e) => handleCepChange(e.target.value)}
+              placeholder="00000-000"
+              suffix={cepLoading ? <Loader2 size={15} className="animate-spin text-[#1565C0]" /> : undefined}
+            />
             <OpInput label="Logradouro" value={form.address} onChange={(e) => update("address", e.target.value)} placeholder="Rua, Avenida..." />
             <div className="flex gap-4">
               <div className="flex-1"><OpInput label="Número" value={form.number} onChange={(e) => update("number", e.target.value)} placeholder="Nº" /></div>
