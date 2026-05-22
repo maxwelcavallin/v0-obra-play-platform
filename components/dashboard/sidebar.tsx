@@ -19,6 +19,8 @@ import {
   Plus,
   X,
   UserCircle,
+  Hammer,
+  Package,
 } from "lucide-react"
 import { useAuth, type Company } from "@/lib/auth-context"
 
@@ -32,6 +34,8 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Início", href: "/dashboard", icon: LayoutDashboard },
   { label: "Clientes", href: "/dashboard/clientes", icon: Users },
+  { label: "Obras", href: "/dashboard/obras", icon: Hammer },
+  { label: "Insumos", href: "/dashboard/insumos", icon: Package },
   { label: "Cotações", href: "/dashboard/cotacoes", icon: ShoppingCart },
   { label: "Financeiro", href: "/dashboard/financeiro", icon: DollarSign },
   { label: "Empresas", href: "/dashboard/empresas", icon: Building2 },
