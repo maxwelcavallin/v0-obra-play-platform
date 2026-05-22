@@ -12,7 +12,6 @@ import {
   Building2,
   Users,
   HardHat,
-  Package,
   Settings,
   BarChart3,
   LogOut,
@@ -39,7 +38,6 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Financeiro", href: "/financeiro", icon: DollarSign },
   { label: "Empresas", href: "/dashboard/empresas", icon: Building2 },
   { label: "Usuários", href: "/dashboard/usuarios", icon: HardHat },
-  { label: "Minha empresa", href: "/dashboard/empresa", icon: Package },
   { label: "Histórico de preços", href: "/historico-precos", icon: BarChart3 },
   { label: "Conheça o Obra Play", href: "/sobre", icon: Info },
 ]
@@ -75,33 +73,52 @@ function SidebarContent({ onClose }: SidebarContentProps) {
 
   return (
     <>
-      {/* Header do drawer */}
-      <div className="flex items-center justify-between px-4 py-3 bg-[#1565C0]">
-        <div className="flex items-center gap-3">
-          {/* Avatar empresa */}
-          <div className="w-12 h-12 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center overflow-hidden relative">
-            <span className="text-white font-bold text-lg">
-              {activeCompany?.fantasyName?.[0] ?? initials}
-            </span>
+      {/* Header do drawer — seletor de empresa */}
+      <div className="bg-[#1565C0] px-4 pt-4 pb-3 flex-shrink-0">
+        {/* Linha superior: logo empresa + nome + fechar */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Logo empresa */}
+            <div className="w-11 h-11 rounded-full bg-white flex-shrink-0 flex items-center justify-center overflow-hidden shadow">
+              {activeCompany?.logoUrl ? (
+                <img src={activeCompany.logoUrl} alt={activeCompany.fantasyName} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-[#1565C0] font-bold text-lg leading-none">
+                  {(activeCompany?.fantasyName?.[0] ?? "O").toUpperCase()}
+                </span>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="text-white font-semibold text-sm leading-tight truncate">
+                {activeCompany?.fantasyName ?? "Selecionar empresa"}
+              </p>
+              <p className="text-white/70 text-xs truncate">{user?.name ?? ""}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-white font-semibold text-sm leading-tight">
-              {activeCompany?.fantasyName ?? user?.name ?? "Obra Play"}
-            </p>
-            <p className="text-white/70 text-xs mt-0.5">
-              {user?.name ?? ""}
-            </p>
-          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors flex-shrink-0"
+              aria-label="Fechar menu"
+            >
+              <X size={18} className="text-white" />
+            </button>
+          )}
         </div>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
-            aria-label="Fechar menu"
-          >
-            <X size={18} className="text-white" />
-          </button>
-        )}
+
+        {/* Botão seletor de empresa */}
+        <button
+          onClick={() => setCompanySheetOpen(true)}
+          className="w-full flex items-center gap-2 bg-white/10 hover:bg-white/20 transition-colors rounded-lg px-3 py-2 text-left"
+          aria-label="Trocar empresa"
+        >
+          <span className="text-white text-xs font-medium flex-1 truncate">
+            {companies.length > 1
+              ? `${companies.length} empresas vinculadas`
+              : activeCompany?.fantasyName ?? "Nenhuma empresa"}
+          </span>
+          <ChevronRight size={14} className="text-white/70 flex-shrink-0" />
+        </button>
       </div>
 
       {/* Nav items */}
@@ -174,31 +191,6 @@ function SidebarContent({ onClose }: SidebarContentProps) {
           </button>
         </div>
 
-        {/* Company switcher trigger */}
-        <div className="border-t border-[#E0E0E0]">
-          <button
-            onClick={() => setCompanySheetOpen(true)}
-            className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-[#F4F6F8] transition-colors text-left"
-            aria-label="Trocar empresa"
-          >
-            <div className="w-9 h-9 rounded-full bg-[#1565C0] flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-sm font-bold">
-                {activeCompany?.fantasyName?.[0] ?? initials}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[#1A1A2E] text-sm font-semibold truncate">
-                {activeCompany?.fantasyName ?? "Selecionar empresa"}
-              </p>
-              {activeCompany && (
-                <p className="text-[#607D8B] text-xs truncate">
-                  Prestador de serviço
-                </p>
-              )}
-            </div>
-            <ChevronRight size={16} className="text-[#9E9E9E] flex-shrink-0" />
-          </button>
-        </div>
       </div>
 
       {/* Bottom Sheet — seletor de empresa */}
@@ -259,17 +251,18 @@ function SidebarContent({ onClose }: SidebarContentProps) {
               )}
             </ul>
 
-            {/* Adicionar negócio */}
+            {/* Adicionar empresa */}
             <div className="border-t border-[#F0F0F0] mx-4" />
             <button
               onClick={() => {
                 setCompanySheetOpen(false)
-                router.push("/onboarding")
+                onClose?.()
+                router.push("/dashboard/empresas/nova")
               }}
               className="w-full flex items-center gap-3 px-5 py-4 text-[#1565C0] hover:bg-[#E3F2FD] transition-colors"
             >
               <Plus size={18} className="text-[#1565C0]" />
-              <span className="text-sm font-semibold">Adicionar negócio</span>
+              <span className="text-sm font-semibold">Adicionar empresa</span>
             </button>
 
             {/* safe area bottom */}

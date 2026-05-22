@@ -62,6 +62,14 @@ const MOCK_COMPANIES: Company[] = [
     city: "Curitiba",
     state: "PR",
   },
+  {
+    id: "cmp-002",
+    fantasyName: "Reforma Fácil",
+    companyName: "Reforma Fácil Serviços Ltda",
+    cnpj: "98.765.432/0001-10",
+    city: "São Paulo",
+    state: "SP",
+  },
 ]
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -77,8 +85,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!found) throw new Error("E-mail ou senha inválidos")
     const { password: _, ...userData } = found
     setUser(userData)
-    // Simulate user already has a company (for returning users)
-    // New users won't have companies set
+    setCompanies(MOCK_COMPANIES)
+    setActiveCompanyState(MOCK_COMPANIES[0])
   }, [])
 
   const logout = useCallback(() => {
