@@ -2,35 +2,19 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { ArrowLeft, Loader2, MapPin, Ruler, Calendar, User, HardHat } from "lucide-react"
+import { ArrowLeft, Loader2, MapPin, Ruler, Calendar, HardHat, Pencil, PowerOff } from "lucide-react"
 import { authFetch } from "@/lib/auth-fetch"
+import { toast } from "sonner"
 
 interface Obra {
-  id: string
-  name: string
-  status: string
-  type?: string
-  area_m2?: number
-  start_date?: string
-  expected_end_date?: string
-  is_own: boolean
-  client_name?: string
-  client_type?: string
-  delivery_street?: string
-  delivery_number?: string
-  delivery_complement?: string
-  delivery_neighbourhood?: string
-  delivery_city?: string
-  delivery_state?: string
-  delivery_zipcode?: string
+  id: string; name: string; status: string; type?: string; area_m2?: number
+  start_date?: string; expected_end_date?: string; is_own: boolean
+  client_name?: string; client_type?: string; cover_url?: string
+  delivery_street?: string; delivery_number?: string; delivery_complement?: string
+  delivery_neighbourhood?: string; delivery_city?: string; delivery_state?: string; delivery_zipcode?: string
   same_billing_address: boolean
-  billing_street?: string
-  billing_number?: string
-  billing_complement?: string
-  billing_neighbourhood?: string
-  billing_city?: string
-  billing_state?: string
-  billing_zipcode?: string
+  billing_street?: string; billing_number?: string; billing_complement?: string
+  billing_neighbourhood?: string; billing_city?: string; billing_state?: string; billing_zipcode?: string
   notes?: string
 }
 
@@ -82,6 +66,8 @@ export default function ObraDetalhePage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [tab, setTab] = useState<Tab>("Dados")
+  const [deactivating, setDeactivating] = useState(false)
+  const [confirmDeactivate, setConfirmDeactivate] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -91,6 +77,28 @@ export default function ObraDetalhePage() {
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false))
   }, [id])
+
+  async function handleDeactivate() {
+    if (!confirmDeactivate) { setConfirmDeactivate(true); return }
+    setDeactivating(true)
+    try {
+      const newStatus = obra?.status === "Cancelada" ? "Orçamento" : "Cancelada"
+      const res = await authFetch(`/api/obras/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...obra, status: newStatus }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setObra((prev) => prev ? { ...prev, status: newStatus } : prev)
+      setConfirmDeactivate(false)
+      toast.success(newStatus === "Cancelada" ? "Obra cancelada" : "Obra reativada")
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setDeactivating(false)
+    }
+  }
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
@@ -106,105 +114,110 @@ export default function ObraDetalhePage() {
 
   const cfg = STATUS_CONFIG[obra.status] ?? { label: obra.status, color: "#757575", bg: "#F5F5F5" }
   const location = [obra.delivery_city, obra.delivery_state].filter(Boolean).join(" - ")
+  const isCancelled = obra.status === "Cancelada"
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] flex flex-col">
-      {/* Header */}
-      <div className="bg-[#1565C0] flex flex-col flex-shrink-0">
-        <div className="flex items-center px-2 pt-2" style={{ height: 52 }}>
-          <button onClick={() => router.back()} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors" aria-label="Voltar">
+
+      {/* Hero: foto de capa ou header azul */}
+      <div className="relative flex-shrink-0" style={{ minHeight: 160 }}>
+        {obra.cover_url ? (
+          <>
+            <img src={obra.cover_url} alt="Capa da obra" className="w-full object-cover" style={{ height: 160 }} />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/60" />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-[#1565C0]" />
+        )}
+
+        {/* Nav bar sobreposta */}
+        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-2 pt-2" style={{ height: 52 }}>
+          <button onClick={() => router.back()}
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-black/20 hover:bg-black/30 transition-colors" aria-label="Voltar">
             <ArrowLeft size={20} className="text-white" />
           </button>
-          <span className="flex-1 font-medium text-white ml-1 truncate" style={{ fontSize: "1rem" }}>Detalhe da Obra</span>
-          <span className="rounded-full px-3 py-0.5 text-xs font-semibold mr-2 flex-shrink-0" style={{ color: cfg.color, backgroundColor: cfg.bg }}>
-            {cfg.label}
-          </span>
-        </div>
-
-        {/* Nome + info resumida */}
-        <div className="px-4 pb-4 pt-1">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-              <HardHat size={18} className="text-white" />
-            </div>
-            <h1 className="text-white font-bold leading-tight" style={{ fontSize: "1.1rem" }}>{obra.name}</h1>
-          </div>
-          <div className="flex items-center gap-4 flex-wrap mt-2">
-            {location && (
-              <span className="flex items-center gap-1 text-white/80 text-xs">
-                <MapPin size={11} /> {location}
-              </span>
-            )}
-            {obra.area_m2 && (
-              <span className="flex items-center gap-1 text-white/80 text-xs">
-                <Ruler size={11} /> {obra.area_m2} m²
-              </span>
-            )}
-            {obra.start_date && (
-              <span className="flex items-center gap-1 text-white/80 text-xs">
-                <Calendar size={11} /> {new Date(obra.start_date).toLocaleDateString("pt-BR")}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-t border-white/20">
-          {TABS.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`flex-1 py-2.5 text-xs font-semibold transition-colors ${tab === t ? "text-white border-b-2 border-white" : "text-white/60"}`}
-            >
-              {t}
+          <div className="flex items-center gap-2">
+            <button onClick={() => router.push(`/dashboard/obras/${id}/editar`)}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-full bg-white/20 hover:bg-white/30 transition-colors text-white text-xs font-semibold">
+              <Pencil size={13} /> Editar
             </button>
-          ))}
+            <button onClick={handleDeactivate} disabled={deactivating}
+              className={`flex items-center gap-1.5 h-8 px-3 rounded-full transition-colors text-xs font-semibold ${confirmDeactivate ? "bg-red-500 text-white" : "bg-white/20 hover:bg-white/30 text-white"}`}>
+              {deactivating ? <Loader2 size={13} className="animate-spin" /> : <PowerOff size={13} />}
+              {confirmDeactivate ? "Confirmar" : isCancelled ? "Reativar" : "Cancelar"}
+            </button>
+          </div>
+        </div>
+
+        {/* Nome e infos sobre a imagem */}
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-3 pt-6">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              {!obra.cover_url && (
+                <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <HardHat size={18} className="text-white" />
+                </div>
+              )}
+              <h1 className="text-white font-bold leading-tight drop-shadow" style={{ fontSize: "1.1rem" }}>{obra.name}</h1>
+            </div>
+            <span className="rounded-full px-3 py-0.5 text-xs font-semibold flex-shrink-0" style={{ color: cfg.color, backgroundColor: cfg.bg }}>
+              {cfg.label}
+            </span>
+          </div>
+          <div className="flex items-center gap-4 flex-wrap mt-1.5">
+            {location && <span className="flex items-center gap-1 text-white/80 text-xs drop-shadow"><MapPin size={11} /> {location}</span>}
+            {obra.area_m2 && <span className="flex items-center gap-1 text-white/80 text-xs drop-shadow"><Ruler size={11} /> {obra.area_m2} m²</span>}
+            {obra.start_date && <span className="flex items-center gap-1 text-white/80 text-xs drop-shadow"><Calendar size={11} /> {new Date(obra.start_date).toLocaleDateString("pt-BR")}</span>}
+          </div>
         </div>
       </div>
 
-      {/* Conteúdo da tab */}
-      <div className="flex-1 overflow-y-auto px-3 py-3">
+      {/* Confirmação de cancelamento */}
+      {confirmDeactivate && (
+        <div className="bg-red-50 border-b border-red-200 px-4 py-2 flex items-center justify-between gap-2">
+          <p className="text-xs text-red-700 font-medium">{isCancelled ? "Reativar esta obra?" : "Cancelar esta obra?"}</p>
+          <button onClick={() => setConfirmDeactivate(false)} className="text-xs text-red-500 underline">Cancelar</button>
+        </div>
+      )}
 
+      {/* Tabs */}
+      <div className="bg-[#1565C0] flex flex-shrink-0">
+        {TABS.map((t) => (
+          <button key={t} onClick={() => setTab(t)}
+            className={`flex-1 py-2.5 text-xs font-semibold transition-colors ${tab === t ? "text-white border-b-2 border-white" : "text-white/60"}`}>
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {/* Conteúdo */}
+      <div className="flex-1 overflow-y-auto px-3 py-3">
         {tab === "Dados" && (
           <div className="flex flex-col gap-3">
-            {/* Card principal */}
             <div className="bg-white rounded-xl shadow-sm p-4">
               <p className="text-xs font-semibold text-[#9E9E9E] mb-2 tracking-wide">INFORMAÇÕES GERAIS</p>
               <InfoRow label="Tipo de obra" value={obra.type} />
               <InfoRow label="Cliente" value={obra.is_own ? "Obra própria" : (obra.client_name ?? "—")} />
               <InfoRow label="Status" value={obra.status} />
               <InfoRow label="Área" value={obra.area_m2 ? `${obra.area_m2} m²` : null} />
-              <InfoRow
-                label="Data de início"
-                value={obra.start_date ? new Date(obra.start_date).toLocaleDateString("pt-BR") : null}
-              />
-              <InfoRow
-                label="Previsão de conclusão"
-                value={obra.expected_end_date ? new Date(obra.expected_end_date).toLocaleDateString("pt-BR") : null}
-              />
+              <InfoRow label="Data de início" value={obra.start_date ? new Date(obra.start_date).toLocaleDateString("pt-BR") : null} />
+              <InfoRow label="Previsão de conclusão" value={obra.expected_end_date ? new Date(obra.expected_end_date).toLocaleDateString("pt-BR") : null} />
             </div>
 
-            {/* Endereços */}
             <div className="bg-white rounded-xl shadow-sm p-4">
               <p className="text-xs font-semibold text-[#9E9E9E] mb-3 tracking-wide">ENDEREÇOS</p>
               <div className="mb-3">
-                <p className="text-xs font-medium text-[#757575] mb-1 flex items-center gap-1">
-                  <MapPin size={11} /> Entrega
-                </p>
+                <p className="text-xs font-medium text-[#757575] mb-1 flex items-center gap-1"><MapPin size={11} /> Entrega</p>
                 <AddressBlock prefix="delivery" obra={obra} />
               </div>
               <div className="border-t border-[#F5F5F5] pt-3">
-                <p className="text-xs font-medium text-[#757575] mb-1 flex items-center gap-1">
-                  <MapPin size={11} /> Cobrança
-                </p>
+                <p className="text-xs font-medium text-[#757575] mb-1 flex items-center gap-1"><MapPin size={11} /> Cobrança</p>
                 {obra.same_billing_address
                   ? <p className="text-sm text-[#9E9E9E]">Mesmo endereço de entrega</p>
-                  : <AddressBlock prefix="billing" obra={obra} />
-                }
+                  : <AddressBlock prefix="billing" obra={obra} />}
               </div>
             </div>
 
-            {/* Observações */}
             {obra.notes && obra.notes.trim() && (
               <div className="bg-white rounded-xl shadow-sm p-4">
                 <p className="text-xs font-semibold text-[#9E9E9E] mb-2 tracking-wide">OBSERVAÇÕES</p>

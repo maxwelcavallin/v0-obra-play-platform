@@ -55,6 +55,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         billing_city = ${b.billing_city ?? null},
         billing_state = ${b.billing_state ? String(b.billing_state).slice(0,2) : null},
         notes = ${b.notes ?? null},
+        cover_url = ${b.cover_url ?? null},
         updated_at = now()
       WHERE id = ${id}
       RETURNING *
