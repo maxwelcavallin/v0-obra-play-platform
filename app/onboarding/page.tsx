@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, CheckCircle, Camera } from "lucide-react"
+import { ArrowLeft, Loader2, CheckCircle } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
 import Image from "next/image"
@@ -496,29 +496,6 @@ function Step3({
         </div>
       </div>
 
-      {/* Foto de perfil */}
-      <div>
-        <p className="text-sm text-[#212121] font-medium mb-3">Foto de perfil do negócio</p>
-        <div className="flex justify-center">
-          <div className="relative">
-            <div className="w-20 h-20 rounded-full bg-[#EEEEEE] flex items-center justify-center">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9E9E9E" strokeWidth="1.5">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                <polyline points="9 22 9 12 15 12 15 22"/>
-              </svg>
-            </div>
-            <button
-              type="button"
-              className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-white border border-[#E0E0E0] flex items-center justify-center shadow-sm"
-              aria-label="Adicionar foto"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1565C0" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
