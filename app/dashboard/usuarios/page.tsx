@@ -3,9 +3,9 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import {
-  MoreVertical, UserPlus, CheckCircle, Copy, Check, Link2, Shield,
+  MoreVertical, UserPlus, CheckCircle, Copy, Check, Link2, Shield, ChevronRight, Plus,
 } from "lucide-react"
-import { MOCK_COMPANY_USERS, type CompanyUser, type UserRole } from "@/lib/mock-data"
+import { MOCK_COMPANY_USERS, MOCK_PROFILES, type CompanyUser, type UserRole, type PermissionProfile } from "@/lib/mock-data"
 import { toast } from "sonner"
 
 const ROLE_COLORS: Record<UserRole, string> = {
@@ -122,6 +122,109 @@ function InviteModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+// ─── Modal Permissões ─────────────────────────────────────────
+function PermissionsModal({
+  user,
+  onClose,
+  onCreateNew,
+}: {
+  user: CompanyUser
+  onClose: () => void
+  onCreateNew: () => void
+}) {
+  const [profiles] = useState<PermissionProfile[]>(MOCK_PROFILES)
+  const [selected, setSelected] = useState<string>(
+    profiles.find((p) => p.name === user.role)?.id ?? profiles[0]?.id ?? ""
+  )
+
+  function handleApply() {
+    const profile = profiles.find((p) => p.id === selected)
+    if (profile) toast.success(`Perfil "${profile.name}" aplicado a ${user.name}`)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
+      <div
+        className="w-full bg-white rounded-t-2xl shadow-2xl flex flex-col"
+        style={{ maxWidth: 480, maxHeight: "75vh" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 rounded-full bg-[#E0E0E0]" />
+        </div>
+
+        <div className="px-5 pb-3 flex-shrink-0">
+          <h2 className="font-semibold text-[#212121]" style={{ fontSize: "1rem" }}>
+            Permissões de {user.name}
+          </h2>
+          <p className="text-[#9E9E9E] mt-0.5" style={{ fontSize: "0.75rem" }}>
+            Selecione um perfil de acesso existente
+          </p>
+        </div>
+
+        {/* Lista de perfis */}
+        <div className="flex-1 overflow-y-auto px-4 pb-2">
+          {profiles.map((profile) => (
+            <button
+              key={profile.id}
+              type="button"
+              onClick={() => setSelected(profile.id)}
+              className="w-full flex items-center gap-3 py-3 border-b border-[#F5F5F5] text-left"
+            >
+              {/* Radio visual */}
+              <div
+                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                  selected === profile.id ? "border-[#1565C0]" : "border-[#BDBDBD]"
+                }`}
+              >
+                {selected === profile.id && (
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#1565C0]" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-[#212121]" style={{ fontSize: "0.875rem" }}>
+                  {profile.name}
+                </p>
+                <p className="text-[#9E9E9E] truncate" style={{ fontSize: "0.7rem" }}>
+                  {Object.entries(profile.permissions)
+                    .filter(([, v]) => Object.values(v).some(Boolean))
+                    .map(([k]) => k)
+                    .slice(0, 3)
+                    .join(", ")}
+                  {Object.entries(profile.permissions).filter(([, v]) => Object.values(v).some(Boolean)).length > 3
+                    ? "..." : ""}
+                </p>
+              </div>
+            </button>
+          ))}
+
+          {/* Criar novo perfil */}
+          <button
+            type="button"
+            onClick={onCreateNew}
+            className="w-full flex items-center gap-3 py-3 text-[#1565C0]"
+          >
+            <div className="w-5 h-5 rounded-full border-2 border-dashed border-[#1565C0] flex items-center justify-center flex-shrink-0">
+              <Plus size={11} className="text-[#1565C0]" />
+            </div>
+            <span className="font-medium" style={{ fontSize: "0.875rem" }}>Criar novo perfil</span>
+            <ChevronRight size={14} className="ml-auto text-[#1565C0]" />
+          </button>
+        </div>
+
+        {/* Botão aplicar */}
+        <div className="flex-shrink-0 border-t border-[#EEEEEE]" style={{ padding: "12px 16px 28px" }}>
+          <button type="button" onClick={handleApply} className="op-btn-primary">
+            APLICAR PERFIL
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Menu 3 pontos ────────────────────────────────────────────
 function UserMenu({ user, onClose, onManagePerms, onRemove }: {
   user: CompanyUser
@@ -163,6 +266,7 @@ export default function UsuariosPage() {
   const [users, setUsers] = useState<CompanyUser[]>(MOCK_COMPANY_USERS)
   const [inviteOpen, setInviteOpen] = useState(false)
   const [menuUser, setMenuUser] = useState<CompanyUser | null>(null)
+  const [permUser, setPermUser] = useState<CompanyUser | null>(null)
 
   function handleRemove(userId: string) {
     setUsers((prev) => prev.filter((u) => u.id !== userId))
@@ -251,8 +355,15 @@ export default function UsuariosPage() {
         <UserMenu
           user={menuUser}
           onClose={() => setMenuUser(null)}
-          onManagePerms={() => router.push("/dashboard/usuarios/perfis")}
+          onManagePerms={() => { setPermUser(menuUser); setMenuUser(null) }}
           onRemove={() => handleRemove(menuUser.id)}
+        />
+      )}
+      {permUser && (
+        <PermissionsModal
+          user={permUser}
+          onClose={() => setPermUser(null)}
+          onCreateNew={() => { setPermUser(null); router.push("/dashboard/usuarios/perfis") }}
         />
       )}
     </div>
