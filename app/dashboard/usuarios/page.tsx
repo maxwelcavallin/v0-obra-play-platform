@@ -1,12 +1,23 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
-  MoreVertical, UserPlus, CheckCircle, Copy, Check, Link2, Shield, ChevronRight, Plus,
+  MoreVertical, UserPlus, CheckCircle, Copy, Check, Link2, Shield, ChevronRight, Plus, Loader2,
 } from "lucide-react"
-import { MOCK_COMPANY_USERS, MOCK_PROFILES, type CompanyUser, type UserRole, type PermissionProfile } from "@/lib/mock-data"
+import { MOCK_PROFILES, type UserRole, type PermissionProfile } from "@/lib/mock-data"
+import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
+
+interface CompanyUser {
+  id: string
+  name: string
+  email: string
+  role: UserRole
+  status: "ativo" | "inativo"
+  is_verified: boolean
+  avatar?: string
+}
 
 const ROLE_COLORS: Record<UserRole, string> = {
   Admin:        "op-chip-primary",
@@ -263,12 +274,26 @@ function UserMenu({ user, onClose, onManagePerms, onRemove }: {
 // ─── Página principal ─────────────────────────────────────────
 export default function UsuariosPage() {
   const router = useRouter()
-  const [users, setUsers] = useState<CompanyUser[]>(MOCK_COMPANY_USERS)
+  const { activeCompany } = useAuth()
+  const [users, setUsers] = useState<CompanyUser[]>([])
+  const [loadingUsers, setLoadingUsers] = useState(true)
   const [inviteOpen, setInviteOpen] = useState(false)
   const [menuUser, setMenuUser] = useState<CompanyUser | null>(null)
   const [permUser, setPermUser] = useState<CompanyUser | null>(null)
 
-  function handleRemove(userId: string) {
+  useEffect(() => {
+    if (!activeCompany?.id) return
+    setLoadingUsers(true)
+    fetch(`/api/empresas/${activeCompany.id}/usuarios`)
+      .then((r) => r.json())
+      .then((data) => setUsers(Array.isArray(data) ? data : []))
+      .catch(() => setUsers([]))
+      .finally(() => setLoadingUsers(false))
+  }, [activeCompany?.id])
+
+  async function handleRemove(userId: string) {
+    if (!activeCompany?.id) return
+    await fetch(`/api/empresas/${activeCompany.id}/usuarios/${userId}`, { method: "DELETE" })
     setUsers((prev) => prev.filter((u) => u.id !== userId))
     toast.success("Usuário removido")
   }
@@ -289,7 +314,17 @@ export default function UsuariosPage() {
       </div>
 
       <div className="px-3 py-3 flex flex-col gap-2">
-        {users.map((u) => (
+        {loadingUsers && (
+          <div className="flex justify-center py-12">
+            <Loader2 size={28} className="animate-spin text-[#1565C0]" />
+          </div>
+        )}
+        {!loadingUsers && users.length === 0 && (
+          <div className="text-center py-12 text-[#9E9E9E]" style={{ fontSize: "0.875rem" }}>
+            Nenhum usuário cadastrado
+          </div>
+        )}
+        {!loadingUsers && users.map((u) => (
           <div key={u.id} className="bg-white rounded-lg shadow-sm flex items-center gap-3 px-3 py-3">
             {/* Avatar + status dot */}
             <div className="relative flex-shrink-0">
@@ -307,7 +342,7 @@ export default function UsuariosPage() {
                 <span className="font-medium text-[#212121] truncate" style={{ fontSize: "0.875rem" }}>
                   {u.name}
                 </span>
-                {u.isVerified && (
+                {u.is_verified && (
                   <CheckCircle size={13} className="text-[#1565C0] flex-shrink-0" />
                 )}
               </div>

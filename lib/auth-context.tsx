@@ -42,35 +42,18 @@ interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
-// Mock users for demo
-const MOCK_USERS: (User & { password: string })[] = [
-  {
-    id: "usr-001",
-    name: "Carlos Mendes",
-    email: "carlos@construtora.com",
-    phone: "(41) 99999-0000",
-    password: "senha123",
-  },
-]
-
-const MOCK_COMPANIES: Company[] = [
-  {
-    id: "cmp-001",
-    fantasyName: "Construtora Mendes",
-    companyName: "Construtora Mendes Ltda",
-    cnpj: "12.345.678/0001-90",
-    city: "Curitiba",
-    state: "PR",
-  },
-  {
-    id: "cmp-002",
-    fantasyName: "Reforma Fácil",
-    companyName: "Reforma Fácil Serviços Ltda",
-    cnpj: "98.765.432/0001-10",
-    city: "São Paulo",
-    state: "SP",
-  },
-]
+// Mapeia row do banco (snake_case) para interface Company (camelCase)
+function mapCompany(row: any): Company {
+  return {
+    id: row.id,
+    fantasyName: row.fantasy_name,
+    companyName: row.company_name ?? "",
+    cnpj: row.cnpj ?? "",
+    city: row.city ?? "",
+    state: row.state ?? "",
+    logoUrl: row.logo_url ?? undefined,
+  }
+}
 
 function loadSession(): { user: User | null; companies: Company[]; activeCompany: Company | null } {
   if (typeof window === "undefined") return { user: null, companies: [], activeCompany: null }
@@ -96,19 +79,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [activeCompany, setActiveCompanyState] = useState<Company | null>(session.activeCompany)
 
   const login = useCallback(async (email: string, password: string) => {
-    await new Promise((r) => setTimeout(r, 800))
-    const found = MOCK_USERS.find(
-      (u) => u.email === email && u.password === password
-    )
-    if (!found) throw new Error("E-mail ou senha inválidos")
-    const { password: _, ...userData } = found
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error ?? "Erro ao entrar")
+
+    const userData: User = data.user
+    const mappedCompanies: Company[] = (data.companies ?? []).map(mapCompany)
+    const active = mappedCompanies[0] ?? null
+
     setUser(userData)
-    setCompanies(MOCK_COMPANIES)
-    setActiveCompanyState(MOCK_COMPANIES[0])
-    saveSession(userData, MOCK_COMPANIES, MOCK_COMPANIES[0])
+    setCompanies(mappedCompanies)
+    setActiveCompanyState(active)
+    saveSession(userData, mappedCompanies, active)
   }, [])
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {})
     setUser(null)
     setActiveCompanyState(null)
     setCompanies([])
@@ -116,18 +106,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const register = useCallback(async (data: RegisterData) => {
-    await new Promise((r) => setTimeout(r, 800))
-    if (MOCK_USERS.find((u) => u.email === data.email)) {
-      throw new Error("E-mail já cadastrado")
-    }
-    const newUser: User = {
-      id: `usr-${Date.now()}`,
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-    }
-    MOCK_USERS.push({ ...newUser, password: data.password })
-    setUser(newUser)
+    const res = await fetch("/api/auth/cadastro", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    })
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error ?? "Erro ao cadastrar")
+
+    const userData: User = json.user
+    setUser(userData)
+    setCompanies([])
+    setActiveCompanyState(null)
+    saveSession(userData, [], null)
   }, [])
 
   const setActiveCompany = useCallback((company: Company) => {
@@ -138,13 +129,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
   }, [user])
 
-  const completeOnboarding = useCallback((company: Company) => {
+  const completeOnboarding = useCallback(async (company: Company) => {
+    // Persiste no banco
+    const res = await fetch("/api/empresas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fantasy_name: company.fantasyName,
+        company_name: company.companyName,
+        cnpj: company.cnpj,
+        logo_url: company.logoUrl,
+        city: company.city,
+        state: company.state,
+      }),
+    })
+
+    let saved = company
+    if (res.ok) {
+      const row = await res.json()
+      saved = mapCompany(row)
+    }
+
     setCompanies((prev) => {
-      const updated = [...prev, company]
-      saveSession(user, updated, company)
+      const updated = [...prev, saved]
+      saveSession(user, updated, saved)
       return updated
     })
-    setActiveCompanyState(company)
+    setActiveCompanyState(saved)
   }, [user])
 
   return (

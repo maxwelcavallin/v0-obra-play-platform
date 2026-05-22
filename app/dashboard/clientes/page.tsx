@@ -1,12 +1,24 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Search, Plus, X } from "lucide-react"
-import { MOCK_CLIENTS, type Client } from "@/lib/mock-data"
+import { Search, Plus, X, Loader2 } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
+
+interface Client {
+  id: string
+  type: "PF" | "PJ"
+  full_name?: string
+  fantasy_name?: string
+  company_name?: string
+  cpf?: string
+  cnpj?: string
+  whatsapp?: string
+  status: string
+}
 
 function ClientAvatar({ client }: { client: Client }) {
-  const name = client.type === "PF" ? client.fullName : client.fantasyName
+  const name = client.type === "PF" ? client.full_name : client.fantasy_name
   const initial = (name?.[0] ?? "C").toUpperCase()
   const color = client.type === "PF" ? "#1565C0" : "#FF9800"
   return (
@@ -18,17 +30,30 @@ function ClientAvatar({ client }: { client: Client }) {
 
 export default function ClientesPage() {
   const router = useRouter()
+  const { activeCompany } = useAuth()
+  const [clients, setClients] = useState<Client[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+
+  useEffect(() => {
+    if (!activeCompany?.id) return
+    setLoading(true)
+    fetch(`/api/clientes?company_id=${activeCompany.id}`)
+      .then((r) => r.json())
+      .then((data) => setClients(Array.isArray(data) ? data : []))
+      .catch(() => setClients([]))
+      .finally(() => setLoading(false))
+  }, [activeCompany?.id])
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim()
-    if (!q) return MOCK_CLIENTS
-    return MOCK_CLIENTS.filter((c) => {
-      const name = (c.fullName ?? c.fantasyName ?? "").toLowerCase()
+    if (!q) return clients
+    return clients.filter((c) => {
+      const name = (c.full_name ?? c.fantasy_name ?? "").toLowerCase()
       const doc = (c.cpf ?? c.cnpj ?? "").replace(/\D/g, "")
       return name.includes(q) || doc.includes(q.replace(/\D/g, ""))
     })
-  }, [search])
+  }, [search, clients])
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] flex flex-col">
@@ -36,7 +61,7 @@ export default function ClientesPage() {
       {/* Sub-header */}
       <div className="bg-white border-b border-[#EEEEEE] flex items-center px-3 relative flex-shrink-0" style={{ height: 52 }}>
         <span className="font-medium text-[#212121]" style={{ fontSize: "1rem" }}>Clientes</span>
-        <span className="ml-2 op-chip op-chip-neutral">{MOCK_CLIENTS.length}</span>
+        <span className="ml-2 op-chip op-chip-neutral">{clients.length}</span>
       </div>
 
       {/* Barra de busca */}
@@ -57,13 +82,18 @@ export default function ClientesPage() {
 
       {/* Lista */}
       <div className="flex-1 px-3 py-3 flex flex-col gap-2">
-        {filtered.length === 0 && (
-          <div className="text-center py-12 text-[#9E9E9E]" style={{ fontSize: "0.875rem" }}>
-            Nenhum cliente encontrado
+        {loading && (
+          <div className="flex justify-center py-12">
+            <Loader2 size={28} className="animate-spin text-[#1565C0]" />
           </div>
         )}
-        {filtered.map((c) => {
-          const name = c.type === "PF" ? c.fullName : c.fantasyName
+        {!loading && filtered.length === 0 && (
+          <div className="text-center py-12 text-[#9E9E9E]" style={{ fontSize: "0.875rem" }}>
+            {clients.length === 0 ? "Nenhum cliente cadastrado ainda" : "Nenhum cliente encontrado"}
+          </div>
+        )}
+        {!loading && filtered.map((c) => {
+          const name = c.type === "PF" ? c.full_name : c.fantasy_name
           const doc  = c.type === "PF" ? c.cpf : c.cnpj
           return (
             <button
@@ -80,14 +110,9 @@ export default function ClientesPage() {
                   </span>
                 </div>
                 <p className="text-[#9E9E9E] truncate" style={{ fontSize: "0.75rem", marginTop: 1 }}>{doc}</p>
-                <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                  {c.whatsapp && <span className="text-[#757575]" style={{ fontSize: "0.7rem" }}>{c.whatsapp}</span>}
-                  {c.lastWork && (
-                    <span className="text-[#9E9E9E] truncate" style={{ fontSize: "0.7rem" }}>
-                      Última obra: {c.lastWork}
-                    </span>
-                  )}
-                </div>
+                {c.whatsapp && (
+                  <span className="text-[#757575]" style={{ fontSize: "0.7rem" }}>{c.whatsapp}</span>
+                )}
               </div>
             </button>
           )

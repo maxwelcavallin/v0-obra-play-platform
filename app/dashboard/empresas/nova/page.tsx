@@ -4,18 +4,59 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { EmpresaForm } from "@/components/empresas/empresa-form"
+import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 
 export default function NovaEmpresaPage() {
   const router = useRouter()
+  const { completeOnboarding } = useAuth()
   const [loading, setLoading] = useState(false)
 
-  async function handleSave(data: Parameters<typeof EmpresaForm>[0]["onSave"] extends (d: infer D) => void ? D : never) {
+  async function handleSave(data: any) {
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 900))
-    setLoading(false)
-    toast.success("Empresa criada com sucesso!")
-    router.push("/dashboard/empresas")
+    try {
+      const res = await fetch("/api/empresas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fantasy_name: data.fantasyName,
+          company_name: data.companyName,
+          cnpj: data.cnpj,
+          logo_url: data.logoUrl,
+          zipcode: data.cep,
+          street: data.address,
+          number: data.number,
+          complement: data.complement,
+          neighbourhood: data.neighborhood,
+          city: data.city,
+          state: data.state,
+          whatsapp: data.whatsapp,
+          email: data.email,
+          instagram: data.instagram,
+          website: data.website,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? "Erro ao criar empresa")
+
+      // Atualiza contexto com a nova empresa
+      await completeOnboarding({
+        id: json.id,
+        fantasyName: json.fantasy_name,
+        companyName: json.company_name ?? "",
+        cnpj: json.cnpj ?? "",
+        city: json.city ?? "",
+        state: json.state ?? "",
+        logoUrl: json.logo_url,
+      })
+
+      toast.success("Empresa criada com sucesso!")
+      router.push("/dashboard/empresas")
+    } catch (err: any) {
+      toast.error(err.message ?? "Erro ao criar empresa")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

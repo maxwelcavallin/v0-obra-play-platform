@@ -4,7 +4,8 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Instagram, Mail, Loader2 } from "lucide-react"
 import { OpInput } from "@/components/ui/op-input"
-import { fmtCPF, fmtCNPJ, fmtPhone, fmtCEP, fmtDate, type Client, type ClientType } from "@/lib/mock-data"
+import { fmtCPF, fmtCNPJ, fmtPhone, fmtCEP, fmtDate, type ClientType } from "@/lib/mock-data"
+import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 
 const STATES = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"]
@@ -29,6 +30,7 @@ export default function NovoClientePage() {
   const [type, setType] = useState<ClientType>("PF")
   const [form, setForm] = useState<FormData>(EMPTY_PF)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const { activeCompany } = useAuth()
   const [loading, setLoading] = useState(false)
   const [cnpjLoading, setCnpjLoading] = useState(false)
   const [cepLoading, setCepLoading] = useState(false)
@@ -121,11 +123,45 @@ export default function NovoClientePage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!validate()) return
+    if (!activeCompany?.id) { toast.error("Selecione uma empresa antes de cadastrar"); return }
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 800))
-    setLoading(false)
-    toast.success("Cliente criado com sucesso!")
-    router.push("/dashboard/clientes")
+    try {
+      const res = await fetch("/api/clientes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_id: activeCompany.id,
+          type,
+          full_name: form.fullName ?? null,
+          fantasy_name: form.fantasyName ?? null,
+          company_name: form.companyName ?? null,
+          cpf: form.cpf ?? null,
+          cnpj: form.cnpj ?? null,
+          birth_date: form.birthDate ?? null,
+          responsible_name: form.responsibleName ?? null,
+          phone: form.phone ?? null,
+          whatsapp: form.whatsapp ?? null,
+          email: form.email ?? null,
+          instagram: form.instagram ?? null,
+          zipcode: form.cep ?? null,
+          street: form.address ?? null,
+          number: form.number ?? null,
+          complement: form.complement ?? null,
+          neighbourhood: form.neighborhood ?? null,
+          city: form.city ?? null,
+          state: form.state ?? null,
+          notes: form.notes ?? null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Erro ao salvar")
+      toast.success("Cliente cadastrado com sucesso!")
+      router.push("/dashboard/clientes")
+    } catch (err: any) {
+      toast.error(err.message ?? "Erro ao salvar cliente")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
