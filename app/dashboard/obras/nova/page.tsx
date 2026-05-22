@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, Search, X, Camera } from "lucide-react"
+import { ArrowLeft, Loader2, Search, X } from "lucide-react"
+import { CoverImagePicker } from "@/components/ui/cover-image-picker"
 import { OpInput } from "@/components/ui/op-input"
 import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/auth-fetch"
@@ -49,6 +50,7 @@ interface FormState {
   billing_state: string
   notes: string
   cover_url: string
+  cover_position: string
 }
 
 const EMPTY: FormState = {
@@ -60,7 +62,7 @@ const EMPTY: FormState = {
   same_billing_address: true,
   billing_zipcode: "", billing_street: "", billing_number: "",
   billing_complement: "", billing_neighbourhood: "", billing_city: "", billing_state: "",
-  notes: "", cover_url: "",
+  notes: "", cover_url: "", cover_position: "50% 50%",
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -74,7 +76,6 @@ export default function NovaObraPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [cepLoading, setCepLoading] = useState(false)
-  const coverInputRef = useRef<HTMLInputElement>(null)
 
   // Select de cliente
   const [clients, setClients] = useState<ClientOption[]>([])
@@ -203,6 +204,7 @@ export default function NovaObraPage() {
           billing_state: form.same_billing_address ? form.delivery_state || null : form.billing_state || null,
           notes: form.notes || null,
           cover_url: form.cover_url || null,
+          cover_position: form.cover_position || "50% 50%",
         }),
       })
       const data = await res.json()
@@ -232,45 +234,11 @@ export default function NovaObraPage() {
 
         {/* Upload de foto de capa */}
         <SectionLabel>FOTO DE CAPA</SectionLabel>
-        <div
-          className="relative w-full rounded-xl overflow-hidden mb-2 cursor-pointer border-2 border-dashed border-[#E0E0E0] hover:border-[#1565C0] transition-colors"
-          style={{ height: 160 }}
-          onClick={() => coverInputRef.current?.click()}
-        >
-          {form.cover_url ? (
-            <>
-              <img src={form.cover_url} alt="Capa" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                <Camera size={28} className="text-white" />
-              </div>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); set("cover_url", "") }}
-                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 flex items-center justify-center"
-                aria-label="Remover foto"
-              >
-                <X size={14} className="text-white" />
-              </button>
-            </>
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-[#9E9E9E]">
-              <Camera size={28} />
-              <span style={{ fontSize: "0.8rem" }}>Toque para adicionar foto de capa</span>
-            </div>
-          )}
-        </div>
-        <input
-          ref={coverInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (!file) return
-            const reader = new FileReader()
-            reader.onload = (ev) => set("cover_url", ev.target?.result as string)
-            reader.readAsDataURL(file)
-          }}
+        <CoverImagePicker
+          value={form.cover_url}
+          objectPosition={form.cover_position}
+          onChange={(url) => set("cover_url", url)}
+          onPositionChange={(pos) => set("cover_position", pos)}
         />
 
         <SectionLabel>IDENTIFICAÇÃO</SectionLabel>

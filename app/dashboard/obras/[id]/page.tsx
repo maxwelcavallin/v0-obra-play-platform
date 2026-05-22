@@ -124,7 +124,7 @@ export default function ObraDetalhePage() {
       <div className="relative flex-shrink-0" style={{ minHeight: 160 }}>
         {obra.cover_url ? (
           <>
-            <img src={obra.cover_url} alt="Capa da obra" className="w-full object-cover" style={{ height: 160 }} />
+            <img src={obra.cover_url} alt="Capa da obra" className="w-full object-cover" style={{ height: 160, objectPosition: obra.cover_position ?? "50% 50%" }} />
             <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/60" />
           </>
         ) : (

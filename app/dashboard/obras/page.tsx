@@ -21,6 +21,7 @@ interface Obra {
   client_name_pf?: string
   client_name_pj?: string
   cover_url?: string
+  cover_position?: string
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -150,7 +151,7 @@ export default function ObrasPage() {
               {/* Background: foto de capa ou degradê azul como placeholder */}
               {o.cover_url ? (
                 <>
-                  <img src={o.cover_url} alt={o.name} className="absolute inset-0 w-full h-full object-cover" />
+                  <img src={o.cover_url} alt={o.name} className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: o.cover_position ?? "50% 50%" }} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-black/10" />
                 </>
               ) : (

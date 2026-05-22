@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
         same_billing_address,
         billing_zipcode, billing_street, billing_number, billing_complement,
         billing_neighbourhood, billing_city, billing_state,
-        notes, cover_url
+        notes, cover_url, cover_position
       ) VALUES (
         ${b.company_id}, ${b.client_id ?? null}, ${b.is_own ?? false}, ${b.name}, ${b.status ?? "Orçamento"},
         ${b.type ?? null}, ${b.area_m2 ?? null},
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
         ${b.billing_zipcode ?? null}, ${b.billing_street ?? null}, ${b.billing_number ?? null},
         ${b.billing_complement ?? null}, ${b.billing_neighbourhood ?? null},
         ${b.billing_city ?? null}, ${b.billing_state ? String(b.billing_state).slice(0,2) : null},
-        ${b.notes ?? null}, ${b.cover_url ?? null}
+        ${b.notes ?? null}, ${b.cover_url ?? null}, ${b.cover_position ?? "50% 50%"}
       )
       RETURNING *
     `
