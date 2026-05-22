@@ -169,6 +169,8 @@ export default function NovaObraPage() {
     if (!form.name.trim()) e.name = "Nome da obra obrigatório"
     if (!form.is_own && !form.client_id) e.client_id = "Selecione um cliente ou marque como obra própria"
     setErrors(e)
+    if (e.client_id) toast.error("Vincule um cliente ou marque a obra como própria para continuar.")
+    else if (e.name) toast.error("Informe o nome da obra para continuar.")
     return Object.keys(e).length === 0
   }
 
