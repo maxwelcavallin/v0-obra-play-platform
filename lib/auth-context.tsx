@@ -31,6 +31,7 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<void>
   setActiveCompany: (company: Company) => void
   completeOnboarding: (company: Company) => void
+  updateUser: (u: Partial<User>) => void
 }
 
 interface RegisterData {
@@ -121,6 +122,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     saveSession(userData, [], null)
   }, [])
 
+  const updateUser = useCallback((partial: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev
+      const updated = { ...prev, ...partial }
+      setCompanies((comps) => {
+        saveSession(updated, comps, activeCompany)
+        return comps
+      })
+      return updated
+    })
+  }, [activeCompany])
+
   const setActiveCompany = useCallback((company: Company) => {
     setActiveCompanyState(company)
     setCompanies((prev) => {
@@ -171,6 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         register,
         setActiveCompany,
         completeOnboarding,
+        updateUser,
       }}
     >
       {children}

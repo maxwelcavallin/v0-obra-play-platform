@@ -9,7 +9,7 @@ export async function getSession() {
   if (!token) return null
 
   const rows = await sql`
-    SELECT s.*, u.id as user_id, u.name, u.email, u.phone, u.avatar
+    SELECT s.*, u.id as user_id, u.name, u.email, u.phone
     FROM sessions s
     JOIN users u ON u.id = s.user_id
     WHERE s.token = ${token}

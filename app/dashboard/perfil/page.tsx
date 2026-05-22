@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Lock, User, Mail, Phone, ChevronRight, LogOut, Loader2, Check } from "lucide-react"
+import { ArrowLeft, Lock, User, ChevronRight, LogOut, Loader2, Check } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
 import { OpInput } from "@/components/ui/op-input"
@@ -19,14 +19,14 @@ function formatPhone(v: string) {
 
 export default function PerfilPage() {
   const router = useRouter()
-  const { user, logout } = useAuth()
+  const { user, logout, updateUser } = useAuth()
 
   const [section, setSection] = useState<Section>("main")
   const [avatar, setAvatar] = useState<string | undefined>(user?.avatar)
 
   // Dados pessoais
   const [name, setName] = useState(user?.name ?? "")
-  const [email, setEmail] = useState(user?.email ?? "")
+  const [email] = useState(user?.email ?? "")
   const [phone, setPhone] = useState(user?.phone ?? "")
   const [dadosErrors, setDadosErrors] = useState<Record<string, string>>({})
   const [dadosSaving, setDadosSaving] = useState(false)
@@ -38,6 +38,18 @@ export default function PerfilPage() {
   const [confirmPass, setConfirmPass] = useState("")
   const [passErrors, setPassErrors] = useState<Record<string, string>>({})
   const [passSaving, setPassSaving] = useState(false)
+
+  // Carrega dados atuais da API ao abrir
+  useEffect(() => {
+    fetch("/api/auth/perfil")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.name) setName(data.name)
+        if (data.phone) setPhone(data.phone)
+        if (data.photo_url) setAvatar(data.photo_url)
+      })
+      .catch(() => {})
+  }, [])
 
   const initials = name
     ? name.split(" ").map((n) => n[0]).slice(0, 2).join("")
@@ -51,16 +63,26 @@ export default function PerfilPage() {
   async function saveDados() {
     const errs: Record<string, string> = {}
     if (!name.trim()) errs.name = "Nome obrigatório"
-    if (!email.trim() || !email.includes("@")) errs.email = "E-mail inválido"
-    if (!phone.trim()) errs.phone = "Telefone obrigatório"
     if (Object.keys(errs).length) { setDadosErrors(errs); return }
 
     setDadosSaving(true)
-    await new Promise((r) => setTimeout(r, 900))
-    setDadosSaving(false)
-    setDadosSaved(true)
-    toast.success("Dados atualizados com sucesso")
-    setTimeout(() => { setDadosSaved(false); setSection("main") }, 1200)
+    try {
+      const res = await fetch("/api/auth/perfil", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), phone: phone || null, photo_url: avatar ?? null }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Erro ao salvar")
+      updateUser({ name: data.name, phone: data.phone })
+      setDadosSaved(true)
+      toast.success("Dados atualizados com sucesso")
+      setTimeout(() => { setDadosSaved(false); setSection("main") }, 1200)
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setDadosSaving(false)
+    }
   }
 
   async function saveSenha() {
@@ -71,11 +93,28 @@ export default function PerfilPage() {
     if (Object.keys(errs).length) { setPassErrors(errs); return }
 
     setPassSaving(true)
-    await new Promise((r) => setTimeout(r, 900))
-    setPassSaving(false)
-    setCurrentPass(""); setNewPass(""); setConfirmPass("")
-    toast.success("Senha atualizada com sucesso")
-    setSection("main")
+    try {
+      const res = await fetch("/api/auth/perfil", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          phone: phone || null,
+          photo_url: avatar ?? null,
+          current_password: currentPass,
+          new_password: newPass,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Erro ao alterar senha")
+      setCurrentPass(""); setNewPass(""); setConfirmPass("")
+      toast.success("Senha atualizada com sucesso")
+      setSection("main")
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setPassSaving(false)
+    }
   }
 
   /* ─── Main ─── */
