@@ -32,21 +32,26 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const { fantasy_name, company_name, cnpj, logo_url, zipcode, street, number, complement,
-            neighbourhood, city, state, whatsapp, email, instagram, website } = body
+            neighbourhood, city, state, whatsapp, phone_primary, phone_secondary,
+            email, instagram, website } = body
 
     if (!fantasy_name) {
       return NextResponse.json({ error: "Nome fantasia é obrigatório" }, { status: 400 })
     }
 
+    // CHAR(2) — garante no máximo 2 caracteres para o campo state
+    const stateVal = state ? String(state).trim().slice(0, 2) : null
+
     const companies = await sql`
       INSERT INTO companies (
         fantasy_name, company_name, cnpj, logo_url,
         zipcode, street, number, complement, neighbourhood, city, state,
-        whatsapp, email, instagram, website
+        phone_primary, phone_secondary, whatsapp, email, instagram, website
       ) VALUES (
         ${fantasy_name}, ${company_name ?? null}, ${cnpj ?? null}, ${logo_url ?? null},
         ${zipcode ?? null}, ${street ?? null}, ${number ?? null}, ${complement ?? null},
-        ${neighbourhood ?? null}, ${city ?? null}, ${state ?? null},
+        ${neighbourhood ?? null}, ${city ?? null}, ${stateVal},
+        ${phone_primary ?? null}, ${phone_secondary ?? null},
         ${whatsapp ?? null}, ${email ?? null}, ${instagram ?? null}, ${website ?? null}
       )
       RETURNING *
@@ -55,8 +60,9 @@ export async function POST(req: NextRequest) {
 
     // Vincula o usuário como Admin
     await sql`
-      INSERT INTO company_users (company_id, user_id, name, email, role, is_admin, is_verified, status)
-      VALUES (${company.id}, ${session.user_id}, ${session.name}, ${session.email}, 'Admin', true, true, 'ativo')
+      INSERT INTO company_users (company_id, user_id, name, email, role, is_admin, is_verified, status, joined_at)
+      VALUES (${company.id}, ${session.user_id}, ${session.name}, ${session.email}, 'Admin', true, true, 'ativo', now())
+      ON CONFLICT (company_id, email) DO NOTHING
     `
 
     return NextResponse.json(company, { status: 201 })
