@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useCallback } from "react"
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react"
 import { authFetch } from "./auth-fetch"
 
 export interface User {
@@ -75,10 +75,20 @@ function saveSession(user: User | null, companies: Company[], activeCompany: Com
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // Lazy initializer — só executa no cliente, evita hydration mismatch
-  const [user, setUser] = useState<User | null>(() => loadSession().user)
-  const [companies, setCompanies] = useState<Company[]>(() => loadSession().companies)
-  const [activeCompany, setActiveCompanyState] = useState<Company | null>(() => loadSession().activeCompany)
+  // Inicializa com null para que servidor e cliente renderizem igual (evita React #418)
+  // O estado real é populado via useEffect, apenas no cliente
+  const [user, setUser] = useState<User | null>(null)
+  const [companies, setCompanies] = useState<Company[]>([])
+  const [activeCompany, setActiveCompanyState] = useState<Company | null>(null)
+
+  useEffect(() => {
+    const session = loadSession()
+    if (session.user) {
+      setUser(session.user)
+      setCompanies(session.companies)
+      setActiveCompanyState(session.activeCompany)
+    }
+  }, [])
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await fetch("/api/auth/login", {

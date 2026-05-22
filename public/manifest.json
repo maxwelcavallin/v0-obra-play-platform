@@ -1,0 +1,17 @@
+{
+  "name": "Obra Play Constructor",
+  "short_name": "ObraPlay",
+  "description": "Plataforma de gestão de obras e cotações de materiais de construção",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D1B3E",
+  "theme_color": "#1565C0",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}
