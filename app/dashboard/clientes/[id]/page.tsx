@@ -1,26 +1,9 @@
 "use client"
 
 import { useRouter, useParams } from "next/navigation"
-import { ArrowLeft, Phone, Mail, MapPin, FileText, Instagram, Pencil } from "lucide-react"
-import { MOCK_CLIENTS } from "@/lib/mock-data"
-
-// Mock obras vinculadas ao cliente
-const MOCK_OBRAS: Record<string, { id: string; name: string; status: string; date: string }[]> = {
-  "cli-001": [
-    { id: "ob1", name: "Reforma Residencial", status: "Concluída", date: "Ago/2024" },
-    { id: "ob2", name: "Pintura Interna",     status: "Concluída", date: "Jan/2023" },
-  ],
-  "cli-002": [
-    { id: "ob3", name: "Instalação Elétrica",  status: "Concluída", date: "Mai/2024" },
-    { id: "ob4", name: "Reforma Completa",     status: "Em andamento", date: "Início Jan/2025" },
-  ],
-  "cli-003": [
-    { id: "ob5", name: "Construção Residencial", status: "Concluída", date: "Dez/2023" },
-  ],
-  "cli-004": [
-    { id: "ob6", name: "Ampliação Clínica",    status: "Concluída", date: "Nov/2024" },
-  ],
-}
+import { useState, useEffect } from "react"
+import { ArrowLeft, Phone, Mail, MapPin, FileText, Instagram, Pencil, Loader2 } from "lucide-react"
+import { authFetch } from "@/lib/auth-fetch"
 
 const STATUS_CLASS: Record<string, string> = {
   "Concluída":      "op-chip-success",
@@ -44,10 +27,32 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
 export default function ClienteDetalhePage() {
   const router = useRouter()
   const { id } = useParams<{ id: string }>()
-  const client = MOCK_CLIENTS.find((c) => c.id === id)
-  const obras = MOCK_OBRAS[id] ?? []
 
-  if (!client) {
+  const [client, setClient] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
+
+  useEffect(() => {
+    if (!id) return
+    authFetch(`/api/clientes/${id}`)
+      .then((r) => {
+        if (r.status === 404) { setNotFound(true); return null }
+        return r.json()
+      })
+      .then((data) => { if (data) setClient(data) })
+      .catch(() => setNotFound(true))
+      .finally(() => setLoading(false))
+  }, [id])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
+        <Loader2 size={28} className="animate-spin text-[#1565C0]" />
+      </div>
+    )
+  }
+
+  if (notFound || !client) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
         <p className="text-[#757575]">Cliente não encontrado.</p>
@@ -55,11 +60,12 @@ export default function ClienteDetalhePage() {
     )
   }
 
-  const name = client.type === "PF" ? client.fullName : client.fantasyName
+  const obras: any[] = []
+  const name = client.type === "PF" ? client.full_name : (client.fantasy_name ?? client.company_name)
   const doc  = client.type === "PF" ? client.cpf : client.cnpj
   const initial = (name?.[0] ?? "C").toUpperCase()
   const avatarColor = client.type === "PF" ? "#1565C0" : "#FF9800"
-  const fullAddress = [client.address, client.number, client.complement, client.neighborhood, client.city, client.state]
+  const fullAddress = [client.street, client.number, client.complement, client.neighbourhood, client.city, client.state]
     .filter(Boolean).join(", ")
 
   return (
@@ -90,12 +96,12 @@ export default function ClienteDetalhePage() {
         <div className="bg-white rounded-lg shadow-sm overflow-hidden px-3">
           <InfoRow icon={<FileText size={16} />} label="Documento" value={doc} />
           {client.type === "PF" && (
-            <InfoRow icon={<FileText size={16} />} label="Data de nascimento" value={client.birthDate} />
+            <InfoRow icon={<FileText size={16} />} label="Data de nascimento" value={client.birth_date} />
           )}
           {client.type === "PJ" && (
             <>
-              <InfoRow icon={<FileText size={16} />} label="Razão social" value={client.companyName} />
-              <InfoRow icon={<FileText size={16} />} label="Responsável" value={client.responsibleName} />
+              <InfoRow icon={<FileText size={16} />} label="Razão social" value={client.company_name} />
+              <InfoRow icon={<FileText size={16} />} label="Responsável" value={client.responsible_name} />
             </>
           )}
         </div>
@@ -104,6 +110,7 @@ export default function ClienteDetalhePage() {
         <div className="bg-white rounded-lg shadow-sm overflow-hidden px-3">
           <p className="text-[#9E9E9E] font-medium py-2.5 border-b border-[#EEEEEE]" style={{ fontSize: "0.75rem" }}>CONTATO</p>
           <InfoRow icon={<Mail size={16} />} label="E-mail" value={client.email} />
+          <InfoRow icon={<Phone size={16} />} label="Telefone" value={client.phone} />
           <InfoRow icon={<Phone size={16} />} label="WhatsApp" value={client.whatsapp} />
           <InfoRow icon={<Instagram size={16} />} label="Instagram" value={client.instagram ? `@${client.instagram.replace(/^@/, "")}` : undefined} />
         </div>
@@ -137,7 +144,7 @@ export default function ClienteDetalhePage() {
         </div>
 
         {/* Observações */}
-        {client.notes && (
+        {client.notes && client.notes.trim() && (
           <div className="bg-white rounded-lg shadow-sm px-3 py-3">
             <p className="text-[#9E9E9E] font-medium mb-2" style={{ fontSize: "0.75rem" }}>OBSERVAÇÕES</p>
             <p className="text-[#424242] leading-relaxed" style={{ fontSize: "0.875rem" }}>{client.notes}</p>
