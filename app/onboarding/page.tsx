@@ -86,7 +86,6 @@ interface Step1Data {
   cnpj: string
   companyName: string
   fantasyName: string
-  stateRegistration: string
   logo?: string
 }
 
@@ -100,55 +99,27 @@ function Step1({
   errors: Record<string, string>
 }) {
   const [loadingCNPJ, setLoadingCNPJ] = useState(false)
-  const [confirmed, setConfirmed] = useState(false)
 
-  async function fetchCNPJ() {
-    const digits = data.cnpj.replace(/\D/g, "")
-    if (digits.length !== 14) { toast.error("CNPJ incompleto"); return }
+  async function handleCNPJChange(raw: string) {
+    const formatted = formatCNPJ(raw)
+    onChange({ cnpj: formatted })
+    const digits = formatted.replace(/\D/g, "")
+    if (digits.length !== 14) return
     setLoadingCNPJ(true)
     try {
-      await new Promise((r) => setTimeout(r, 800))
+      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`)
+      if (!res.ok) throw new Error()
+      const json = await res.json()
       onChange({
-        companyName: "Tosel Materiais de Construção LTDA",
-        fantasyName: "Tosel",
-        stateRegistration: "1121543.1248.127",
+        companyName: json.razao_social ?? "",
+        fantasyName: json.nome_fantasia || json.razao_social || "",
       })
-      setConfirmed(true)
-      toast.success("Dados do CNPJ preenchidos")
+      toast.success("Dados do CNPJ preenchidos automaticamente")
     } catch {
-      toast.error("CNPJ não encontrado")
+      toast.error("CNPJ não encontrado na Receita Federal")
     } finally {
       setLoadingCNPJ(false)
     }
-  }
-
-  // Após busca, mostrar tela de confirmação dos dados
-  if (confirmed && data.companyName) {
-    return (
-      <div className="flex flex-col gap-0">
-        <SectionLabel>Confirme os dados</SectionLabel>
-        <div className="flex flex-col">
-          {[
-            { label: "CNPJ", value: data.cnpj },
-            { label: "Razão Social", value: data.companyName },
-            { label: "Nome fantasia", value: data.fantasyName },
-            { label: "Inscrição estadual", value: data.stateRegistration },
-          ].map((row) => (
-            <div key={row.label} className="flex items-center justify-between py-3 border-b border-[#EEEEEE]">
-              <span className="text-sm text-[#9E9E9E]">{row.label}</span>
-              <span className="text-sm text-[#212121] font-medium text-right max-w-[55%]">{row.value}</span>
-            </div>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={() => setConfirmed(false)}
-          className="text-sm text-[#1565C0] mt-4 text-left"
-        >
-          Editar dados
-        </button>
-      </div>
-    )
   }
 
   const logoInputRef = useRef<HTMLInputElement>(null)
@@ -201,12 +172,17 @@ function Step1({
       </div>
 
       <div>
-        <UInput
-          placeholder="CNPJ"
-          value={data.cnpj}
-          onChange={(v) => onChange({ cnpj: formatCNPJ(v) })}
-          hasError={!!errors.cnpj}
-        />
+        <div className="relative">
+          <UInput
+            placeholder="CNPJ"
+            value={data.cnpj}
+            onChange={(v) => handleCNPJChange(v)}
+            hasError={!!errors.cnpj}
+          />
+          {loadingCNPJ && (
+            <Loader2 size={15} className="animate-spin text-[#1565C0] absolute right-0 top-1/2 -translate-y-1/2" />
+          )}
+        </div>
         <FieldError msg={errors.cnpj} />
       </div>
       <div>
@@ -215,6 +191,9 @@ function Step1({
           value={data.companyName}
           onChange={(v) => onChange({ companyName: v })}
         />
+        <p className="text-[#9E9E9E] mt-0.5" style={{ fontSize: "0.7rem" }}>
+          Preenchido automaticamente pelo CNPJ
+        </p>
       </div>
       <div>
         <UInput
@@ -225,16 +204,6 @@ function Step1({
         />
         <FieldError msg={errors.fantasyName} />
       </div>
-      {/* Botão buscar inline */}
-      <button
-        type="button"
-        onClick={fetchCNPJ}
-        disabled={loadingCNPJ || data.cnpj.replace(/\D/g, "").length !== 14}
-        className="self-start flex items-center gap-2 text-sm font-semibold text-[#1565C0] disabled:opacity-40"
-      >
-        {loadingCNPJ && <Loader2 size={14} className="animate-spin" />}
-        Buscar CNPJ
-      </button>
     </div>
   )
 }
@@ -514,7 +483,7 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false)
 
   const [step1, setStep1] = useState<Step1Data>({
-    cnpj: "", companyName: "", fantasyName: "", stateRegistration: "", logo: undefined,
+    cnpj: "", companyName: "", fantasyName: "", logo: undefined,
   })
   const [step2, setStep2] = useState<Step2Data>({
     zipcode: "", street: "", number: "", complement: "", neighbourhood: "", city: "", state: "",

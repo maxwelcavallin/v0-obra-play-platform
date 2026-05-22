@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Camera, Info, Globe, Instagram, Mail } from "lucide-react"
+import { Camera, Info, Globe, Instagram, Mail, Loader2 } from "lucide-react"
 import { OpInput } from "@/components/ui/op-input"
 import { fmtCNPJ, fmtPhone, fmtCEP, type CompanyMock } from "@/lib/mock-data"
+import { toast } from "sonner"
 
 type FormData = Omit<CompanyMock, "id" | "role">
 
@@ -30,11 +31,35 @@ export function EmpresaForm({ initial = {}, onSave, loading, submitLabel = "SALV
   const [tab, setTab] = useState<Tab>("Geral")
   const [form, setForm] = useState<FormData>({ ...EMPTY, ...initial })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [cnpjLoading, setCnpjLoading] = useState(false)
   const logoRef = useRef<HTMLInputElement>(null)
 
   function update(key: keyof FormData, value: string) {
     setForm((p) => ({ ...p, [key]: value }))
     if (errors[key]) setErrors((p) => { const n = { ...p }; delete n[key]; return n })
+  }
+
+  async function handleCnpjChange(raw: string) {
+    const formatted = fmtCNPJ(raw)
+    update("cnpj", formatted)
+    const digits = formatted.replace(/\D/g, "")
+    if (digits.length !== 14) return
+    setCnpjLoading(true)
+    try {
+      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`)
+      if (!res.ok) throw new Error()
+      const json = await res.json()
+      setForm((p) => ({
+        ...p,
+        companyName: json.razao_social ?? p.companyName,
+        fantasyName: json.nome_fantasia || json.razao_social || p.fantasyName,
+      }))
+      toast.success("Dados do CNPJ preenchidos automaticamente")
+    } catch {
+      toast.error("CNPJ não encontrado na Receita Federal")
+    } finally {
+      setCnpjLoading(false)
+    }
   }
 
   function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -122,9 +147,17 @@ export function EmpresaForm({ initial = {}, onSave, loading, submitLabel = "SALV
             </div>
 
             <OpInput label="Nome fantasia*" value={form.fantasyName} onChange={(e) => update("fantasyName", e.target.value)} placeholder="Como a empresa é conhecida" error={errors.fantasyName} />
-            <OpInput label="CNPJ*" value={form.cnpj} onChange={(e) => update("cnpj", fmtCNPJ(e.target.value))} placeholder="00.000.000/0000-00" error={errors.cnpj} />
-            <OpInput label="Razão social" value={form.companyName} onChange={(e) => update("companyName", e.target.value)} placeholder="Razão social completa" />
-            <OpInput label="Inscrição estadual" value={form.stateRegistration} onChange={(e) => update("stateRegistration", e.target.value)} placeholder="000.000.000.000" />
+            <div className="relative">
+              <OpInput
+                label="CNPJ*"
+                value={form.cnpj}
+                onChange={(e) => handleCnpjChange(e.target.value)}
+                placeholder="00.000.000/0000-00"
+                error={errors.cnpj}
+                suffix={cnpjLoading ? <Loader2 size={15} className="animate-spin text-[#1565C0]" /> : undefined}
+              />
+            </div>
+            <OpInput label="Razão social" value={form.companyName} onChange={(e) => update("companyName", e.target.value)} placeholder="Preenchido automaticamente pelo CNPJ" />
           </div>
         )}
 
