@@ -146,50 +146,51 @@ export default function ObrasPage() {
               className="relative w-full rounded-xl shadow-sm overflow-hidden text-left transition-transform active:scale-[0.99]"
               style={{ minHeight: 120 }}
             >
-              {/* Background: foto ou cor sólida */}
+              {/* Background: foto de capa ou degradê azul como placeholder */}
               {o.cover_url ? (
                 <>
                   <img src={o.cover_url} alt={o.name} className="absolute inset-0 w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-black/20" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-black/10" />
                 </>
               ) : (
-                <div className="absolute inset-0 bg-white" />
+                <>
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: "linear-gradient(135deg, #1565C0 0%, #1E88E5 60%, #42A5F5 100%)" }}
+                  />
+                  {/* Ícone decorativo de fundo */}
+                  <div className="absolute -bottom-4 -right-4 opacity-10">
+                    <HardHat size={96} className="text-white" />
+                  </div>
+                </>
               )}
 
-              {/* Conteúdo sobre o background */}
-              <div className={`relative z-10 p-4 flex flex-col justify-between h-full ${o.cover_url ? "text-white" : "text-[#212121]"}`}
-                style={{ minHeight: 120 }}>
+              {/* Conteúdo sobre o background — sempre texto branco */}
+              <div className="relative z-10 p-4 flex flex-col justify-between h-full text-white" style={{ minHeight: 120 }}>
                 <div className="flex items-start justify-between gap-2 mb-1">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {!o.cover_url && (
-                      <div className="w-8 h-8 rounded-full bg-[#E3F2FD] flex items-center justify-center flex-shrink-0">
-                        <HardHat size={16} className="text-[#1565C0]" />
-                      </div>
-                    )}
-                    <span className={`font-semibold truncate drop-shadow ${o.cover_url ? "text-white" : "text-[#212121]"}`} style={{ fontSize: "0.9rem" }}>
-                      {o.name}
-                    </span>
-                  </div>
+                  <span className="font-semibold truncate drop-shadow" style={{ fontSize: "0.9rem" }}>
+                    {o.name}
+                  </span>
                   <StatusChip status={o.status} />
                 </div>
 
                 <div>
-                  <p className={`text-xs mb-1.5 drop-shadow ${o.cover_url ? "text-white/80" : "text-[#757575]"}`}>
+                  <p className="text-xs mb-1.5 text-white/80 drop-shadow">
                     {o.is_own ? "Obra própria" : clientName ?? "—"}
                   </p>
                   <div className="flex items-center gap-3 flex-wrap">
                     {location && (
-                      <span className={`flex items-center gap-1 text-xs drop-shadow ${o.cover_url ? "text-white/70" : "text-[#9E9E9E]"}`}>
+                      <span className="flex items-center gap-1 text-xs text-white/70 drop-shadow">
                         <MapPin size={11} /> {location}
                       </span>
                     )}
                     {o.area_m2 && (
-                      <span className={`flex items-center gap-1 text-xs drop-shadow ${o.cover_url ? "text-white/70" : "text-[#9E9E9E]"}`}>
+                      <span className="flex items-center gap-1 text-xs text-white/70 drop-shadow">
                         <Ruler size={11} /> {o.area_m2} m²
                       </span>
                     )}
                     {o.start_date && (
-                      <span className={`text-xs drop-shadow ${o.cover_url ? "text-white/70" : "text-[#9E9E9E]"}`}>
+                      <span className="text-xs text-white/70 drop-shadow">
                         Início: {new Date(o.start_date).toLocaleDateString("pt-BR")}
                       </span>
                     )}
