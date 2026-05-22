@@ -238,10 +238,14 @@ export default function NovaObraPage() {
           </div>
           <button
             type="button"
+            role="switch"
+            aria-checked={form.is_own}
             onClick={() => { set("is_own", !form.is_own); if (!form.is_own) { set("client_id", ""); setSelectedClient(null); setClientSearch("") } }}
-            className={`relative w-12 h-6 rounded-full transition-colors ${form.is_own ? "bg-[#1565C0]" : "bg-[#E0E0E0]"}`}
+            className={`relative inline-flex items-center w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${form.is_own ? "bg-[#1565C0]" : "bg-[#BDBDBD]"}`}
           >
-            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.is_own ? "translate-x-6" : "translate-x-0.5"}`} />
+            <span
+              className={`absolute top-0.5 bottom-0.5 aspect-square bg-white rounded-full shadow-sm transition-all duration-200 ${form.is_own ? "left-[calc(100%-1.25rem-2px)]" : "left-[2px]"}`}
+            />
           </button>
         </div>
 
