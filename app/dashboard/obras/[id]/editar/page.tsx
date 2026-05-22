@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { ArrowLeft, Loader2, Search, X, Camera } from "lucide-react"
+import { ArrowLeft, Loader2, Search, X } from "lucide-react"
 import { OpInput } from "@/components/ui/op-input"
 import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/auth-fetch"
 import { toast } from "sonner"
+import { CoverImagePicker } from "@/components/ui/cover-image-picker"
 
 const STATES = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"]
 const STATUS_OPTIONS = ["Orçamento","Em andamento","Pausada","Concluída","Cancelada"]
@@ -23,7 +24,7 @@ interface FormState {
   same_billing_address: boolean
   billing_zipcode: string; billing_street: string; billing_number: string
   billing_complement: string; billing_neighbourhood: string; billing_city: string; billing_state: string
-  notes: string; cover_url: string
+  notes: string; cover_url: string; cover_position: string
 }
 
 const EMPTY: FormState = {
@@ -33,7 +34,7 @@ const EMPTY: FormState = {
   delivery_neighbourhood: "", delivery_city: "", delivery_state: "",
   same_billing_address: true,
   billing_zipcode: "", billing_street: "", billing_number: "", billing_complement: "",
-  billing_neighbourhood: "", billing_city: "", billing_state: "", notes: "", cover_url: "",
+  billing_neighbourhood: "", billing_city: "", billing_state: "", notes: "", cover_url: "", cover_position: "50% 50%",
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -53,7 +54,6 @@ export default function EditarObraPage() {
   const [loading, setLoading] = useState(false)
   const [fetchLoading, setFetchLoading] = useState(true)
   const [cepLoading, setCepLoading] = useState(false)
-  const coverInputRef = useRef<HTMLInputElement>(null)
 
   const [clients, setClients] = useState<ClientOption[]>([])
   const [clientSearch, setClientSearch] = useState("")
@@ -92,6 +92,7 @@ export default function EditarObraPage() {
           billing_state: d.billing_state ?? "",
           notes: d.notes ?? "",
           cover_url: d.cover_url ?? "",
+          cover_position: d.cover_position ?? "50% 50%",
         })
         if (d.client_id && d.client_name) {
           setSelectedClient({ id: d.client_id, type: d.client_type ?? "PF", full_name: d.client_name })
@@ -224,37 +225,11 @@ export default function EditarObraPage() {
 
         {/* Foto de capa */}
         <SectionLabel>FOTO DE CAPA</SectionLabel>
-        <div
-          className="relative w-full rounded-xl overflow-hidden mb-2 cursor-pointer border-2 border-dashed border-[#E0E0E0] hover:border-[#1565C0] transition-colors"
-          style={{ height: 160 }}
-          onClick={() => coverInputRef.current?.click()}
-        >
-          {form.cover_url ? (
-            <>
-              <img src={form.cover_url} alt="Capa" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                <Camera size={28} className="text-white" />
-              </div>
-              <button type="button" onClick={(e) => { e.stopPropagation(); set("cover_url", "") }}
-                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 flex items-center justify-center" aria-label="Remover foto">
-                <X size={14} className="text-white" />
-              </button>
-            </>
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-[#9E9E9E]">
-              <Camera size={28} />
-              <span style={{ fontSize: "0.8rem" }}>Toque para adicionar foto de capa</span>
-            </div>
-          )}
-        </div>
-        <input ref={coverInputRef} type="file" accept="image/*" className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (!file) return
-            const reader = new FileReader()
-            reader.onload = (ev) => set("cover_url", ev.target?.result as string)
-            reader.readAsDataURL(file)
-          }}
+        <CoverImagePicker
+          value={form.cover_url}
+          objectPosition={form.cover_position}
+          onChange={(url) => set("cover_url", url)}
+          onPositionChange={(pos) => set("cover_position", pos)}
         />
 
         {/* Identificação */}

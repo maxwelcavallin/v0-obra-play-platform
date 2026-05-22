@@ -164,6 +164,23 @@ function TabDocumentos({ obraId }: { obraId: string }) {
     }
   }
 
+  async function handleDownload(doc: Documento) {
+    try {
+      const res = await fetch(doc.file_url)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = doc.name
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error("Erro ao baixar documento.")
+    }
+  }
+
   async function handleDelete(doc: Documento) {
     if (!confirm(`Excluir "${doc.name}"?`)) return
     setDeletingId(doc.id)
@@ -232,11 +249,14 @@ function TabDocumentos({ obraId }: { obraId: string }) {
                 </p>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
-                <a href={doc.file_url} target="_blank" rel="noopener noreferrer" download
+                <button
+                  type="button"
+                  onClick={() => handleDownload(doc)}
                   className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#E3F2FD] transition-colors"
-                  aria-label="Baixar documento">
+                  aria-label="Baixar documento"
+                >
                   <Download size={15} className="text-[#1565C0]" />
-                </a>
+                </button>
                 <button onClick={() => handleDelete(doc)} disabled={deletingId === doc.id}
                   className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#FFEBEE] transition-colors"
                   aria-label="Excluir documento">
