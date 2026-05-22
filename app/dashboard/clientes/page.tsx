@@ -18,6 +18,21 @@ interface Client {
   status: string
 }
 
+function Highlight({ text, query }: { text?: string; query: string }) {
+  if (!text) return null
+  if (!query.trim()) return <>{text}</>
+  const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+  const idx = normalize(text).indexOf(normalize(query.trim()))
+  if (idx === -1) return <>{text}</>
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-yellow-100 text-[#212121] rounded-sm px-0.5">{text.slice(idx, idx + query.trim().length)}</mark>
+      {text.slice(idx + query.trim().length)}
+    </>
+  )
+}
+
 function ClientAvatar({ client }: { client: Client }) {
   const name = client.type === "PF" ? client.full_name : client.fantasy_name
   const initial = (name?.[0] ?? "C").toUpperCase()
@@ -46,13 +61,17 @@ export default function ClientesPage() {
       .finally(() => setLoading(false))
   }, [activeCompany?.id])
 
+  const normalize = (s: string) =>
+    s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+
   const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim()
+    const q = normalize(search.trim())
+    const qDigits = q.replace(/\D/g, "")
     if (!q) return clients
     return clients.filter((c) => {
-      const name = (c.full_name ?? c.fantasy_name ?? "").toLowerCase()
+      const name = normalize(c.full_name ?? c.fantasy_name ?? c.company_name ?? "")
       const doc = (c.cpf ?? c.cnpj ?? "").replace(/\D/g, "")
-      return name.includes(q) || doc.includes(q.replace(/\D/g, ""))
+      return name.includes(q) || (qDigits.length > 0 && doc.includes(qDigits))
     })
   }, [search, clients])
 
@@ -105,12 +124,16 @@ export default function ClientesPage() {
               <ClientAvatar client={c} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium text-[#212121] truncate" style={{ fontSize: "0.875rem" }}>{name}</span>
+                  <span className="font-medium text-[#212121] truncate" style={{ fontSize: "0.875rem" }}>
+                    <Highlight text={name} query={search} />
+                  </span>
                   <span className={`op-chip text-xs ${c.type === "PF" ? "op-chip-primary" : "op-chip-warning"}`}>
                     {c.type}
                   </span>
                 </div>
-                <p className="text-[#9E9E9E] truncate" style={{ fontSize: "0.75rem", marginTop: 1 }}>{doc}</p>
+                <p className="text-[#9E9E9E] truncate" style={{ fontSize: "0.75rem", marginTop: 1 }}>
+                  <Highlight text={doc} query={search} />
+                </p>
                 {c.whatsapp && (
                   <span className="text-[#757575]" style={{ fontSize: "0.7rem" }}>{c.whatsapp}</span>
                 )}
