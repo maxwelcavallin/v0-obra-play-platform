@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2, CheckCircle, Camera } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
 import Image from "next/image"
+import { searchCidades, type CidadeBR } from "@/lib/cidades-br"
 
 // --- Masks ---
 function formatCNPJ(v: string) {
@@ -362,12 +363,34 @@ function Step3({
   onChange: (d: Partial<Step3Data>) => void
   errors: Record<string, string>
 }) {
-  function addCity() {
-    if (!data.cityInput.trim()) return
-    onChange({
-      cities: [...data.cities, data.cityInput.trim()],
-      cityInput: "",
-    })
+  const [suggestions, setSuggestions] = useState<CidadeBR[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+
+  function handleCityInput(v: string) {
+    onChange({ cityInput: v })
+    if (v.trim().length >= 2) {
+      setSuggestions(searchCidades(v, 8))
+      setShowSuggestions(true)
+    } else {
+      setSuggestions([])
+      setShowSuggestions(false)
+    }
+  }
+
+  function selectCity(label: string) {
+    if (data.cities.includes(label)) return
+    onChange({ cities: [...data.cities, label], cityInput: "" })
+    setSuggestions([])
+    setShowSuggestions(false)
+  }
+
+  function addCityFromInput() {
+    const v = data.cityInput.trim()
+    if (!v) return
+    if (data.cities.includes(v)) { onChange({ cityInput: "" }); return }
+    onChange({ cities: [...data.cities, v], cityInput: "" })
+    setSuggestions([])
+    setShowSuggestions(false)
   }
 
   function removeCity(idx: number) {
@@ -427,24 +450,49 @@ function Step3({
           </div>
         )}
 
-        <div className="flex items-end gap-2">
-          <div className="flex-1">
-            <input
-              type="text"
-              value={data.cityInput}
-              onChange={(e) => onChange({ cityInput: e.target.value })}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCity() } }}
-              placeholder="Pesquise..."
-              className="op-input-underline"
-            />
+        <div className="relative">
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <input
+                type="text"
+                value={data.cityInput}
+                onChange={(e) => handleCityInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); addCityFromInput() }
+                  if (e.key === "Escape") { setShowSuggestions(false) }
+                }}
+                onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true) }}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                placeholder="Digite uma cidade ou estado..."
+                className="op-input-underline"
+                autoComplete="off"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={addCityFromInput}
+              className="text-sm font-semibold text-[#1565C0] pb-2.5 flex-shrink-0"
+            >
+              Adicionar
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={addCity}
-            className="text-sm font-semibold text-[#1565C0] pb-2.5 flex-shrink-0"
-          >
-            Adicionar
-          </button>
+
+          {/* Dropdown de sugestões */}
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="absolute left-0 right-0 top-full z-50 bg-white rounded-xl shadow-lg border border-[#E0E0E0] overflow-hidden mt-1">
+              {suggestions.map((c) => (
+                <button
+                  key={c.label}
+                  type="button"
+                  onMouseDown={() => selectCity(c.label)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[#F5F7FF] transition-colors border-b border-[#F5F5F5] last:border-b-0"
+                >
+                  <span className="text-sm text-[#212121]">{c.cidade}</span>
+                  <span className="text-xs text-[#9E9E9E] ml-2 flex-shrink-0">{c.estado}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
