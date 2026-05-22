@@ -1,8 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { ArrowLeft, Loader2, MapPin, Ruler, Calendar, HardHat, Pencil, PowerOff } from "lucide-react"
+import {
+  ArrowLeft, Loader2, MapPin, Ruler, Calendar, HardHat,
+  Pencil, PowerOff, FileText, ImageIcon, FileSpreadsheet,
+  File, Download, Trash2, Upload, X, Plus,
+} from "lucide-react"
 import { authFetch } from "@/lib/auth-fetch"
 import { toast } from "sonner"
 
@@ -18,6 +22,15 @@ interface Obra {
   notes?: string
 }
 
+interface Documento {
+  id: string
+  name: string
+  file_url: string
+  file_type: string
+  file_size?: number
+  created_at: string
+}
+
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   "Em andamento": { label: "Em andamento", color: "#4CAF50", bg: "#E8F5E9" },
   "Orçamento":    { label: "Orçamento",    color: "#1565C0", bg: "#E3F2FD" },
@@ -27,8 +40,33 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
   "Cancelada":    { label: "Cancelada",    color: "#F44336", bg: "#FFEBEE" },
 }
 
-const TABS = ["Dados", "Cotações", "OCs", "Financeiro"] as const
+const TABS = ["Geral", "Documentos", "Cotações", "OCs", "Financeiro"] as const
 type Tab = typeof TABS[number]
+
+// Detecta tipo do arquivo pela extensão
+function detectFileType(filename: string): string {
+  const ext = filename.split(".").pop()?.toLowerCase() ?? ""
+  if (ext === "pdf") return "pdf"
+  if (["jpg", "jpeg", "png", "gif", "webp", "svg", "heic"].includes(ext)) return "image"
+  if (["doc", "docx"].includes(ext)) return "word"
+  if (["xls", "xlsx", "csv"].includes(ext)) return "excel"
+  return "other"
+}
+
+function DocIcon({ type, size = 20 }: { type: string; size?: number }) {
+  if (type === "pdf")   return <FileText size={size} className="text-red-500" />
+  if (type === "image") return <ImageIcon size={size} className="text-blue-400" />
+  if (type === "word")  return <FileText size={size} className="text-blue-800" />
+  if (type === "excel") return <FileSpreadsheet size={size} className="text-green-600" />
+  return <File size={size} className="text-[#757575]" />
+}
+
+function formatBytes(bytes?: number) {
+  if (!bytes) return ""
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
 
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null
@@ -60,13 +98,209 @@ function AddressBlock({ prefix, obra }: { prefix: "delivery" | "billing"; obra: 
   )
 }
 
+// --- Aba Documentos ---
+function TabDocumentos({ obraId }: { obraId: string }) {
+  const [docs, setDocs] = useState<Documento[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    authFetch(`/api/obras/${obraId}/documentos`)
+      .then((r) => r.json())
+      .then((data) => Array.isArray(data) ? setDocs(data) : setDocs([]))
+      .catch(() => setDocs([]))
+      .finally(() => setLoading(false))
+  }, [obraId])
+
+  function openModal() {
+    setSelectedFile(null)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+    setShowModal(true)
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    if (f) setSelectedFile(f)
+  }
+
+  async function handleUpload() {
+    if (!selectedFile) return
+    setUploading(true)
+    try {
+      // 1. Upload do arquivo para o Blob
+      const fd = new FormData()
+      fd.append("file", selectedFile)
+      const upRes = await fetch("/api/upload/obra-documento", { method: "POST", body: fd })
+      const upData = await upRes.json()
+      if (!upRes.ok) throw new Error(upData.error ?? "Falha no upload")
+
+      // 2. Salva o documento no banco
+      const fileType = detectFileType(selectedFile.name)
+      const saveRes = await authFetch(`/api/obras/${obraId}/documentos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: selectedFile.name,
+          file_url: upData.url,
+          file_type: fileType,
+          file_size: selectedFile.size,
+        }),
+      })
+      const saved = await saveRes.json()
+      if (!saveRes.ok) throw new Error(saved.error ?? "Erro ao salvar")
+
+      setDocs((prev) => [saved, ...prev])
+      setShowModal(false)
+      setSelectedFile(null)
+      toast.success("Documento adicionado com sucesso!")
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function handleDelete(doc: Documento) {
+    if (!confirm(`Excluir "${doc.name}"?`)) return
+    setDeletingId(doc.id)
+    try {
+      const res = await authFetch(`/api/obras/${obraId}/documentos/${doc.id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Erro ao excluir")
+      setDocs((prev) => prev.filter((d) => d.id !== doc.id))
+      toast.success("Documento excluído.")
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-16">
+      <Loader2 size={24} className="animate-spin text-[#1565C0]" />
+    </div>
+  )
+
+  return (
+    <>
+      {/* Input oculto - sempre montado */}
+      <input ref={fileInputRef} type="file" className="hidden"
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.gif,.webp,.heic"
+        onChange={handleFileSelect} />
+
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm font-semibold text-[#212121]">
+          {docs.length} {docs.length === 1 ? "documento" : "documentos"}
+        </p>
+        <button onClick={openModal}
+          className="flex items-center gap-1.5 h-8 px-3 rounded-full bg-[#1565C0] text-white text-xs font-semibold hover:bg-[#1255A8] transition-colors">
+          <Plus size={13} /> Adicionar
+        </button>
+      </div>
+
+      {docs.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 gap-3 bg-white rounded-xl shadow-sm">
+          <div className="w-14 h-14 rounded-full bg-[#E3F2FD] flex items-center justify-center">
+            <FileText size={26} className="text-[#1565C0]" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-semibold text-[#424242]">Nenhum documento</p>
+            <p className="text-xs text-[#9E9E9E] mt-1">Adicione PDFs, imagens, planilhas ou documentos Word</p>
+          </div>
+          <button onClick={openModal}
+            className="flex items-center gap-1.5 h-9 px-4 rounded-full bg-[#1565C0] text-white text-sm font-semibold hover:bg-[#1255A8] transition-colors mt-1">
+            <Upload size={14} /> Enviar documento
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {docs.map((doc) => (
+            <div key={doc.id} className="bg-white rounded-xl shadow-sm px-4 py-3 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#F5F5F5] flex items-center justify-center flex-shrink-0">
+                <DocIcon type={doc.file_type} size={22} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-[#212121] truncate">{doc.name}</p>
+                <p className="text-xs text-[#9E9E9E] mt-0.5">
+                  {formatBytes(doc.file_size)}
+                  {doc.file_size ? " · " : ""}
+                  {new Date(doc.created_at).toLocaleDateString("pt-BR")}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <a href={doc.file_url} target="_blank" rel="noopener noreferrer" download
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#E3F2FD] transition-colors"
+                  aria-label="Baixar documento">
+                  <Download size={15} className="text-[#1565C0]" />
+                </a>
+                <button onClick={() => handleDelete(doc)} disabled={deletingId === doc.id}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#FFEBEE] transition-colors"
+                  aria-label="Excluir documento">
+                  {deletingId === doc.id
+                    ? <Loader2 size={14} className="animate-spin text-red-400" />
+                    : <Trash2 size={15} className="text-red-400" />}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Modal de upload */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => !uploading && setShowModal(false)}>
+          <div className="bg-white w-full rounded-t-2xl p-5 pb-8" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-[#212121]" style={{ fontSize: "1rem" }}>Enviar documento</h3>
+              <button onClick={() => !uploading && setShowModal(false)} disabled={uploading}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#F5F5F5]">
+                <X size={18} className="text-[#757575]" />
+              </button>
+            </div>
+
+            {/* Área de seleção */}
+            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}
+              className="w-full border-2 border-dashed border-[#E0E0E0] hover:border-[#1565C0] rounded-xl py-8 flex flex-col items-center gap-2 transition-colors">
+              {selectedFile ? (
+                <>
+                  <div className="w-10 h-10 rounded-lg bg-[#F5F5F5] flex items-center justify-center">
+                    <DocIcon type={detectFileType(selectedFile.name)} size={22} />
+                  </div>
+                  <p className="text-sm font-medium text-[#212121] px-4 text-center">{selectedFile.name}</p>
+                  <p className="text-xs text-[#9E9E9E]">{formatBytes(selectedFile.size)} · Toque para trocar</p>
+                </>
+              ) : (
+                <>
+                  <Upload size={24} className="text-[#9E9E9E]" />
+                  <p className="text-sm text-[#9E9E9E]">Toque para selecionar arquivo</p>
+                  <p className="text-xs text-[#BDBDBD]">PDF, Word, Excel, imagens</p>
+                </>
+              )}
+            </button>
+
+            <button onClick={handleUpload} disabled={!selectedFile || uploading}
+              className="mt-4 w-full h-12 rounded-xl bg-[#1565C0] text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50 transition-colors hover:bg-[#1255A8]">
+              {uploading ? <><Loader2 size={18} className="animate-spin" /> Enviando...</> : <><Upload size={16} /> Confirmar envio</>}
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+// --- Página principal ---
 export default function ObraDetalhePage() {
   const router = useRouter()
   const { id } = useParams<{ id: string }>()
   const [obra, setObra] = useState<Obra | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
-  const [tab, setTab] = useState<Tab>("Dados")
+  const [tab, setTab] = useState<Tab>("Geral")
   const [deactivating, setDeactivating] = useState(false)
   const [confirmDeactivate, setConfirmDeactivate] = useState(false)
 
@@ -120,18 +354,21 @@ export default function ObraDetalhePage() {
   return (
     <div className="min-h-screen bg-[#F5F5F5] flex flex-col">
 
-      {/* Hero: foto de capa ou header azul */}
+      {/* Hero */}
       <div className="relative flex-shrink-0" style={{ minHeight: 160 }}>
         {obra.cover_url ? (
           <>
-            <img src={obra.cover_url} alt="Capa da obra" className="w-full object-cover" style={{ height: 160, objectPosition: obra.cover_position ?? "50% 50%" }} />
+            <img src={obra.cover_url} alt="Capa da obra" className="w-full object-cover"
+              style={{ height: 160, objectPosition: obra.cover_position ?? "50% 50%" }} />
             <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/60" />
           </>
         ) : (
-          <div className="absolute inset-0 bg-[#1565C0]" />
+          <>
+            <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #1565C0 0%, #1E88E5 60%, #42A5F5 100%)" }} />
+            <div className="absolute -bottom-4 -right-4 opacity-10"><HardHat size={96} className="text-white" /></div>
+          </>
         )}
 
-        {/* Nav bar sobreposta */}
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-2 pt-2" style={{ height: 52 }}>
           <button onClick={() => router.back()}
             className="w-9 h-9 flex items-center justify-center rounded-full bg-black/20 hover:bg-black/30 transition-colors" aria-label="Voltar">
@@ -150,20 +387,11 @@ export default function ObraDetalhePage() {
           </div>
         </div>
 
-        {/* Nome e infos sobre a imagem */}
         <div className="absolute bottom-0 left-0 right-0 px-4 pb-3 pt-6">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              {!obra.cover_url && (
-                <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                  <HardHat size={18} className="text-white" />
-                </div>
-              )}
-              <h1 className="text-white font-bold leading-tight drop-shadow" style={{ fontSize: "1.1rem" }}>{obra.name}</h1>
-            </div>
-            <span className="rounded-full px-3 py-0.5 text-xs font-semibold flex-shrink-0" style={{ color: cfg.color, backgroundColor: cfg.bg }}>
-              {cfg.label}
-            </span>
+            <h1 className="text-white font-bold leading-tight drop-shadow" style={{ fontSize: "1.1rem" }}>{obra.name}</h1>
+            <span className="rounded-full px-3 py-0.5 text-xs font-semibold flex-shrink-0"
+              style={{ color: cfg.color, backgroundColor: cfg.bg }}>{cfg.label}</span>
           </div>
           <div className="flex items-center gap-4 flex-wrap mt-1.5">
             {location && <span className="flex items-center gap-1 text-white/80 text-xs drop-shadow"><MapPin size={11} /> {location}</span>}
@@ -173,7 +401,6 @@ export default function ObraDetalhePage() {
         </div>
       </div>
 
-      {/* Confirmação de cancelamento */}
       {confirmDeactivate && (
         <div className="bg-red-50 border-b border-red-200 px-4 py-2 flex items-center justify-between gap-2">
           <p className="text-xs text-red-700 font-medium">{isCancelled ? "Reativar esta obra?" : "Inativar esta obra?"}</p>
@@ -182,10 +409,10 @@ export default function ObraDetalhePage() {
       )}
 
       {/* Tabs */}
-      <div className="bg-[#1565C0] flex flex-shrink-0">
+      <div className="bg-[#1565C0] flex flex-shrink-0 overflow-x-auto">
         {TABS.map((t) => (
           <button key={t} onClick={() => setTab(t)}
-            className={`flex-1 py-2.5 text-xs font-semibold transition-colors ${tab === t ? "text-white border-b-2 border-white" : "text-white/60"}`}>
+            className={`flex-shrink-0 px-4 py-2.5 text-xs font-semibold transition-colors whitespace-nowrap ${tab === t ? "text-white border-b-2 border-white" : "text-white/60"}`}>
             {t}
           </button>
         ))}
@@ -193,7 +420,8 @@ export default function ObraDetalhePage() {
 
       {/* Conteúdo */}
       <div className="flex-1 overflow-y-auto px-3 py-3">
-        {tab === "Dados" && (
+
+        {tab === "Geral" && (
           <div className="flex flex-col gap-3">
             <div className="bg-white rounded-xl shadow-sm p-4">
               <p className="text-xs font-semibold text-[#9E9E9E] mb-2 tracking-wide">INFORMAÇÕES GERAIS</p>
@@ -219,7 +447,7 @@ export default function ObraDetalhePage() {
               </div>
             </div>
 
-            {obra.notes && obra.notes.trim() && (
+            {obra.notes?.trim() && (
               <div className="bg-white rounded-xl shadow-sm p-4">
                 <p className="text-xs font-semibold text-[#9E9E9E] mb-2 tracking-wide">OBSERVAÇÕES</p>
                 <p className="text-sm text-[#424242] whitespace-pre-wrap">{obra.notes}</p>
@@ -228,12 +456,15 @@ export default function ObraDetalhePage() {
           </div>
         )}
 
-        {tab !== "Dados" && (
+        {tab === "Documentos" && <TabDocumentos obraId={id} />}
+
+        {(tab === "Cotações" || tab === "OCs" || tab === "Financeiro") && (
           <div className="flex flex-col items-center justify-center py-16 gap-2">
             <div className="w-12 h-12 rounded-full bg-[#E3F2FD] flex items-center justify-center">
               <HardHat size={22} className="text-[#1565C0]" />
             </div>
-            <p className="text-[#9E9E9E] text-sm">Em breve</p>
+            <p className="text-sm font-semibold text-[#424242]">Em breve</p>
+            <p className="text-xs text-[#9E9E9E]">Esta funcionalidade está sendo desenvolvida</p>
           </div>
         )}
       </div>
