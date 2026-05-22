@@ -40,14 +40,17 @@ export default function PerfilPage() {
   const [passErrors, setPassErrors] = useState<Record<string, string>>({})
   const [passSaving, setPassSaving] = useState(false)
 
-  // Carrega dados atuais da API ao abrir
+  // Carrega dados atuais da API ao abrir e sincroniza avatar no contexto global
   useEffect(() => {
     authFetch("/api/auth/perfil")
       .then((r) => r.json())
       .then((data) => {
         if (data.name) setName(data.name)
         if (data.phone) setPhone(data.phone)
-        if (data.photo_url) setAvatar(data.photo_url)
+        if (data.photo_url) {
+          setAvatar(data.photo_url)
+          updateUser({ avatar: data.photo_url })
+        }
       })
       .catch(() => {})
   }, [])
@@ -75,7 +78,7 @@ export default function PerfilPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? "Erro ao salvar")
-      updateUser({ name: data.name, phone: data.phone })
+      updateUser({ name: data.name, phone: data.phone, avatar: data.photo_url ?? undefined })
       setDadosSaved(true)
       toast.success("Dados atualizados com sucesso")
       setTimeout(() => { setDadosSaved(false); setSection("main") }, 1200)

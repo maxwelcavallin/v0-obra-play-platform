@@ -69,15 +69,28 @@ function SidebarContent({ onClose }: SidebarContentProps) {
       <div className="bg-[#1565C0] px-4 pt-4 pb-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            {/* Logo empresa */}
-            <div className="w-11 h-11 rounded-full bg-white flex-shrink-0 flex items-center justify-center overflow-hidden shadow">
-              {activeCompany?.logoUrl ? (
-                <img src={activeCompany.logoUrl} alt={activeCompany.fantasyName} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-[#1565C0] font-bold text-lg leading-none">
-                  {(activeCompany?.fantasyName?.[0] ?? "O").toUpperCase()}
-                </span>
-              )}
+            {/* Logo empresa + avatar do usuário sobreposto */}
+            <div className="relative flex-shrink-0">
+              {/* Logo da empresa */}
+              <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center overflow-hidden shadow">
+                {activeCompany?.logoUrl ? (
+                  <img src={activeCompany.logoUrl} alt={activeCompany.fantasyName} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[#1565C0] font-bold text-lg leading-none">
+                    {(activeCompany?.fantasyName?.[0] ?? "O").toUpperCase()}
+                  </span>
+                )}
+              </div>
+              {/* Avatar do usuário — círculo menor no canto inferior direito */}
+              <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full border-2 border-[#1565C0] overflow-hidden flex-shrink-0 flex items-center justify-center shadow-sm bg-white">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[#1565C0] font-bold text-[8px] leading-none select-none">
+                    {initials}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="min-w-0">
               <p className="text-white font-semibold text-sm leading-tight truncate">
