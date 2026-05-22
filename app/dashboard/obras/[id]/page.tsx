@@ -9,7 +9,7 @@ import { toast } from "sonner"
 interface Obra {
   id: string; name: string; status: string; type?: string; area_m2?: number
   start_date?: string; expected_end_date?: string; is_own: boolean
-  client_name?: string; client_type?: string; cover_url?: string
+  client_name?: string; client_type?: string; cover_url?: string; cover_position?: string
   delivery_street?: string; delivery_number?: string; delivery_complement?: string
   delivery_neighbourhood?: string; delivery_city?: string; delivery_state?: string; delivery_zipcode?: string
   same_billing_address: boolean

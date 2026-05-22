@@ -246,7 +246,7 @@ export function EmpresaForm({ initial = {}, onSave, loading, submitLabel = "SALV
               value={form.instagram}
               onChange={(e) => update("instagram", e.target.value.replace(/^@/, ""))}
               placeholder="suaempresa"
-              prefix={<span className="text-[#9E9E9E] pr-1" style={{ fontSize: "1rem" }}>@</span>}
+              inputPrefix={<span className="text-[#9E9E9E] pr-1" style={{ fontSize: "1rem" }}>@</span>}
               suffix={<Instagram size={15} className="text-[#9E9E9E]" />}
             />
             <OpInput

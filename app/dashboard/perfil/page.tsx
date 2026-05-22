@@ -29,7 +29,7 @@ export default function PerfilPage() {
 
   // Dados pessoais
   const [name, setName] = useState(user?.name ?? "")
-  const [email] = useState(user?.email ?? "")
+  const [email, setEmail] = useState(user?.email ?? "")
   const [phone, setPhone] = useState(user?.phone ?? "")
   const [dadosErrors, setDadosErrors] = useState<Record<string, string>>({})
   const [dadosSaving, setDadosSaving] = useState(false)

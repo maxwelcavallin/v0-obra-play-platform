@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Instagram, Mail, Loader2 } from "lucide-react"
 import { OpInput } from "@/components/ui/op-input"
-import { fmtCPF, fmtCNPJ, fmtPhone, fmtCEP, fmtDate, type ClientType } from "@/lib/mock-data"
+import { fmtCPF, fmtCNPJ, fmtPhone, fmtCEP, fmtDate, type ClientType, type Client } from "@/lib/mock-data"
 import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/auth-fetch"
 import { toast } from "sonner"
@@ -140,7 +140,7 @@ export default function NovoClientePage() {
           cnpj: form.cnpj ?? null,
           birth_date: form.birthDate ?? null,
           responsible_name: form.responsibleName ?? null,
-          phone: form.phone ?? null,
+          phone: (form as any).phone ?? null,
           whatsapp: form.whatsapp ?? null,
           email: form.email ?? null,
           instagram: form.instagram ?? null,
@@ -221,7 +221,7 @@ export default function NovoClientePage() {
           <p className="text-[#9E9E9E] font-medium" style={{ fontSize: "0.75rem", marginBottom: 4 }}>CONTATO</p>
           <OpInput label="E-mail*" type="email" value={form.email} onChange={(e) => update("email", e.target.value)} placeholder="email@exemplo.com" error={errors.email} suffix={<Mail size={15} className="text-[#9E9E9E]" />} />
           <OpInput label="WhatsApp*" value={form.whatsapp} onChange={(e) => update("whatsapp", fmtPhone(e.target.value))} placeholder="(00) 00000-0000" error={errors.whatsapp} suffix={<span style={{ fontSize: "0.7rem", color: "#25D366", fontWeight: 700 }}>WA</span>} />
-          <OpInput label="Instagram" value={form.instagram} onChange={(e) => update("instagram", e.target.value.replace(/^@/, ""))} placeholder="@perfil" prefix={<span className="text-[#9E9E9E] pr-1" style={{ fontSize: "1rem" }}>@</span>} suffix={<Instagram size={15} className="text-[#9E9E9E]" />} />
+          <OpInput label="Instagram" value={form.instagram} onChange={(e) => update("instagram", e.target.value.replace(/^@/, ""))} placeholder="@perfil" inputPrefix={<span className="text-[#9E9E9E] pr-1" style={{ fontSize: "1rem" }}>@</span>} suffix={<Instagram size={15} className="text-[#9E9E9E]" />} />
         </div>
 
         {/* Endereço */}

@@ -7,15 +7,18 @@ function createSql() {
   return neon(process.env.DATABASE_URL)
 }
 
-let _instance: ReturnType<typeof neon> | null = null
+let _instance: any = null
 
 function getInstance() {
   if (!_instance) _instance = createSql()
   return _instance
 }
 
+// Tipo explícito que garante retorno any[] para toda a codebase
+type SqlFn = (strings: TemplateStringsArray, ...values: any[]) => Promise<any[]>
+
 // Tagged template proxy — lazy init seguro para build sem DATABASE_URL
-export const sql = new Proxy(function () {} as unknown as ReturnType<typeof neon>, {
+export const sql: SqlFn = new Proxy(function () {} as unknown as SqlFn, {
   apply(_t, _this, args) {
     return (getInstance() as any)(...args)
   },
