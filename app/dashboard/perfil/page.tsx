@@ -24,6 +24,8 @@ export default function PerfilPage() {
 
   const [section, setSection] = useState<Section>("main")
   const [avatar, setAvatar] = useState<string | undefined>(user?.avatar)
+  const [avatarChanged, setAvatarChanged] = useState(false)
+  const [avatarSaving, setAvatarSaving] = useState(false)
 
   // Dados pessoais
   const [name, setName] = useState(user?.name ?? "")
@@ -58,6 +60,26 @@ export default function PerfilPage() {
   const initials = name
     ? name.split(" ").map((n) => n[0]).slice(0, 2).join("")
     : "U"
+
+  async function saveAvatar() {
+    setAvatarSaving(true)
+    try {
+      const res = await authFetch("/api/auth/perfil", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, phone: phone || null, photo_url: avatar ?? null }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Erro ao salvar foto")
+      updateUser({ avatar: data.photo_url ?? undefined })
+      setAvatarChanged(false)
+      toast.success("Foto de perfil atualizada!")
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setAvatarSaving(false)
+    }
+  }
 
   function handleLogout() {
     logout()
@@ -139,7 +161,7 @@ export default function PerfilPage() {
           src={avatar}
           initials={initials}
           size={80}
-          onChange={setAvatar}
+          onChange={(v) => { setAvatar(v); setAvatarChanged(true) }}
           label="Alterar foto"
         />
         <p className="font-semibold text-[#212121]" style={{ fontSize: "1rem" }}>
@@ -148,6 +170,20 @@ export default function PerfilPage() {
         <p className="text-[#9E9E9E]" style={{ fontSize: "0.875rem" }}>
           {user?.email}
         </p>
+
+        {/* Botão salvar foto — aparece apenas quando a foto é alterada */}
+        {avatarChanged && (
+          <button
+            type="button"
+            onClick={saveAvatar}
+            disabled={avatarSaving}
+            className="mt-1 flex items-center gap-1.5 px-5 py-2 rounded-full bg-[#1565C0] text-white text-sm font-semibold shadow hover:bg-[#1255A8] transition-colors disabled:opacity-70"
+          >
+            {avatarSaving
+              ? <><Loader2 size={14} className="animate-spin" /> Salvando...</>
+              : <><Check size={14} /> Salvar foto</>}
+          </button>
+        )}
       </div>
 
       {/* Menu items */}
