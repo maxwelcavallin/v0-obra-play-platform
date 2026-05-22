@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     }
 
     const users = await sql`
-      SELECT id, name, email, phone, avatar, password_hash
+      SELECT id, name, email, phone, password_hash
       FROM users
       WHERE email = ${email.toLowerCase().trim()}
         AND is_active = true
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     `
 
     const response = NextResponse.json({
-      user: { id: user.id, name: user.name, email: user.email, phone: user.phone, avatar: user.avatar },
+      user: { id: user.id, name: user.name, email: user.email, phone: user.phone },
       companies,
     })
 
