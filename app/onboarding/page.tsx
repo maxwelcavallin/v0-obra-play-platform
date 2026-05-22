@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, CheckCircle, Camera } from "lucide-react"
+import { ArrowLeft, Loader2, CheckCircle } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
 import Image from "next/image"
@@ -87,7 +87,6 @@ interface Step1Data {
   cnpj: string
   companyName: string
   fantasyName: string
-  logo?: string
 }
 
 function Step1({
@@ -123,54 +122,9 @@ function Step1({
     }
   }
 
-  const logoInputRef = useRef<HTMLInputElement>(null)
-
-  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => onChange({ logo: ev.target?.result as string })
-    reader.readAsDataURL(file)
-  }
-
   return (
     <div className="flex flex-col gap-6">
       <SectionLabel>Informe o CNPJ</SectionLabel>
-
-      {/* Upload de logo */}
-      <div className="flex flex-col items-center gap-2">
-        <p className="text-sm text-[#757575] self-start">Logo da empresa (opcional)</p>
-        <div className="relative">
-          <div
-            className="w-20 h-20 rounded-full bg-[#EEEEEE] border-2 border-dashed border-[#BDBDBD] flex items-center justify-center overflow-hidden cursor-pointer"
-            onClick={() => logoInputRef.current?.click()}
-          >
-            {data.logo ? (
-              <img src={data.logo} alt="Logo" className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-[#9E9E9E] font-bold text-2xl">
-                {(data.fantasyName?.[0] ?? "E").toUpperCase()}
-              </span>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => logoInputRef.current?.click()}
-            className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#1565C0] flex items-center justify-center shadow-md border-2 border-white"
-            aria-label="Adicionar logo"
-          >
-            <Camera size={13} className="text-white" />
-          </button>
-          <input
-            ref={logoInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleLogoChange}
-          />
-        </div>
-        <p className="text-xs text-[#9E9E9E]">Toque para adicionar a logo</p>
-      </div>
 
       <div>
         <div className="relative">
