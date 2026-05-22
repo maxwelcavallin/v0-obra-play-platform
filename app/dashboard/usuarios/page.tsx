@@ -62,8 +62,8 @@ function InviteModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
-      <div className="w-full bg-white rounded-t-2xl shadow-2xl" style={{ maxWidth: 480, padding: "24px 20px 32px" }}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
+      <div className="w-full bg-white rounded-t-2xl shadow-2xl" style={{ maxWidth: 480, padding: "24px 20px 32px" }} onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-center mb-4">
           <div className="w-10 h-1 rounded-full bg-[#E0E0E0]" />
         </div>
