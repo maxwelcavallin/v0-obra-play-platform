@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     `
     const token = sessions[0].token
 
-    const response = NextResponse.json({ user, companies: [] })
+    const response = NextResponse.json({ user, companies: [], token })
 
     response.cookies.set(SESSION_COOKIE, token, {
       httpOnly: true,

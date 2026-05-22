@@ -1,11 +1,20 @@
-import { cookies } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { sql } from "./db"
 
 export const SESSION_COOKIE = "op_session_token"
 
 export async function getSession() {
+  // 1. Tenta cookie HTTP-only
   const cookieStore = await cookies()
-  const token = cookieStore.get(SESSION_COOKIE)?.value
+  let token = cookieStore.get(SESSION_COOKIE)?.value
+
+  // 2. Fallback: header Authorization: Bearer <token>
+  if (!token) {
+    const headerStore = await headers()
+    const auth = headerStore.get("authorization") ?? ""
+    if (auth.startsWith("Bearer ")) token = auth.slice(7)
+  }
+
   if (!token) return null
 
   const rows = await sql`

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { EmpresaForm } from "@/components/empresas/empresa-form"
 import { useAuth } from "@/lib/auth-context"
+import { authFetch } from "@/lib/auth-fetch"
 import { toast } from "sonner"
 
 export default function NovaEmpresaPage() {
@@ -15,7 +16,7 @@ export default function NovaEmpresaPage() {
   async function handleSave(data: any) {
     setLoading(true)
     try {
-      const res = await fetch("/api/empresas", {
+      const res = await authFetch("/api/empresas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

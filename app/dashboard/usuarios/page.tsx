@@ -7,6 +7,7 @@ import {
 } from "lucide-react"
 import { MOCK_PROFILES, type UserRole, type PermissionProfile } from "@/lib/mock-data"
 import { useAuth } from "@/lib/auth-context"
+import { authFetch } from "@/lib/auth-fetch"
 import { toast } from "sonner"
 
 interface CompanyUser {
@@ -284,7 +285,7 @@ export default function UsuariosPage() {
   useEffect(() => {
     if (!activeCompany?.id) return
     setLoadingUsers(true)
-    fetch(`/api/empresas/${activeCompany.id}/usuarios`)
+    authFetch(`/api/empresas/${activeCompany.id}/usuarios`)
       .then((r) => r.json())
       .then((data) => setUsers(Array.isArray(data) ? data : []))
       .catch(() => setUsers([]))
@@ -293,7 +294,7 @@ export default function UsuariosPage() {
 
   async function handleRemove(userId: string) {
     if (!activeCompany?.id) return
-    await fetch(`/api/empresas/${activeCompany.id}/usuarios/${userId}`, { method: "DELETE" })
+    await authFetch(`/api/empresas/${activeCompany.id}/usuarios/${userId}`, { method: "DELETE" })
     setUsers((prev) => prev.filter((u) => u.id !== userId))
     toast.success("Usuário removido")
   }

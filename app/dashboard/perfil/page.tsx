@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, Lock, User, ChevronRight, LogOut, Loader2, Check } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
+import { authFetch } from "@/lib/auth-fetch"
 import { OpInput } from "@/components/ui/op-input"
 import { OpAvatarUpload } from "@/components/ui/op-avatar-upload"
 
@@ -41,7 +42,7 @@ export default function PerfilPage() {
 
   // Carrega dados atuais da API ao abrir
   useEffect(() => {
-    fetch("/api/auth/perfil")
+    authFetch("/api/auth/perfil")
       .then((r) => r.json())
       .then((data) => {
         if (data.name) setName(data.name)
@@ -67,7 +68,7 @@ export default function PerfilPage() {
 
     setDadosSaving(true)
     try {
-      const res = await fetch("/api/auth/perfil", {
+      const res = await authFetch("/api/auth/perfil", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim(), phone: phone || null, photo_url: avatar ?? null }),
@@ -94,7 +95,7 @@ export default function PerfilPage() {
 
     setPassSaving(true)
     try {
-      const res = await fetch("/api/auth/perfil", {
+      const res = await authFetch("/api/auth/perfil", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, ChevronRight, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
+import { authFetch } from "@/lib/auth-fetch"
 
 interface Company {
   id: string
@@ -39,7 +40,7 @@ export default function EmpresasPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/empresas")
+    authFetch("/api/empresas")
       .then((r) => r.json())
       .then((data) => setCompanies(Array.isArray(data) ? data : []))
       .catch(() => setCompanies([]))

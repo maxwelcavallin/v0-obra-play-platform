@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Search, Plus, X, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
+import { authFetch } from "@/lib/auth-fetch"
 
 interface Client {
   id: string
@@ -38,7 +39,7 @@ export default function ClientesPage() {
   useEffect(() => {
     if (!activeCompany?.id) return
     setLoading(true)
-    fetch(`/api/clientes?company_id=${activeCompany.id}`)
+    authFetch(`/api/clientes?company_id=${activeCompany.id}`)
       .then((r) => r.json())
       .then((data) => setClients(Array.isArray(data) ? data : []))
       .catch(() => setClients([]))

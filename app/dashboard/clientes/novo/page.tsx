@@ -6,6 +6,7 @@ import { ArrowLeft, Instagram, Mail, Loader2 } from "lucide-react"
 import { OpInput } from "@/components/ui/op-input"
 import { fmtCPF, fmtCNPJ, fmtPhone, fmtCEP, fmtDate, type ClientType } from "@/lib/mock-data"
 import { useAuth } from "@/lib/auth-context"
+import { authFetch } from "@/lib/auth-fetch"
 import { toast } from "sonner"
 
 const STATES = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"]
@@ -126,7 +127,7 @@ export default function NovoClientePage() {
     if (!activeCompany?.id) { toast.error("Selecione uma empresa antes de cadastrar"); return }
     setLoading(true)
     try {
-      const res = await fetch("/api/clientes", {
+      const res = await authFetch("/api/clientes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

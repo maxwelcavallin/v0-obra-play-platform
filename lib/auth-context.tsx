@@ -1,6 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useState, useCallback } from "react"
+import { authFetch } from "./auth-fetch"
 
 export interface User {
   id: string
@@ -92,6 +93,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const mappedCompanies: Company[] = (data.companies ?? []).map(mapCompany)
     const active = mappedCompanies[0] ?? null
 
+    // Persiste token para envio via header (fallback ao cookie em iframes)
+    if (data.token) localStorage.setItem("op_token", data.token)
+
     setUser(userData)
     setCompanies(mappedCompanies)
     setActiveCompanyState(active)
@@ -99,7 +103,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
-    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {})
+    await authFetch("/api/auth/logout", { method: "POST" }).catch(() => {})
+    localStorage.removeItem("op_token")
     setUser(null)
     setActiveCompanyState(null)
     setCompanies([])
@@ -116,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!res.ok) throw new Error(json.error ?? "Erro ao cadastrar")
 
     const userData: User = json.user
+    if (json.token) localStorage.setItem("op_token", json.token)
     setUser(userData)
     setCompanies([])
     setActiveCompanyState(null)
@@ -144,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const completeOnboarding = useCallback(async (company: Company) => {
     // Persiste no banco
-    const res = await fetch("/api/empresas", {
+    const res = await authFetch("/api/empresas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
