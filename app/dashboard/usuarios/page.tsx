@@ -179,7 +179,7 @@ export default function UsuariosPage() {
               <UserAvatar user={u} />
               <span
                 className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
-                  u.status === "online" ? "bg-[#4CAF50]" : "bg-[#9E9E9E]"
+                  u.status === "ativo" ? "bg-[#4CAF50]" : "bg-[#9E9E9E]"
                 }`}
               />
             </div>
@@ -197,7 +197,7 @@ export default function UsuariosPage() {
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 <span className={`op-chip text-xs ${ROLE_COLORS[u.role]}`}>{u.role}</span>
                 <span className="text-[#9E9E9E]" style={{ fontSize: "0.7rem" }}>
-                  {u.status === "online" ? "Online" : "Inativo"}
+                  {u.status === "ativo" ? "Ativo" : "Inativo"}
                 </span>
               </div>
               <p className="text-[#9E9E9E] truncate" style={{ fontSize: "0.7rem", marginTop: 1 }}>{u.email}</p>

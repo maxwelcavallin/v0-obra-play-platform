@@ -105,7 +105,7 @@ export const MOCK_COMPANIES: CompanyMock[] = [
 
 // ─── Usuário da empresa ───────────────────────────────────────
 export type UserRole = "Admin" | "Comprador" | "Financeiro" | "Visualizador" | "Personalizado"
-export type UserStatus = "online" | "inativo"
+export type UserStatus = "ativo" | "inativo"
 
 export interface CompanyUser {
   id: string
@@ -119,11 +119,11 @@ export interface CompanyUser {
 }
 
 export const MOCK_COMPANY_USERS: CompanyUser[] = [
-  { id: "u1", name: "Carlos Mendes",    email: "carlos@construtora.com",  role: "Admin",       status: "online",  isVerified: true,  companyId: "cmp-001" },
-  { id: "u2", name: "Fernanda Lima",    email: "fernanda@construtora.com", role: "Financeiro",  status: "online",  isVerified: false, companyId: "cmp-001" },
-  { id: "u3", name: "Rodrigo Alves",    email: "rodrigo@construtora.com",  role: "Comprador",   status: "inativo", isVerified: false, companyId: "cmp-001" },
-  { id: "u4", name: "Beatriz Souza",    email: "beatriz@construtora.com",  role: "Visualizador",status: "inativo", isVerified: false, companyId: "cmp-001" },
-  { id: "u5", name: "Lucas Ferreira",   email: "lucas@construtora.com",    role: "Personalizado",status: "online", isVerified: false, companyId: "cmp-001" },
+  { id: "u1", name: "Carlos Mendes",    email: "carlos@construtora.com",  role: "Admin",        status: "ativo",   isVerified: true,  companyId: "cmp-001" },
+  { id: "u2", name: "Fernanda Lima",    email: "fernanda@construtora.com", role: "Financeiro",   status: "ativo",   isVerified: false, companyId: "cmp-001" },
+  { id: "u3", name: "Rodrigo Alves",    email: "rodrigo@construtora.com",  role: "Comprador",    status: "inativo", isVerified: false, companyId: "cmp-001" },
+  { id: "u4", name: "Beatriz Souza",    email: "beatriz@construtora.com",  role: "Visualizador", status: "inativo", isVerified: false, companyId: "cmp-001" },
+  { id: "u5", name: "Lucas Ferreira",   email: "lucas@construtora.com",    role: "Personalizado",status: "ativo",   isVerified: false, companyId: "cmp-001" },
 ]
 
 // ─── Perfis de permissão ──────────────────────────────────────
