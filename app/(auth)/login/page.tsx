@@ -154,9 +154,6 @@ export default function LoginPage() {
               </Link>
             </p>
 
-            <p className="text-center text-[#BDBDBD] mt-2" style={{ fontSize: "0.75rem" }}>
-              Demo: carlos@construtora.com / senha123
-            </p>
           </form>
         </div>
 
