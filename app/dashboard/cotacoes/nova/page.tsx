@@ -208,7 +208,8 @@ export default function NovaCotacaoPage() {
     setMirrorFetched(true)
     setMirrorNeedsSync(false)
     setMirrorSuppliers([])
-    setSelectedSupplierIds(new Set())
+    setSelectedSupplierContacts(new Map())
+    setExpandedMembers(new Set())
     try {
       const qs = new URLSearchParams()
       if (city)  qs.set("city",  city)
