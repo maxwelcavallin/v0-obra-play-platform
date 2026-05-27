@@ -1184,10 +1184,16 @@ function NovaCotacaoInner() {
                     const cats: string[] = Array.isArray(s.category_names) ? s.category_names : []
                     if (!cats.some(c => filterCategories.has(c))) return false
                   }
-                  // Filtro por tempo de resposta
+                  // Filtro por tempo de resposta — parseia a string já formatada ex: "~4 min", "~13h"
                   if (filterResponseTime !== "all") {
                     const maxMin = parseInt(filterResponseTime)
-                    if (!s.avg_response_time_minutes || s.avg_response_time_minutes > maxMin) return false
+                    const dur = s.avg_finalized_answers_duration ?? s.avg_response_time_minutes ?? null
+                    if (!dur) return true // sem dado: não exclui
+                    const durStr = String(dur)
+                    const h = durStr.match(/(\d+)\s*h/)
+                    const m = durStr.match(/(\d+)\s*min/)
+                    const totalMin = (h ? parseInt(h[1]) * 60 : 0) + (m ? parseInt(m[1]) : 0)
+                    if (totalMin > 0 && totalMin > maxMin) return false
                   }
                   return true
                 })
