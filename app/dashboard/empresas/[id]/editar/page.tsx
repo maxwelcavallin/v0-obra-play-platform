@@ -35,6 +35,7 @@ export default function EditarEmpresaPage() {
             email: data.email ?? "",
             instagram: data.instagram ?? "",
             website: data.website ?? "",
+            obraplay_company_id: data.obraplay_company_id != null ? String(data.obraplay_company_id) : "",
           })
         }
       })
@@ -64,6 +65,7 @@ export default function EditarEmpresaPage() {
           email: data.email,
           instagram: data.instagram,
           website: data.website,
+          obraplay_company_id: data.obraplay_company_id ? parseInt(data.obraplay_company_id, 10) : null,
         }),
       })
       const json = await res.json()
@@ -108,7 +110,7 @@ export default function EditarEmpresaPage() {
         </span>
       </div>
       <div className="flex-1 flex flex-col">
-        <EmpresaForm initial={initial} onSave={handleSave} loading={loading} />
+        <EmpresaForm initial={initial} onSave={handleSave} loading={loading} showObraPlayId />
       </div>
     </div>
   )

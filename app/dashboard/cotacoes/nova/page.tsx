@@ -290,11 +290,11 @@ export default function NovaCotacaoPage() {
         ...manualSuppliers.map(s => ({ name: s.name, email: s.email || undefined, phone: s.phone || undefined, is_recommended: false })),
       ]
       // Monta o endereço de entrega conforme modo selecionado no passo 2
-      const co = companyDetail ?? activeCompany
+      const co = activeCompany
       const shippingAddress = addressMode === "obra" && selectedObra
         ? { construction_name: selectedObra.name, street: selectedObra.delivery_street, number: selectedObra.delivery_number, neighbourhood: selectedObra.delivery_neighbourhood, city: selectedObra.delivery_city, state: selectedObra.delivery_state, zipcode: selectedObra.delivery_zipcode }
         : addressMode === "empresa" && co
-        ? { construction_name: (co as any).fantasy_name ?? (co as any).company_name, street: (co as any).street, number: (co as any).number, neighbourhood: (co as any).neighbourhood, city: (co as any).city, state: (co as any).state, zipcode: (co as any).zipcode }
+        ? { construction_name: co.fantasyName || co.companyName, street: co.street, number: co.number, neighbourhood: co.neighbourhood, city: co.city, state: co.state, zipcode: co.zipcode }
         : { street: manualStreet, number: manualNumber, neighbourhood: manualNeighbourhood, city: manualCity, state: manualState, zipcode: manualZipcode }
 
       const res = await authFetch("/api/cotacoes", {
@@ -302,7 +302,7 @@ export default function NovaCotacaoPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           company_id: activeCompany?.id,
-          obraplay_company_id: (activeCompany as any)?.obraplay_company_id ?? null,
+          obraplay_company_id: activeCompany?.obraplayCompanyId ?? null,
           obra_id: selectedObra?.id ?? null,
           obra_name: selectedObra?.name ?? null,
           need_date: needDate || null,
@@ -697,6 +697,27 @@ export default function NovaCotacaoPage() {
             </div>
           </button>
 
+          {/* Aviso quando ID ObraPlay não está configurado */}
+          {!activeCompany?.obraplayCompanyId && (
+            <div className="flex items-start gap-3 bg-[#FFF3E0] border border-[#FFB74D] rounded-xl p-3 mb-4">
+              <AlertCircle size={16} className="text-[#E65100] flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-semibold text-[#E65100]">Integração ObraPlay não configurada</p>
+                <p className="text-xs text-[#BF360C] mt-0.5">
+                  Configure o ID ObraPlay da empresa em{" "}
+                  <button
+                    type="button"
+                    className="underline font-semibold"
+                    onClick={() => router.push(`/dashboard/empresas/${activeCompany?.id}/editar`)}
+                  >
+                    Editar Empresa
+                  </button>{" "}
+                  para que a cotação seja enviada automaticamente à plataforma ObraPlay.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Fornecedores do mirror ObraPlay */}
           <p className="text-[#616161] font-bold mb-1 text-xs uppercase tracking-wider">FORNECEDORES OBRAPLAY</p>
 
@@ -717,9 +738,8 @@ export default function NovaCotacaoPage() {
                 setLoadingMirror(true)
                 await authFetch("/api/obraplay/sync", { method: "POST" }).catch(() => {})
                 setMirrorNeedsSync(false)
-                const c = companyDetail ?? activeCompany
-                const city  = addressMode === "obra" ? selectedObra?.delivery_city ?? "" : addressMode === "manual" ? manualCity : (c as any)?.city ?? ""
-                const state = addressMode === "obra" ? selectedObra?.delivery_state ?? "" : addressMode === "manual" ? manualState : (c as any)?.state ?? ""
+                const city  = addressMode === "obra" ? selectedObra?.delivery_city ?? "" : addressMode === "manual" ? manualCity : activeCompany?.city ?? ""
+                const state = addressMode === "obra" ? selectedObra?.delivery_state ?? "" : addressMode === "manual" ? manualState : activeCompany?.state ?? ""
                 await fetchMirrorSuppliers(city, state)
               }} className="text-xs text-[#1565C0] font-semibold underline">Sincronizar agora</button>
             </div>
