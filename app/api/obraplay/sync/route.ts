@@ -51,6 +51,9 @@ export async function POST() {
 
           const company = detail as OPCompany & { memberships?: OPMember[] }
 
+          // Garantia extra: nunca persiste empresa sem has_confirmed_configuration
+          if (!company.has_confirmed_configuration) continue
+
           // Resolve category_names
           const categoryNames = resolveCategoryNames(company)
           const shippingNames = resolveShippingNames(company)
@@ -174,6 +177,13 @@ export async function POST() {
         }
       }
     }
+
+    // Remove empresas que perderam has_confirmed_configuration desde o último sync
+    await sql`
+      DELETE FROM mirror_companies
+      WHERE has_confirmed_configuration = false
+        OR last_sync_at < ${startedAt.toISOString()}
+    `
 
     // Atualiza sync_control
     await sql`
