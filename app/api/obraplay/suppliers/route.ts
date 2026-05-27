@@ -200,7 +200,26 @@ export async function GET(req: NextRequest) {
 
   sortSuppliers(suppliers)
 
-  return NextResponse.json({ suppliers, total: total ?? 0, page, perPage, needsSync: false, source: "local" })
+  // Carrega membros (vendedores) de cada empresa para exibição no card
+  const companyIds = suppliers.map(s => s.id)
+  let membersMap: Record<number, any[]> = {}
+  if (companyIds.length > 0) {
+    const memberRows = await sql`
+      SELECT id, company_id, member_id, name, email, phone, role, is_active
+      FROM mirror_members
+      WHERE company_id = ANY(${companyIds}::int[])
+        AND is_active = true
+      ORDER BY company_id, role DESC, name
+    `
+    for (const m of memberRows) {
+      if (!membersMap[m.company_id]) membersMap[m.company_id] = []
+      membersMap[m.company_id].push({ id: m.member_id, name: m.name, email: m.email, phone: m.phone, role: m.role })
+    }
+  }
+
+  const suppliersWithMembers = suppliers.map(s => ({ ...s, members: membersMap[s.id] ?? [] }))
+
+  return NextResponse.json({ suppliers: suppliersWithMembers, total: total ?? 0, page, perPage, needsSync: false, source: "local" })
 }
 
 // ─── POST — Dropdowns (categorias, estados, cidades) ─────────────────────────

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft, Search, Plus, X, Trash2, Loader2,
-  Package, MapPin, Building2, User,
+  Package, MapPin, Building2, User, Users, ChevronDown,
   ChevronRight, Check, Sparkles, AlertCircle
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
@@ -114,7 +114,9 @@ export default function NovaCotacaoPage() {
   const [mirrorFetched, setMirrorFetched] = useState(false)
   const [mirrorNeedsSync, setMirrorNeedsSync] = useState(false)
   const [supplierSearch, setSupplierSearch] = useState("")
-  const [selectedSupplierIds, setSelectedSupplierIds] = useState<Set<number>>(new Set())
+  // Map<companyId, { name, email, phone, type: "company"|"member", role? }>
+  const [selectedSupplierContacts, setSelectedSupplierContacts] = useState<Map<number, { name: string; email: string | null; phone: string | null; type: "company" | "member"; role?: string }>>(new Map())
+  const [expandedMembers, setExpandedMembers] = useState<Set<number>>(new Set())
   const [manualSuppliers, setManualSuppliers] = useState<{ name: string; email: string; phone: string }[]>([])
   const [showAddSupplier, setShowAddSupplier] = useState(false)
   const [newSupName, setNewSupName] = useState("")
@@ -276,15 +278,23 @@ export default function NovaCotacaoPage() {
 
   // ─ Enviar cotação ─────────────────────────────────────────────────────────
   async function handleSubmit() {
-    if (!isPublic && selectedSupplierIds.size === 0 && manualSuppliers.length === 0) {
+    if (!isPublic && selectedSupplierContacts.size === 0 && manualSuppliers.length === 0) {
       toast.error("Selecione pelo menos um fornecedor ou marque a cotação como pública.")
       return
     }
     setSubmitting(true)
     try {
-      const mirrorSelected = mirrorSuppliers
-        .filter(s => selectedSupplierIds.has(s.id))
-        .map(s => ({ name: s.company_name, email: s.email || undefined, phone: s.phone || s.whatsapp || undefined, is_recommended: s.registration_type === "certified", mirror_company_id: s.id }))
+      // Para cada empresa selecionada, pega o contato escolhido (empresa ou vendedor)
+      const mirrorSelected = Array.from(selectedSupplierContacts.entries()).map(([companyId, contact]) => {
+        const s = mirrorSuppliers.find(x => x.id === companyId)
+        return {
+          name: contact.name,
+          email: contact.email || undefined,
+          phone: contact.phone || undefined,
+          is_recommended: s?.registration_type === "certified",
+          mirror_company_id: companyId,
+        }
+      })
       const supplierList = [
         ...mirrorSelected,
         ...manualSuppliers.map(s => ({ name: s.name, email: s.email || undefined, phone: s.phone || undefined, is_recommended: false })),
@@ -771,30 +781,105 @@ export default function NovaCotacaoPage() {
                   </div>
                 )
                 const CardMirror = ({ s }: { s: any }) => {
-                  const sel = selectedSupplierIds.has(s.id)
-                  return (
-                    <button type="button" onClick={() => setSelectedSupplierIds(prev => {
-                      const n = new Set(prev); sel ? n.delete(s.id) : n.add(s.id); return n
-                    })} className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 border-2 transition-colors text-left ${sel ? "border-[#1565C0] bg-[#E3F2FD]" : "border-[#E0E0E0] bg-white"}`}>
-                      {s.logo_url
-                        ? <img src={s.logo_url} alt={s.company_name} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
-                        : <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: getColor(s.company_name ?? "") }}>{getInitials(s.company_name ?? "")}</div>
+                  const selectedContact = selectedSupplierContacts.get(s.id)
+                  const isSelected = !!selectedContact
+                  const membersExpanded = expandedMembers.has(s.id)
+                  const hasMembers = (s.members ?? []).length > 0
+
+                  // Contato principal da empresa (fallback)
+                  const companyContact = { name: s.company_name, email: s.email, phone: s.phone || s.whatsapp, type: "company" as const }
+
+                  function selectContact(contact: { name: string; email: string | null; phone: string | null; type: "company" | "member"; role?: string }) {
+                    setSelectedSupplierContacts(prev => {
+                      const n = new Map(prev)
+                      // Se já selecionou o mesmo contato, deseleciona a empresa inteira
+                      const cur = n.get(s.id)
+                      if (cur && cur.name === contact.name && cur.type === contact.type) {
+                        n.delete(s.id)
+                      } else {
+                        n.set(s.id, contact)
                       }
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-sm font-semibold text-[#212121] truncate">{s.company_name}</p>
-                          {s.registration_type === "certified" && <span className="text-[10px] bg-[#1565C0] text-white px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Certificado</span>}
-                          {s.registration_type === "validated" && <span className="text-[10px] bg-[#E3F2FD] text-[#1565C0] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Validado</span>}
+                      return n
+                    })
+                  }
+
+                  function toggleMembers(e: React.MouseEvent) {
+                    e.stopPropagation()
+                    setExpandedMembers(prev => {
+                      const n = new Set(prev)
+                      n.has(s.id) ? n.delete(s.id) : n.add(s.id)
+                      return n
+                    })
+                  }
+
+                  return (
+                    <div className={`rounded-xl border-2 transition-colors overflow-hidden ${isSelected ? "border-[#1565C0]" : "border-[#E0E0E0]"} bg-white`}>
+                      {/* Cabeçalho da empresa */}
+                      <div className="flex items-center gap-3 px-4 py-3">
+                        {s.logo_url
+                          ? <img src={s.logo_url} alt={s.company_name} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                          : <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: getColor(s.company_name ?? "") }}>{getInitials(s.company_name ?? "")}</div>
+                        }
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-sm font-semibold text-[#212121] truncate">{s.company_name}</p>
+                            {s.registration_type === "certified" && <span className="text-[10px] bg-[#1565C0] text-white px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Certificado</span>}
+                            {s.registration_type === "validated" && <span className="text-[10px] bg-[#E3F2FD] text-[#1565C0] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Validado</span>}
+                          </div>
+                          <p className="text-xs text-[#9E9E9E] mt-0.5">{[s.city_name, s.state_abbr].filter(Boolean).join(" · ")}{s.avg_finalized_answers_duration ? ` · ${s.avg_finalized_answers_duration}` : ""}</p>
                         </div>
-                        <p className="text-xs text-[#9E9E9E] mt-0.5">{[s.city_name, s.state_abbr].filter(Boolean).join(" - ")}{s.avg_finalized_answers_duration ? ` · ${s.avg_finalized_answers_duration}` : ""}</p>
-                        {(s.category_names ?? []).length > 0 && (
-                          <p className="text-xs text-[#BDBDBD] mt-0.5 truncate">{s.category_names.slice(0, 3).join(", ")}</p>
+                        {/* Botão expandir vendedores */}
+                        {hasMembers && (
+                          <button type="button" onClick={toggleMembers}
+                            className="flex items-center gap-1 text-xs text-[#1565C0] font-semibold px-2 py-1 rounded-lg hover:bg-[#E3F2FD] transition-colors flex-shrink-0">
+                            <Users size={13} />
+                            <span>{(s.members ?? []).length}</span>
+                            <ChevronDown size={13} className={`transition-transform ${membersExpanded ? "rotate-180" : ""}`} />
+                          </button>
                         )}
                       </div>
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${sel ? "bg-[#1565C0] border-[#1565C0]" : "border-[#BDBDBD]"}`}>
-                        {sel && <Check size={12} className="text-white" />}
+
+                      {/* Linha divisória + contato principal */}
+                      <div className="border-t border-[#F5F5F5]">
+                        {/* Contato da empresa */}
+                        <button type="button" onClick={() => selectContact(companyContact)}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left ${isSelected && selectedContact.type === "company" ? "bg-[#E3F2FD]" : "hover:bg-[#FAFAFA]"}`}>
+                          <div className="w-7 h-7 rounded-full bg-[#E3F2FD] flex items-center justify-center flex-shrink-0">
+                            <Building2 size={13} className="text-[#1565C0]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-[#424242]">{s.company_name}</p>
+                            <p className="text-[11px] text-[#9E9E9E] truncate">
+                              {[s.email, s.phone || s.whatsapp].filter(Boolean).join(" · ") || "Sem contato cadastrado"}
+                            </p>
+                          </div>
+                          <span className="text-[10px] text-[#9E9E9E] flex-shrink-0">Empresa</span>
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isSelected && selectedContact.type === "company" ? "bg-[#1565C0] border-[#1565C0]" : "border-[#BDBDBD]"}`}>
+                            {isSelected && selectedContact.type === "company" && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          </div>
+                        </button>
+
+                        {/* Lista de vendedores (expansível) */}
+                        {membersExpanded && (s.members ?? []).map((m: any) => (
+                          <button key={m.id} type="button" onClick={() => selectContact({ name: m.name, email: m.email, phone: m.phone, type: "member", role: m.role })}
+                            className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left border-t border-[#F5F5F5] ${isSelected && selectedContact.type === "member" && selectedContact.name === m.name ? "bg-[#E3F2FD]" : "hover:bg-[#FAFAFA]"}`}>
+                            <div className="w-7 h-7 rounded-full bg-[#F5F5F5] flex items-center justify-center flex-shrink-0">
+                              <User size={13} className="text-[#757575]" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-[#424242]">{m.name || "Vendedor"}</p>
+                              <p className="text-[11px] text-[#9E9E9E] truncate">{[m.email, m.phone].filter(Boolean).join(" · ") || "Sem contato"}</p>
+                            </div>
+                            {m.role && m.role !== "member" && (
+                              <span className="text-[10px] text-[#9E9E9E] capitalize flex-shrink-0">{m.role}</span>
+                            )}
+                            <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isSelected && selectedContact.type === "member" && selectedContact.name === m.name ? "bg-[#1565C0] border-[#1565C0]" : "border-[#BDBDBD]"}`}>
+                              {isSelected && selectedContact.type === "member" && selectedContact.name === m.name && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                            </div>
+                          </button>
+                        ))}
                       </div>
-                    </button>
+                    </div>
                   )
                 }
                 return (
@@ -865,13 +950,13 @@ export default function NovaCotacaoPage() {
 
       {/* ─── Footer fixo ─────────────────────────────────────────────────── */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#EEEEEE] px-4 py-4 z-20" style={{ maxWidth: 480, margin: "0 auto" }}>
-        {step === 3 && (isPublic || selectedSupplierIds.size > 0 || manualSuppliers.length > 0) && (
+        {step === 3 && (isPublic || selectedSupplierContacts.size > 0 || manualSuppliers.length > 0) && (
           <div className="flex items-center gap-2 mb-3 bg-[#E3F2FD] rounded-xl px-4 py-2">
             <Check size={14} className="text-[#1565C0]" />
             <span className="text-xs text-[#1565C0] font-semibold">
-              {isPublic && "Pública"}
-              {selectedSupplierIds.size > 0 && `${selectedSupplierIds.size} ObraPlay`}
-              {manualSuppliers.length > 0 && `${manualSuppliers.length} externo${manualSuppliers.length > 1 ? "s" : ""}`}
+              {isPublic ? "Pública · " : ""}
+              {selectedSupplierContacts.size > 0 && `${selectedSupplierContacts.size} ObraPlay`}
+              {manualSuppliers.length > 0 && ` · ${manualSuppliers.length} externo${manualSuppliers.length > 1 ? "s" : ""}`}
             </span>
           </div>
         )}
@@ -887,8 +972,7 @@ export default function NovaCotacaoPage() {
                 } else if (addressMode === "manual") {
                   fetchMirrorSuppliers(manualCity, manualState)
                 } else if (addressMode === "empresa") {
-                  const c = companyDetail ?? activeCompany
-                  fetchMirrorSuppliers((c as any)?.city ?? "", (c as any)?.state ?? "")
+                  fetchMirrorSuppliers(activeCompany?.city ?? "", activeCompany?.state ?? "")
                 }
               }
               setStep(s => s + 1)
