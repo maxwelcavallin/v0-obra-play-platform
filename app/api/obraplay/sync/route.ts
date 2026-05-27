@@ -219,6 +219,10 @@ function resolveCategoryNames(company: OPCompany): string[] {
 function resolveShippingNames(company: OPCompany): string[] {
   if (company.shipping_location_names?.length) return company.shipping_location_names
   return (company.shipping_locations ?? [])
-    .filter(s => typeof s === "object" && "name" in s)
-    .map(s => (s as { name: string }).name)
+    .filter((s): s is { city?: { name: string }; state?: { code: string } } => typeof s === "object")
+    .flatMap(s => {
+      const names: string[] = []
+      if (s.city?.name) names.push(s.city.name)
+      return names
+    })
 }

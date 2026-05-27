@@ -140,7 +140,15 @@ export async function GET(req: NextRequest) {
 
   if (search) { conditions.push(`(short_name ILIKE $${i} OR full_name ILIKE $${i} OR cnpj ILIKE $${i})`); values.push(`%${search}%`); i++ }
   if (state)  { conditions.push(`state = $${i}`); values.push(state); i++ }
-  if (city)   { conditions.push(`city ILIKE $${i}`); values.push(`%${city}%`); i++ }
+  if (city) {
+    // Filtra por cidade de entrega: verifica se algum item de shipping_locations possui city.name correspondente
+    conditions.push(`EXISTS (
+      SELECT 1 FROM jsonb_array_elements(shipping_locations) AS loc
+      WHERE loc->'city'->>'name' ILIKE $${i}
+    )`)
+    values.push(`%${city}%`)
+    i++
+  }
   if (minRating > 0) { conditions.push(`rating >= $${i}`); values.push(minRating); i++ }
   if (typeFilter === "insumos")  { conditions.push(`operation_types @> '["product"]'::jsonb`); }
   if (typeFilter === "servicos") { conditions.push(`operation_types @> '["service"]'::jsonb`); }
