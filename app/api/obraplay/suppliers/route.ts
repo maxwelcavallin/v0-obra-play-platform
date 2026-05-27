@@ -150,10 +150,10 @@ export async function GET(req: NextRequest) {
     i++
   }
   if (city) {
-    // Filtra por cidade de entrega: verifica se algum item de shipping_locations possui city.name correspondente
+    // Filtra por cidade de entrega usando shipping_location_names (array de strings já extraído no sync)
     conditions.push(`EXISTS (
-      SELECT 1 FROM jsonb_array_elements(shipping_locations) AS loc
-      WHERE loc->'city'->>'name' ILIKE $${i}
+      SELECT 1 FROM jsonb_array_elements_text(shipping_location_names) AS loc_city
+      WHERE loc_city ILIKE $${i}
     )`)
     values.push(`%${city}%`)
     i++
@@ -213,26 +213,24 @@ export async function POST(req: NextRequest) {
   }
 
   if (body.action === "get_cities") {
-    // Retorna cidades únicas de entrega (shipping_location city.name), filtradas por estado se fornecido
+    // Retorna cidades únicas de entrega usando shipping_location_names (array de strings)
     const rows = body.state
       ? await sql`
-          SELECT DISTINCT loc->'city'->>'name' AS city
-          FROM mirror_companies,
-               jsonb_array_elements(shipping_locations) AS loc
+          SELECT DISTINCT jsonb_array_elements_text(shipping_location_names) AS city
+          FROM mirror_companies
           WHERE has_confirmed_configuration = true
+            AND jsonb_array_length(shipping_location_names) > 0
             AND EXISTS (
               SELECT 1 FROM jsonb_array_elements_text(shipping_state_names) AS s
               WHERE s ILIKE ${body.state}
             )
-            AND loc->'city'->>'name' IS NOT NULL
           ORDER BY city
         `
       : await sql`
-          SELECT DISTINCT loc->'city'->>'name' AS city
-          FROM mirror_companies,
-               jsonb_array_elements(shipping_locations) AS loc
+          SELECT DISTINCT jsonb_array_elements_text(shipping_location_names) AS city
+          FROM mirror_companies
           WHERE has_confirmed_configuration = true
-            AND loc->'city'->>'name' IS NOT NULL
+            AND jsonb_array_length(shipping_location_names) > 0
           ORDER BY city
         `
     return NextResponse.json({ cities: rows.map(r => r.city), source: "local" })

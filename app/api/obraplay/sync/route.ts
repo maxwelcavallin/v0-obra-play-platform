@@ -96,7 +96,7 @@ export async function POST() {
               ${JSON.stringify(company.operation_types ?? [])}::jsonb,
               ${JSON.stringify(resolveIds(company.categories ?? []))}::jsonb,
               ${JSON.stringify(categoryNames)}::jsonb,
-              ${JSON.stringify(resolveIds(company.shipping_locations ?? []))}::jsonb,
+              ${JSON.stringify(company.shipping_locations ?? [])}::jsonb,
               ${JSON.stringify(shippingNames)}::jsonb,
               ${JSON.stringify(shippingStates)}::jsonb,
               ${company.has_confirmed_address ?? false},
@@ -133,7 +133,7 @@ export async function POST() {
               operation_types               = EXCLUDED.operation_types,
               categories                    = EXCLUDED.categories,
               category_names                = EXCLUDED.category_names,
-              shipping_locations            = EXCLUDED.shipping_locations,
+              shipping_locations            = EXCLUDED.shipping_locations, -- objetos completos {type, city, state}
               shipping_location_names       = EXCLUDED.shipping_location_names,
               shipping_state_names          = EXCLUDED.shipping_state_names,
               has_confirmed_address         = EXCLUDED.has_confirmed_address,
@@ -228,21 +228,28 @@ function resolveCategoryNames(company: OPCompany): string[] {
     .map(c => (c as { name: string }).name)
 }
 
+// Estrutura real da API ObraPlay: { id, type: "state"|"city", city: {id,name,state} | null, state: {id,code,name}, ... }
+type OPShippingLocation = {
+  id:    number
+  type:  "state" | "city" | string
+  city?: { id: number; name: string; state: number } | null
+  state?: { id: number; code: string; name: string }
+}
+
 function resolveShippingNames(company: OPCompany): string[] {
-  if (company.shipping_location_names?.length) return company.shipping_location_names
-  return (company.shipping_locations ?? [])
-    .filter((s): s is { city?: { name: string }; state?: { code: string; abbr?: string } } => typeof s === "object")
-    .flatMap(s => s.city?.name ? [s.city.name] : [])
+  const locs = (company.shipping_locations ?? []) as OPShippingLocation[]
+  // Apenas entradas do tipo "city" possuem nome de cidade específico
+  const names = locs
+    .filter(s => typeof s === "object" && s.type === "city" && s.city?.name)
+    .map(s => s.city!.name)
+  return [...new Set(names)]
 }
 
 function resolveShippingStates(company: OPCompany): string[] {
-  const states = (company.shipping_locations ?? [])
-    .filter((s): s is { state?: { code: string; abbr?: string; name?: string } } => typeof s === "object")
-    .flatMap(s => {
-      // A API pode retornar state.code (ex: "SP"), state.abbr ou state.name
-      const code = s.state?.abbr ?? s.state?.code ?? s.state?.name
-      return code ? [code] : []
-    })
-  // Remove duplicatas preservando ordem
-  return [...new Set(states)]
+  const locs = (company.shipping_locations ?? []) as OPShippingLocation[]
+  // Extrai state.code de todos os registros (tanto tipo "state" quanto "city")
+  const codes = locs
+    .filter(s => typeof s === "object" && s.state?.code)
+    .map(s => s.state!.code)
+  return [...new Set(codes)]
 }
