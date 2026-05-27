@@ -144,19 +144,28 @@ export async function POST() {
               obraplay_updated_at           = EXCLUDED.obraplay_updated_at
           `
 
-          // Sync memberships (vendedores)
-          const membershipsRes = await obraplay.companies.memberships(company.id).catch(() => ({ results: [] }))
-          for (const m of (membershipsRes.results ?? [])) {
+          // Sync memberships — usa o array que já vem no detalhe da empresa
+          const memberships: any[] = company.memberships ?? []
+          for (const m of memberships) {
+            // Considera ativo: sem left_at E não recusado E validado
+            const isActive = !m.left_at && !m.is_refused && (m.is_validated ?? true)
+            // Papel: admin, superadmin ou membro comum
+            const role = m.is_superadmin ? "superadmin" : m.is_admin ? "admin" : "member"
+            // Contato: prioriza email/phone do membership, depois cai no user
+            const email = m.email || m.user?.email || null
+            const phone = m.phone || m.user?.phone || null
+            const name  = m.user?.display_name || m.user?.name || null
+
             await sql`
               INSERT INTO mirror_members (company_id, member_id, name, email, phone, role, is_active, payload, last_sync_at)
               VALUES (
                 ${company.id},
                 ${m.id},
-                ${m.user?.name ?? null},
-                ${m.user?.email ?? null},
-                ${m.user?.phone ?? null},
-                ${m.role ?? null},
-                ${m.is_active ?? true},
+                ${name},
+                ${email},
+                ${phone},
+                ${role},
+                ${isActive},
                 ${JSON.stringify(m)}::jsonb,
                 ${startedAt.toISOString()}
               )

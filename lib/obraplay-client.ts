@@ -77,10 +77,29 @@ export interface OPCompany {
 }
 
 export interface OPMember {
-  id:       number
-  user?:    { id: number; name?: string; email?: string; phone?: string }
-  role?:    string
-  is_active?: boolean
+  id:           number
+  user?: {
+    id:             number
+    username?:      string
+    display_name?:  string
+    name?:          string
+    email?:         string
+    phone?:         string
+    avatar?:        string
+  }
+  company_id?:  string | number
+  email?:       string
+  phone?:       string
+  is_validated?:  boolean
+  is_refused?:    boolean
+  is_admin?:      boolean
+  is_superadmin?: boolean
+  is_default?:    boolean
+  is_qsa?:        boolean
+  left_at?:       string | null
+  joined_at?:     string | null
+  role?:          string
+  is_active?:     boolean
 }
 
 export interface OPMetrics {
