@@ -159,10 +159,12 @@ export default function CotacoesPage() {
                 {/* ID + status */}
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="min-w-0">
-                    <span className="font-bold text-[#212121] tracking-widest"
-                      style={{ fontSize: "0.95rem", fontFamily: "monospace" }}>
-                      {c.obraplay_quotation_code ? `Cotação: ${c.obraplay_quotation_code}` : c.identifier}
-                    </span>
+                    {c.obraplay_quotation_code && (
+                      <span className="font-bold text-[#212121] tracking-widest"
+                        style={{ fontSize: "0.95rem", fontFamily: "monospace" }}>
+                        {c.obraplay_quotation_code}
+                      </span>
+                    )}
                     {c.obra_name && (
                       <p className="text-[#757575] text-xs mt-0.5 truncate">{c.obra_name}</p>
                     )}
