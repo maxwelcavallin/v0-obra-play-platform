@@ -142,29 +142,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         name:                  item.name,
         quantity:              Number(item.quantity) || 1,
         total_quantity_micros: Math.round((Number(item.quantity) || 1) * 1_000_000),
-        measurement_unit:      item.measurement_unit_id ?? 1,
-        type:                  "custom" as const,
+        measurement_unit:      item.unit ?? "UN",
+        type:                  "I" as const,
       }))
 
       const addr = b.shipping_address ?? {}
       const shippingAddress = {
+        foreign_id:        `${cotacao.identifier}-addr`,
         construction_name: addr.construction_name ?? b.obra_name ?? undefined,
-        street:     addr.street ?? undefined,
-        number:     addr.number ?? undefined,
-        neighbourhood: addr.neighbourhood ?? undefined,
-        city:       addr.city   ?? undefined,
-        state:      addr.state  ?? undefined,
-        zipcode:    addr.zipcode ?? undefined,
-        items:      opItems,
+        street:            addr.street        ?? undefined,
+        number:            addr.number        ?? undefined,
+        neighbourhood:     addr.neighbourhood ?? undefined,
+        city:              addr.city          ?? undefined,
+        state:             addr.state         ?? undefined,
+        zipcode:           addr.zipcode       ?? undefined,
+        complement:        addr.complement    ?? undefined,
+        items:             opItems,
       }
 
-      const answers: OPQuotationAnswer[] = (b.suppliers ?? []).map((s: any) => ({
+      const answers: OPQuotationAnswer[] = (b.suppliers ?? []).map((s: any, idx: number) => ({
+        foreign_id:           `${cotacao.identifier}-ans-${idx}`,
         name:                 s.name,
         email:                s.email  || undefined,
         phone:                s.phone  || undefined,
         notify_by_email:      !!s.email,
         notify_by_whatsapp:   !s.email && !!s.phone,
         own_supplier:         false,
+        ...(s.mirror_company_id ? { company: Number(s.mirror_company_id) } : {}),
         supplier_foreign_id:  s.mirror_company_id ? String(s.mirror_company_id) : undefined,
       }))
 

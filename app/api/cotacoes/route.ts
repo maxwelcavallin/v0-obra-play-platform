@@ -88,40 +88,45 @@ export async function POST(req: NextRequest) {
 
   if (opCompanyId) {
     try {
-      // Monta os itens da cotação — measurement_unit padrão 1 (unidade)
+      // Monta os itens — type "I" = item avulso, measurement_unit como string
       const opItems: OPQuotationItem[] = (b.items ?? []).map((item: any) => ({
         name:                  item.name,
         quantity:              Number(item.quantity) || 1,
         total_quantity_micros: Math.round((Number(item.quantity) || 1) * 1_000_000),
-        measurement_unit:      item.measurement_unit_id ?? 1,
-        type:                  "custom" as const,
+        measurement_unit:      item.unit ?? "UN",
+        type:                  "I" as const,
       }))
 
       // Monta o endereço de entrega
       const addr = b.shipping_address ?? {}
       const shippingAddress = {
+        foreign_id:        `${identifier}-addr`,
         construction_name: addr.construction_name ?? b.obra_name ?? undefined,
-        street:            addr.street     ?? undefined,
-        number:            addr.number     ?? undefined,
+        street:            addr.street        ?? undefined,
+        number:            addr.number        ?? undefined,
         neighbourhood:     addr.neighbourhood ?? undefined,
-        city:              addr.city       ?? undefined,
-        state:             addr.state      ?? undefined,
-        zipcode:           addr.zipcode    ?? undefined,
+        city:              addr.city          ?? undefined,
+        state:             addr.state         ?? undefined,
+        zipcode:           addr.zipcode       ?? undefined,
+        complement:        addr.complement    ?? undefined,
         items:             opItems,
       }
 
       // Monta os fornecedores (answers)
-      const answers: OPQuotationAnswer[] = (b.suppliers ?? []).map((s: any) => ({
+      const answers: OPQuotationAnswer[] = (b.suppliers ?? []).map((s: any, idx: number) => ({
+        foreign_id:           `${identifier}-ans-${idx}`,
         name:                 s.name,
-        email:                s.email     || undefined,
-        phone:                s.phone     || undefined,
+        email:                s.email  || undefined,
+        phone:                s.phone  || undefined,
         notify_by_email:      !!s.email,
         notify_by_whatsapp:   !s.email && !!s.phone,
         own_supplier:         false,
+        // Vincula ao cadastro ObraPlay do fornecedor quando disponível
+        ...(s.mirror_company_id ? { company: Number(s.mirror_company_id) } : {}),
         supplier_foreign_id:  s.mirror_company_id ? String(s.mirror_company_id) : undefined,
       }))
 
-      const opRes = await obraplay.quotations.createNested({
+      const opPayload = {
         company:            opCompanyId,
         requirement_date:   b.need_date    ?? undefined,
         expires_at:         b.expiry_date  ?? undefined,
@@ -129,20 +134,23 @@ export async function POST(req: NextRequest) {
         email:              b.requester_email ?? undefined,
         phone:              b.requester_phone ?? undefined,
         foreign_id:         identifier,
+        observations:       b.general_notes  ?? undefined,
         is_public:          b.is_public ?? false,
         is_draft:           false,
         shipping_addresses: [shippingAddress],
         answers:            answers.length > 0 ? answers : undefined,
-      })
+      }
 
-      // Persiste o ID retornado pela ObraPlay para rastreio futuro
-      await sql`
-        UPDATE cotacoes SET obraplay_quotation_id = ${opRes.id} WHERE id = ${cotacao.id}
-      `
+      console.log("[v0] Enviando para ObraPlay:", JSON.stringify(opPayload, null, 2))
+
+      const opRes = await obraplay.quotations.createNested(opPayload)
+
+      console.log("[v0] ObraPlay respondeu:", opRes)
+
+      await sql`UPDATE cotacoes SET obraplay_quotation_id = ${opRes.id} WHERE id = ${cotacao.id}`
       cotacao.obraplay_quotation_id = opRes.id
     } catch (err: any) {
       console.error("[v0] Erro ao enviar cotação para ObraPlay:", err?.message ?? err)
-      // Não falha o request — cotação já foi salva localmente
       cotacao._op_warning = "Cotação salva localmente. Falha ao enviar ao ObraPlay: " + (err?.message ?? "erro desconhecido")
     }
   }

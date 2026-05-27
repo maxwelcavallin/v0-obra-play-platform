@@ -23,7 +23,9 @@ async function request<T>(path: string, options: RequestInit = {}, attempt = 1):
         await sleep(2 ** attempt * 500)
         return request<T>(path, options, attempt + 1)
       }
-      throw new Error(`ObraPlay API ${res.status}: ${path}`)
+      let body = ""
+      try { body = await res.text() } catch {}
+      throw new Error(`ObraPlay API ${res.status} ${path}: ${body}`)
     }
     return res.json() as Promise<T>
   } catch (err: any) {
@@ -121,12 +123,14 @@ export interface OPQuotationItem {
   name:                   string
   quantity:               number
   total_quantity_micros:  number
-  measurement_unit:       number   // ID da unidade de medida
-  type:                   "custom" | "catalog"
-  item?:                  number   // ID do item do catálogo (somente type=catalog)
+  measurement_unit:       string   // string da unidade (ex: "UN", "m²", "kg")
+  type:                   "I" | "C" // "I" = item custom, "C" = catalog
+  item?:                  number   // ID do item do catálogo (somente type=C)
+  observations?:          string
 }
 
 export interface OPQuotationShippingAddress {
+  foreign_id?:         string
   construction_name?:  string
   street?:             string
   number?:             string
@@ -134,17 +138,21 @@ export interface OPQuotationShippingAddress {
   city?:               string
   state?:              string
   zipcode?:            string
+  complement?:         string
   items:               OPQuotationItem[]
 }
 
 export interface OPQuotationAnswer {
-  name:                 string
-  email?:               string
-  phone?:               string
-  notify_by_email?:     boolean
-  notify_by_whatsapp?:  boolean
-  own_supplier?:        boolean
-  supplier_foreign_id?: string
+  name:                  string
+  email?:                string
+  phone?:                string
+  notify_by_email?:      boolean
+  notify_by_whatsapp?:   boolean
+  own_supplier?:         boolean
+  supplier_foreign_id?:  string
+  company?:              number   // ID ObraPlay do fornecedor (mirror_company_id)
+  observations?:         string
+  foreign_id?:           string
 }
 
 export interface OPQuotationNestedPayload {
@@ -155,6 +163,7 @@ export interface OPQuotationNestedPayload {
   email?:               string
   phone?:               string
   foreign_id?:          string        // ID interno (identifier)
+  observations?:        string
   is_public?:           boolean
   is_draft?:            boolean
   shipping_addresses:   OPQuotationShippingAddress[]
