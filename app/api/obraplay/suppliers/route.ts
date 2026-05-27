@@ -64,6 +64,7 @@ function mapLocalRow(row: any) {
     category_names:               row.category_names ?? [],
     operation_types:              row.operation_types ?? [],
     shipping_location_names:      row.shipping_location_names ?? [],
+    shipping_state_names:         row.shipping_state_names ?? [],
     catalog_items_count:          row.catalog_items_count ?? 0,
     has_active_institutional_page: row.has_active_institutional_page ?? false,
     data_incomplete:              row.data_incomplete ?? false,
@@ -139,7 +140,15 @@ export async function GET(req: NextRequest) {
   let i = 1
 
   if (search) { conditions.push(`(short_name ILIKE $${i} OR full_name ILIKE $${i} OR cnpj ILIKE $${i})`); values.push(`%${search}%`); i++ }
-  if (state)  { conditions.push(`state = $${i}`); values.push(state); i++ }
+  if (state) {
+    // Filtra por estado de atuação (shipping_state_names), não pelo estado da sede
+    conditions.push(`EXISTS (
+      SELECT 1 FROM jsonb_array_elements_text(shipping_state_names) AS s
+      WHERE s ILIKE $${i}
+    )`)
+    values.push(state)
+    i++
+  }
   if (city) {
     // Filtra por cidade de entrega: verifica se algum item de shipping_locations possui city.name correspondente
     conditions.push(`EXISTS (
@@ -192,14 +201,40 @@ export async function POST(req: NextRequest) {
   }
 
   if (body.action === "get_states") {
-    const rows = await sql`SELECT DISTINCT state FROM mirror_companies WHERE has_confirmed_configuration = true AND state IS NOT NULL ORDER BY state`
+    // Retorna estados únicos de atuação (shipping_state_names), não da sede
+    const rows = await sql`
+      SELECT DISTINCT jsonb_array_elements_text(shipping_state_names) AS state
+      FROM mirror_companies
+      WHERE has_confirmed_configuration = true
+        AND jsonb_array_length(shipping_state_names) > 0
+      ORDER BY state
+    `
     return NextResponse.json({ states: rows.map(r => r.state), source: "local" })
   }
 
   if (body.action === "get_cities") {
+    // Retorna cidades únicas de entrega (shipping_location city.name), filtradas por estado se fornecido
     const rows = body.state
-      ? await sql`SELECT DISTINCT city FROM mirror_companies WHERE has_confirmed_configuration = true AND state = ${body.state} AND city IS NOT NULL ORDER BY city`
-      : await sql`SELECT DISTINCT city FROM mirror_companies WHERE has_confirmed_configuration = true AND city IS NOT NULL ORDER BY city`
+      ? await sql`
+          SELECT DISTINCT loc->'city'->>'name' AS city
+          FROM mirror_companies,
+               jsonb_array_elements(shipping_locations) AS loc
+          WHERE has_confirmed_configuration = true
+            AND EXISTS (
+              SELECT 1 FROM jsonb_array_elements_text(shipping_state_names) AS s
+              WHERE s ILIKE ${body.state}
+            )
+            AND loc->'city'->>'name' IS NOT NULL
+          ORDER BY city
+        `
+      : await sql`
+          SELECT DISTINCT loc->'city'->>'name' AS city
+          FROM mirror_companies,
+               jsonb_array_elements(shipping_locations) AS loc
+          WHERE has_confirmed_configuration = true
+            AND loc->'city'->>'name' IS NOT NULL
+          ORDER BY city
+        `
     return NextResponse.json({ cities: rows.map(r => r.city), source: "local" })
   }
 

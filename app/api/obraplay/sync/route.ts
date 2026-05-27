@@ -55,8 +55,9 @@ export async function POST() {
           if (!company.has_confirmed_configuration) continue
 
           // Resolve category_names
-          const categoryNames = resolveCategoryNames(company)
-          const shippingNames = resolveShippingNames(company)
+          const categoryNames    = resolveCategoryNames(company)
+          const shippingNames   = resolveShippingNames(company)
+          const shippingStates  = resolveShippingStates(company)
 
           await sql`
             INSERT INTO mirror_companies (
@@ -66,7 +67,7 @@ export async function POST() {
               rating, total_reviews,
               avg_response_time_minutes, avg_finalized_answers_duration, finalized_answers_count,
               operation_types, categories, category_names,
-              shipping_locations, shipping_location_names,
+              shipping_locations, shipping_location_names, shipping_state_names,
               has_confirmed_address, has_confirmed_shipping, has_confirmed_configuration,
               has_active_institutional_page, catalog_items_count, data_incomplete,
               payload, last_sync_at, obraplay_updated_at
@@ -97,6 +98,7 @@ export async function POST() {
               ${JSON.stringify(categoryNames)}::jsonb,
               ${JSON.stringify(resolveIds(company.shipping_locations ?? []))}::jsonb,
               ${JSON.stringify(shippingNames)}::jsonb,
+              ${JSON.stringify(shippingStates)}::jsonb,
               ${company.has_confirmed_address ?? false},
               ${company.has_confirmed_shipping ?? false},
               ${company.has_confirmed_configuration ?? false},
@@ -133,6 +135,7 @@ export async function POST() {
               category_names                = EXCLUDED.category_names,
               shipping_locations            = EXCLUDED.shipping_locations,
               shipping_location_names       = EXCLUDED.shipping_location_names,
+              shipping_state_names          = EXCLUDED.shipping_state_names,
               has_confirmed_address         = EXCLUDED.has_confirmed_address,
               has_confirmed_shipping        = EXCLUDED.has_confirmed_shipping,
               has_confirmed_configuration   = EXCLUDED.has_confirmed_configuration,
@@ -228,10 +231,18 @@ function resolveCategoryNames(company: OPCompany): string[] {
 function resolveShippingNames(company: OPCompany): string[] {
   if (company.shipping_location_names?.length) return company.shipping_location_names
   return (company.shipping_locations ?? [])
-    .filter((s): s is { city?: { name: string }; state?: { code: string } } => typeof s === "object")
+    .filter((s): s is { city?: { name: string }; state?: { code: string; abbr?: string } } => typeof s === "object")
+    .flatMap(s => s.city?.name ? [s.city.name] : [])
+}
+
+function resolveShippingStates(company: OPCompany): string[] {
+  const states = (company.shipping_locations ?? [])
+    .filter((s): s is { state?: { code: string; abbr?: string; name?: string } } => typeof s === "object")
     .flatMap(s => {
-      const names: string[] = []
-      if (s.city?.name) names.push(s.city.name)
-      return names
+      // A API pode retornar state.code (ex: "SP"), state.abbr ou state.name
+      const code = s.state?.abbr ?? s.state?.code ?? s.state?.name
+      return code ? [code] : []
     })
+  // Remove duplicatas preservando ordem
+  return [...new Set(states)]
 }
