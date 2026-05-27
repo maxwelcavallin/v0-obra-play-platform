@@ -43,17 +43,25 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   return NextResponse.json(updated)
 }
 
-// ── DELETE: cancela a cotação localmente e no ObraPlay ──────────────────────
+// ── DELETE: exclui rascunho fisicamente ou cancela cotação enviada ───────────
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try { await requireSession() } catch { return NextResponse.json({ error: "Não autenticado" }, { status: 401 }) }
   const { id } = await params
   const body = await req.json().catch(() => ({}))
   const cancelReason: string = body.cancel_reason || "Cancelado pelo usuário"
 
-  const [cotacao] = await sql`SELECT obraplay_quotation_id FROM cotacoes WHERE id = ${id}`
+  const [cotacao] = await sql`SELECT status, obraplay_quotation_id FROM cotacoes WHERE id = ${id}`
   if (!cotacao) return NextResponse.json({ error: "Não encontrado" }, { status: 404 })
 
-  // Cancela no ObraPlay se tiver vínculo
+  // Rascunho: exclui fisicamente sem acionar ObraPlay
+  if (cotacao.status === "Rascunho") {
+    await sql`DELETE FROM cotacao_itens WHERE cotacao_id = ${id}`
+    await sql`DELETE FROM cotacao_fornecedores WHERE cotacao_id = ${id}`
+    await sql`DELETE FROM cotacoes WHERE id = ${id}`
+    return NextResponse.json({ deleted: true })
+  }
+
+  // Cotação enviada: cancela localmente + no ObraPlay
   let opWarning: string | undefined
   if (cotacao.obraplay_quotation_id) {
     try {
@@ -66,7 +74,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const [updated] = await sql`
     UPDATE cotacoes SET status = 'Cancelada', updated_at = now() WHERE id = ${id} RETURNING *
   `
-
   return NextResponse.json({ ...updated, _op_warning: opWarning })
 }
 

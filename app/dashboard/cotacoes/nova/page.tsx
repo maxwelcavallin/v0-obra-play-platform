@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useMemo, useRef, useCallback } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft, Search, Plus, X, Trash2, Loader2,
   Package, MapPin, Building2, User, Users, ChevronDown,
@@ -70,8 +70,11 @@ function Stepper({ step }: { step: number }) {
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function NovaCotacaoPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { activeCompany, user } = useAuth()
   const [step, setStep] = useState(1)
+  const [draftId, setDraftId] = useState<string | null>(searchParams.get("draft_id"))
+  const draftSavedRef = useRef(false) // impede salvar rascunho após submit com sucesso
 
   // Passo 1 — Itens
   const [items, setItems] = useState<Item[]>([])
@@ -133,6 +136,51 @@ export default function NovaCotacaoPage() {
       .then(r => r.json()).then(d => setObras(Array.isArray(d) ? d : []))
       .catch(() => {})
   }, [activeCompany?.id])
+
+  // ─ Carrega rascunho quando draft_id está na URL ───────────────────────────
+  useEffect(() => {
+    const id = searchParams.get("draft_id")
+    if (!id) return
+    authFetch(`/api/cotacoes/${id}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data || data.status !== "Rascunho") return
+        setDraftId(id)
+        const p = data.draft_payload ?? {}
+        if (Array.isArray(p.items) && p.items.length > 0) {
+          setItems(p.items.map((i: any) => ({ ...i, id: i.id ?? crypto.randomUUID() })))
+        }
+        if (p.need_date)     setNeedDate(p.need_date)
+        if (p.expiry_date)   setExpiryDate(p.expiry_date)
+        if (p.general_notes) setGeneralNotes(p.general_notes)
+      })
+      .catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─ Salva rascunho ao abandonar o wizard (unmount sem submit com sucesso) ──
+  useEffect(() => {
+    return () => {
+      if (draftSavedRef.current) return  // submit bem-sucedido, não salva rascunho
+      if (items.length === 0 || !activeCompany?.id) return
+      const payload = {
+        company_id: activeCompany.id,
+        is_draft: true,
+        cotacao_id: draftId ?? undefined,
+        need_date: needDate || null,
+        expiry_date: expiryDate || null,
+        general_notes: generalNotes || null,
+        draft_payload: {
+          items,
+          need_date: needDate,
+          expiry_date: expiryDate,
+          general_notes: generalNotes,
+        },
+      }
+      // navigator.sendBeacon garante envio mesmo após navegação
+      const blob = new Blob([JSON.stringify(payload)], { type: "application/json" })
+      navigator.sendBeacon("/api/cotacoes", blob)
+    }
+  }, [items, needDate, expiryDate, generalNotes, draftId, activeCompany?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (user?.name)  setReqName(user.name)
@@ -343,6 +391,7 @@ export default function NovaCotacaoPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           company_id: activeCompany?.id,
+          cotacao_id: draftId ?? undefined,   // reutiliza rascunho existente
           obraplay_company_id: activeCompany?.obraplayCompanyId ?? null,
           obra_id: selectedObra?.id ?? null,
           obra_name: selectedObra?.name ?? null,
@@ -362,11 +411,13 @@ export default function NovaCotacaoPage() {
       if (!res.ok) throw new Error("Erro ao criar cotação")
       const data = await res.json()
       if (data._op_error) {
-        // Cotação salva no banco mas falhou no ObraPlay — não redireciona
+        // Falhou no ObraPlay — salvo como rascunho, não redireciona
+        setDraftId(data.id ?? draftId)
         toast.error(data._op_error, { duration: 10000 })
         setSubmitting(false)
         return
       }
+      draftSavedRef.current = true  // impede salvar rascunho ao desmontar
       toast.success("Cotação enviada à ObraPlay com sucesso!")
       router.push("/dashboard/cotacoes")
     } catch (e: any) {

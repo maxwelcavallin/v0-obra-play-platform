@@ -61,7 +61,7 @@ const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> =
   "Pendente revisão": { label: "Pendente revisão", color: "#FF9800", bg: "#FFF3E0" },
   "Convertida":       { label: "Convertida",       color: "#9C27B0", bg: "#F3E5F5" },
   "Cancelada":        { label: "Cancelada",        color: "#F44336", bg: "#FFEBEE" },
-  "Erro ObraPlay":    { label: "Erro ObraPlay",    color: "#E65100", bg: "#FBE9E7" },
+  "Rascunho":         { label: "Rascunho",         color: "#757575", bg: "#F5F5F5" },
 }
 
 function fmt(d?: string) {
@@ -282,14 +282,14 @@ export default function CotacaoDetalhePage() {
           )}
         </Section>
 
-        {/* Banner de falha na integração ObraPlay */}
-        {cotacao.status === "Erro ObraPlay" && (
-          <div className="mx-4 flex items-start gap-3 bg-[#FBE9E7] border border-[#FFCCBC] rounded-xl px-4 py-3">
-            <AlertCircle size={16} className="text-[#E65100] flex-shrink-0 mt-0.5" />
+        {/* Banner de rascunho */}
+        {cotacao.status === "Rascunho" && (
+          <div className="mx-4 flex items-start gap-3 bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl px-4 py-3">
+            <AlertCircle size={16} className="text-[#757575] flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-xs font-bold text-[#BF360C]">Falha ao enviar ao ObraPlay</p>
-              <p className="text-xs text-[#E65100] mt-0.5">
-                Esta cotação foi salva localmente mas não foi enviada à plataforma ObraPlay. Use o menu <strong>⋮</strong> para editar e reenviar, ou verifique o ID ObraPlay da empresa.
+              <p className="text-xs font-bold text-[#424242]">Rascunho — não enviado ao ObraPlay</p>
+              <p className="text-xs text-[#757575] mt-0.5">
+                Esta cotação está salva como rascunho. Volte ao wizard para revisá-la e enviar.
               </p>
             </div>
           </div>
