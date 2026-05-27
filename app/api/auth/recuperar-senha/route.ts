@@ -3,6 +3,8 @@ import { sql } from "@/lib/db"
 import crypto from "crypto"
 
 const BREVO_API_KEY = process.env.BREVO_API_KEY
+const BREVO_SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL ?? "noreply@obraplay.com.br"
+const BREVO_SENDER_NAME = process.env.BREVO_SENDER_NAME ?? "ObraPlay"
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://v0-obra-play-platform.vercel.app"
 
 export async function POST(req: NextRequest) {
@@ -40,6 +42,14 @@ export async function POST(req: NextRequest) {
 
       // Envia e-mail transacional via Brevo (template ID 408)
       if (BREVO_API_KEY) {
+        const brevoPayload = {
+          sender: { name: BREVO_SENDER_NAME, email: BREVO_SENDER_EMAIL },
+          to: [{ email: user.email, name: user.name ?? user.email }],
+          templateId: 408,
+          params: { TOKEN: resetLink },
+        }
+        console.log("[v0] Brevo payload:", JSON.stringify(brevoPayload))
+
         const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
           method: "POST",
           headers: {
@@ -47,22 +57,18 @@ export async function POST(req: NextRequest) {
             "api-key": BREVO_API_KEY,
             "content-type": "application/json",
           },
-          body: JSON.stringify({
-            to: [{ email: user.email, name: user.name }],
-            templateId: 408,
-            params: {
-              TOKEN: resetLink,
-            },
-          }),
+          body: JSON.stringify(brevoPayload),
         })
 
+        const brevoBody = await brevoRes.json().catch(() => ({}))
+        console.log("[v0] Brevo status:", brevoRes.status, JSON.stringify(brevoBody))
+
         if (!brevoRes.ok) {
-          const err = await brevoRes.json().catch(() => ({}))
-          console.error("[recuperar-senha] Brevo error:", err)
-          return NextResponse.json({ error: "Erro ao enviar e-mail. Tente novamente." }, { status: 500 })
+          const msg = brevoBody?.message ?? "Erro ao enviar e-mail."
+          return NextResponse.json({ error: msg }, { status: 500 })
         }
       } else {
-        console.warn("[recuperar-senha] BREVO_API_KEY não configurada — token:", token)
+        console.warn("[v0] BREVO_API_KEY não configurada — token gerado:", token)
       }
     }
 
