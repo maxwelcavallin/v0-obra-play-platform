@@ -131,6 +131,8 @@ function NovaCotacaoInner() {
   const [aiReason, setAiReason] = useState<string | null>(null)
   const [loadingAI, setLoadingAI] = useState(false)
   const [showAIModal, setShowAIModal] = useState(false)
+  const [filterCategories, setFilterCategories] = useState<Set<string>>(new Set())
+  const [filterResponseTime, setFilterResponseTime] = useState<string>("all") // "all" | "60" | "240" | "1440"
   // Map<companyId, { name, email, phone, type: "company"|"member", role? }>
   const [selectedSupplierContacts, setSelectedSupplierContacts] = useState<Map<number, { name: string; email: string | null; phone: string | null; type: "company" | "member"; role?: string }>>(new Map())
 
@@ -325,6 +327,8 @@ function NovaCotacaoInner() {
     setMirrorSuppliers([])
     setSelectedSupplierContacts(new Map())
     setExpandedMembers(new Set())
+    setFilterCategories(new Set())
+    setFilterResponseTime("all")
     try {
       const qs = new URLSearchParams()
       if (city)  qs.set("city",  city)
@@ -1101,6 +1105,7 @@ function NovaCotacaoInner() {
           {/* Busca e lista */}
           {!loadingMirror && !mirrorNeedsSync && mirrorFetched && (
             <>
+              {/* Busca por nome */}
               <div className="flex items-center gap-2 bg-white rounded-xl border border-[#E0E0E0] px-3 py-2.5 mb-3">
                 <Search size={15} className="text-[#9E9E9E] flex-shrink-0" />
                 <input value={supplierSearch} onChange={e => setSupplierSearch(e.target.value)}
@@ -1109,12 +1114,83 @@ function NovaCotacaoInner() {
                 {supplierSearch && <button onClick={() => setSupplierSearch("")}><X size={14} className="text-[#9E9E9E]" /></button>}
               </div>
 
-              {/* Certificados primeiro */}
+              {/* Filtros: categoria + tempo de resposta */}
+              {(() => {
+                const allCategories = [...new Set(
+                  mirrorSuppliers.flatMap(s => Array.isArray(s.category_names) ? s.category_names : [])
+                )].sort()
+
+                const RESPONSE_OPTS = [
+                  { label: "Qualquer tempo", value: "all" },
+                  { label: "Até 1h",         value: "60" },
+                  { label: "Até 4h",         value: "240" },
+                  { label: "Até 24h",        value: "1440" },
+                ]
+
+                function toggleCategory(cat: string) {
+                  setFilterCategories(prev => {
+                    const n = new Set(prev)
+                    n.has(cat) ? n.delete(cat) : n.add(cat)
+                    return n
+                  })
+                }
+
+                return (
+                  <div className="mb-3 space-y-2">
+                    {/* Tempo de resposta */}
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                      {RESPONSE_OPTS.map(opt => (
+                        <button key={opt.value} type="button"
+                          onClick={() => setFilterResponseTime(opt.value)}
+                          className={`flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${filterResponseTime === opt.value ? "bg-[#1565C0] text-white border-[#1565C0]" : "bg-white text-[#616161] border-[#E0E0E0] hover:border-[#1565C0] hover:text-[#1565C0]"}`}>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Categorias */}
+                    {allCategories.length > 0 && (
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                        {allCategories.slice(0, 20).map(cat => {
+                          const active = filterCategories.has(cat)
+                          return (
+                            <button key={cat} type="button"
+                              onClick={() => toggleCategory(cat)}
+                              className={`flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${active ? "bg-[#E3F2FD] text-[#1565C0] border-[#1565C0]" : "bg-white text-[#616161] border-[#E0E0E0] hover:border-[#1565C0] hover:text-[#1565C0]"}`}>
+                              {cat}
+                            </button>
+                          )
+                        })}
+                        {filterCategories.size > 0 && (
+                          <button type="button" onClick={() => setFilterCategories(new Set())}
+                            className="flex-shrink-0 text-xs text-[#E53935] font-semibold px-2 py-1.5">
+                            Limpar
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+
+              {/* Lista com filtros aplicados */}
               {(() => {
                 const q = supplierSearch.trim().toLowerCase()
-                const filtered = mirrorSuppliers.filter(s =>
-                  !q || (s.company_name ?? "").toLowerCase().includes(q) || (s.city_name ?? "").toLowerCase().includes(q)
-                )
+                const filtered = mirrorSuppliers.filter(s => {
+                  // Filtro por nome
+                  if (q && !(s.company_name ?? "").toLowerCase().includes(q) && !(s.city_name ?? "").toLowerCase().includes(q)) return false
+                  // Filtro por categoria
+                  if (filterCategories.size > 0) {
+                    const cats: string[] = Array.isArray(s.category_names) ? s.category_names : []
+                    if (!cats.some(c => filterCategories.has(c))) return false
+                  }
+                  // Filtro por tempo de resposta
+                  if (filterResponseTime !== "all") {
+                    const maxMin = parseInt(filterResponseTime)
+                    if (!s.avg_response_time_minutes || s.avg_response_time_minutes > maxMin) return false
+                  }
+                  return true
+                })
                 const certified  = filtered.filter(s => s.registration_type === "certified")
                 const others     = filtered.filter(s => s.registration_type !== "certified")
                 if (filtered.length === 0) return (
