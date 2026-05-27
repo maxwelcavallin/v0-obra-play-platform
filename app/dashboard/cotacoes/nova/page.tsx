@@ -108,12 +108,12 @@ export default function NovaCotacaoPage() {
   const [reqPhone, setReqPhone] = useState("")
 
   // Passo 3 — Fornecedores
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [loadingSuppliers, setLoadingSuppliers] = useState(false)
-  const [suppliersFetched, setSuppliersFetched] = useState(false)
-  const [supplierSearch, setSupplierSearch] = useState("")
-  const [ratingFilter, setRatingFilter] = useState("Todas")
-  const [selectedSuppliers, setSelectedSuppliers] = useState<Set<string>>(new Set())
+  const [isPublic, setIsPublic] = useState(false)
+  const [manualSuppliers, setManualSuppliers] = useState<{ name: string; email: string; phone: string }[]>([])
+  const [showAddSupplier, setShowAddSupplier] = useState(false)
+  const [newSupName, setNewSupName] = useState("")
+  const [newSupEmail, setNewSupEmail] = useState("")
+  const [newSupPhone, setNewSupPhone] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -132,38 +132,7 @@ export default function NovaCotacaoPage() {
     if (user?.phone) setReqPhone(user.phone)
   }, [user])
 
-  // Busca fornecedores reais da ObraPlay quando uma obra é selecionada
-  async function fetchSuppliers(obra: Obra) {
-    const city  = obra.delivery_city  ?? ""
-    const state = obra.delivery_state ?? ""
-    if (!city && !state) return
-    setLoadingSuppliers(true)
-    setSuppliersFetched(true)
-    setSuppliers([])
-    try {
-      const res = await authFetch(`/api/obraplay/fornecedores?city=${encodeURIComponent(city)}&state=${encodeURIComponent(state)}`)
-      const data = await res.json()
-      // A API retorna { results: [...] } (paginado) ou array direto
-      const list: any[] = Array.isArray(data) ? data : (data.results ?? [])
-      setSuppliers(list.map((s: any) => ({
-        id:             String(s.id),
-        name:           s.name ?? s.company_name ?? "Fornecedor",
-        city:           s.city ? `${s.city}${s.state ? " - " + s.state : ""}` : "",
-        categories:     s.categories ?? [],
-        rating:         parseFloat(s.rating ?? s.score ?? "0") || 0,
-        response_time:  s.response_time ?? "",
-        is_recommended: Boolean(s.is_certified ?? s.is_recommended),
-        email:          s.email ?? "",
-        phone:          s.phone ?? "",
-        initials:       getInitials(s.name ?? s.company_name ?? "?"),
-        color:          getColor(s.name ?? s.company_name ?? "?"),
-      })))
-    } catch {
-      toast.error("Não foi possível carregar fornecedores para esta localização.")
-    } finally {
-      setLoadingSuppliers(false)
-    }
-  }
+
 
   const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
 
@@ -256,7 +225,6 @@ export default function NovaCotacaoPage() {
     setSelectedObra(o)
     setObraSearch(o.name)
     setShowObraDrop(false)
-    fetchSuppliers(o)
   }
 
   const displayAddress = useMemo(() => {
@@ -305,11 +273,14 @@ export default function NovaCotacaoPage() {
 
   // ─ Enviar cotação ─────────────────────────────────────────────────────────
   async function handleSubmit() {
-    if (selectedSuppliers.size === 0) { toast.error("Selecione pelo menos um fornecedor."); return }
+    if (!isPublic && manualSuppliers.length === 0) {
+      toast.error("Adicione pelo menos um fornecedor ou marque a cotação como pública.")
+      return
+    }
     setSubmitting(true)
     try {
-      const supplierList = suppliers.filter(s => selectedSuppliers.has(s.id)).map(s => ({
-        name: s.name, city: s.city, email: s.email, phone: s.phone, is_recommended: s.is_recommended
+      const supplierList = manualSuppliers.map(s => ({
+        name: s.name, email: s.email || undefined, phone: s.phone || undefined, is_recommended: false,
       }))
       const res = await authFetch("/api/cotacoes", {
         method: "POST",
@@ -688,94 +659,89 @@ export default function NovaCotacaoPage() {
       {step === 3 && (
         <div className="flex-1 overflow-y-auto pb-36 px-4 pt-4">
 
-          {/* Contexto de localização */}
-          {suppliersFetched && (() => {
-            const city  = addressMode === "obra"    ? selectedObra?.delivery_city
-                        : addressMode === "empresa" ? (companyDetail?.city ?? (activeCompany as any)?.city)
-                        : manualCity
-            const state = addressMode === "obra"    ? selectedObra?.delivery_state
-                        : addressMode === "empresa" ? (companyDetail?.state ?? (activeCompany as any)?.state)
-                        : manualState
-            return city ? (
-              <div className="flex items-center gap-2 mb-4 bg-[#E3F2FD] rounded-xl px-3 py-2.5 border border-[#BBDEFB]">
-                <MapPin size={13} className="text-[#1565C0] flex-shrink-0" />
-                <p className="text-xs text-[#1565C0] font-medium">
-                  Fornecedores que entregam em <strong>{city}{state ? ` - ${state}` : ""}</strong>
-                </p>
-              </div>
-            ) : null
-          })()}
-
-          {/* Busca + filtro de avaliação */}
-          <div className="flex flex-col gap-2 mb-4">
-            <div className="flex items-center gap-2 bg-white rounded-xl border border-[#E0E0E0] px-3 py-2.5">
-              <Search size={15} className="text-[#9E9E9E] flex-shrink-0" />
-              <input value={supplierSearch} onChange={e => setSupplierSearch(e.target.value)}
-                placeholder="Buscar por nome..."
-                className="flex-1 outline-none text-[#212121] placeholder-[#9E9E9E] bg-transparent"
-                style={{ fontSize: "0.875rem" }} />
-              {supplierSearch && (
-                <button onClick={() => setSupplierSearch("")}><X size={14} className="text-[#9E9E9E]" /></button>
-              )}
+          {/* Cotação pública */}
+          <button
+            type="button"
+            onClick={() => setIsPublic(p => !p)}
+            className={`w-full flex items-center gap-3 rounded-xl p-4 mb-5 border-2 transition-colors text-left ${
+              isPublic ? "border-[#1565C0] bg-[#E3F2FD]" : "border-[#E0E0E0] bg-white"
+            }`}
+          >
+            <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 border-2 transition-colors ${
+              isPublic ? "bg-[#1565C0] border-[#1565C0]" : "border-[#BDBDBD]"
+            }`}>
+              {isPublic && <Check size={12} className="text-white" />}
             </div>
-            <select value={ratingFilter} onChange={e => setRatingFilter(e.target.value)}
-              className="border border-[#E0E0E0] rounded-xl px-3 py-2.5 text-sm bg-white text-[#212121] outline-none">
-              {MIN_RATINGS.map(r => <option key={r} value={r}>{r === "Todas" ? "Todas as avaliações" : `Avaliação acima de ${r}`}</option>)}
-            </select>
-          </div>
-
-          {/* Loading */}
-          {loadingSuppliers && (
-            <div className="flex flex-col items-center justify-center pt-12 gap-3 text-[#9E9E9E]">
-              <Loader2 size={28} className="animate-spin text-[#1565C0]" />
-              <p className="text-sm">Buscando fornecedores na região...</p>
+            <div>
+              <p className={`text-sm font-semibold ${isPublic ? "text-[#1565C0]" : "text-[#212121]"}`}>
+                Cotação pública
+              </p>
+              <p className="text-xs text-[#757575] mt-0.5">
+                Qualquer fornecedor da plataforma ObraPlay poderá ver e responder esta cotação.
+              </p>
             </div>
-          )}
+          </button>
 
-          {/* Endereço ainda não definido */}
-          {!loadingSuppliers && !suppliersFetched && (
-            <div className="flex flex-col items-center justify-center pt-12 gap-2 text-[#9E9E9E]">
-              <MapPin size={36} strokeWidth={1.2} />
-              <p className="text-sm text-center">Defina um endereço de entrega no passo anterior para carregar os fornecedores da região.</p>
+          {/* Lista de fornecedores adicionados */}
+          <p className="text-[#616161] font-bold mb-2 text-xs uppercase tracking-wider">FORNECEDORES CONVIDADOS</p>
+          <p className="text-xs text-[#9E9E9E] mb-4">
+            Adicione fornecedores específicos para notificá-los diretamente por e-mail ou WhatsApp.
+          </p>
+
+          {manualSuppliers.length > 0 && (
+            <div className="flex flex-col gap-2 mb-4">
+              {manualSuppliers.map((s, i) => (
+                <div key={i} className="bg-white rounded-xl border border-[#E0E0E0] px-4 py-3 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                    style={{ backgroundColor: getColor(s.name) }}>
+                    {getInitials(s.name)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[#212121] truncate">{s.name}</p>
+                    <p className="text-xs text-[#9E9E9E] truncate">{[s.email, s.phone].filter(Boolean).join(" · ")}</p>
+                  </div>
+                  <button onClick={() => setManualSuppliers(prev => prev.filter((_, idx) => idx !== i))}
+                    className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#FFEBEE] transition-colors flex-shrink-0">
+                    <Trash2 size={14} className="text-[#E53935]" />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
 
-          {/* Certificados */}
-          {!loadingSuppliers && recommended.length > 0 && (
-            <div className="mb-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles size={15} className="text-[#1565C0]" />
-                <p className="text-[#1565C0] font-bold text-xs uppercase tracking-wider">Fornecedores Certificados</p>
-              </div>
-              <div className="flex flex-col gap-2">
-                {recommended.map(s => <SupplierCard key={s.id} supplier={s} selected={selectedSuppliers.has(s.id)} onToggle={() => toggleSupplier(s.id)} />)}
-              </div>
-            </div>
-          )}
-
-          {/* Demais fornecedores */}
-          {!loadingSuppliers && others.length > 0 && (
-            <div className="mb-4">
-              <p className="text-[#616161] font-bold mb-3 text-xs uppercase tracking-wider">OUTROS FORNECEDORES</p>
-              <div className="flex flex-col gap-2">
-                {others.map(s => <SupplierCard key={s.id} supplier={s} selected={selectedSuppliers.has(s.id)} onToggle={() => toggleSupplier(s.id)} />)}
+          {/* Form de adição */}
+          {showAddSupplier ? (
+            <div className="bg-white rounded-xl border-2 border-[#1565C0] p-4 mb-4 flex flex-col gap-3">
+              <OpInput label="Nome do fornecedor *" value={newSupName} onChange={e => setNewSupName(e.target.value)} placeholder="Ex: Distribuidora ABC" />
+              <OpInput label="E-mail" value={newSupEmail} onChange={e => setNewSupEmail(e.target.value)} placeholder="contato@fornecedor.com" type="email" />
+              <OpInput label="Telefone / WhatsApp" value={newSupPhone} onChange={e => setNewSupPhone(e.target.value)} placeholder="+55 (41) 99999-0000" type="tel" />
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={() => { setShowAddSupplier(false); setNewSupName(""); setNewSupEmail(""); setNewSupPhone("") }}
+                  className="flex-1 py-2.5 rounded-xl border border-[#E0E0E0] text-sm text-[#757575] font-semibold">
+                  Cancelar
+                </button>
+                <button type="button" onClick={() => {
+                  if (!newSupName.trim()) { toast.error("Informe o nome do fornecedor."); return }
+                  setManualSuppliers(prev => [...prev, { name: newSupName.trim(), email: newSupEmail.trim(), phone: newSupPhone.trim() }])
+                  setNewSupName(""); setNewSupEmail(""); setNewSupPhone(""); setShowAddSupplier(false)
+                }} className="flex-1 py-2.5 rounded-xl bg-[#1565C0] text-white text-sm font-semibold">
+                  Adicionar
+                </button>
               </div>
             </div>
+          ) : (
+            <button type="button" onClick={() => setShowAddSupplier(true)}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-[#BDBDBD] text-[#757575] hover:border-[#1565C0] hover:text-[#1565C0] transition-colors text-sm font-semibold mb-4">
+              <Plus size={16} />
+              Adicionar fornecedor
+            </button>
           )}
 
-          {/* Nenhum resultado após filtro */}
-          {!loadingSuppliers && suppliersFetched && filteredSuppliers.length === 0 && suppliers.length > 0 && (
-            <div className="flex flex-col items-center justify-center pt-8 gap-2 text-[#9E9E9E]">
-              <Building2 size={36} strokeWidth={1.2} />
-              <p className="text-sm">Nenhum fornecedor encontrado com esses filtros.</p>
-            </div>
-          )}
-
-          {/* Sem fornecedores na região */}
-          {!loadingSuppliers && suppliersFetched && suppliers.length === 0 && (
-            <div className="flex flex-col items-center justify-center pt-8 gap-2 text-[#9E9E9E]">
-              <AlertCircle size={36} strokeWidth={1.2} />
-              <p className="text-sm text-center">Nenhum fornecedor ObraPlay encontrado nesta região.</p>
+          {/* Empty state */}
+          {manualSuppliers.length === 0 && !isPublic && !showAddSupplier && (
+            <div className="flex flex-col items-center justify-center pt-6 gap-2 text-[#BDBDBD]">
+              <Building2 size={32} strokeWidth={1.2} />
+              <p className="text-xs text-center">Adicione fornecedores ou marque a cotação como pública.</p>
             </div>
           )}
         </div>
@@ -783,11 +749,11 @@ export default function NovaCotacaoPage() {
 
       {/* ─── Footer fixo ─────────────────────────────────────────────────── */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#EEEEEE] px-4 py-4 z-20" style={{ maxWidth: 480, margin: "0 auto" }}>
-        {step === 3 && selectedSuppliers.size > 0 && (
+        {step === 3 && (isPublic || manualSuppliers.length > 0) && (
           <div className="flex items-center gap-2 mb-3 bg-[#E3F2FD] rounded-xl px-4 py-2">
             <Check size={14} className="text-[#1565C0]" />
             <span className="text-xs text-[#1565C0] font-semibold">
-              {selectedSuppliers.size} fornecedor{selectedSuppliers.size > 1 ? "es" : ""} selecionado{selectedSuppliers.size > 1 ? "s" : ""}
+              {isPublic ? "Cotação pública" : `${manualSuppliers.length} fornecedor${manualSuppliers.length > 1 ? "es" : ""} convidado${manualSuppliers.length > 1 ? "s" : ""}`}
             </span>
           </div>
         )}
