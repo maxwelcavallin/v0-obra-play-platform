@@ -122,6 +122,7 @@ export default function NovaCotacaoPage() {
   const [aiRecommendedIds, setAiRecommendedIds] = useState<number[]>([])
   const [aiReason, setAiReason] = useState<string | null>(null)
   const [loadingAI, setLoadingAI] = useState(false)
+  const [showAIModal, setShowAIModal] = useState(false)
   // Map<companyId, { name, email, phone, type: "company"|"member", role? }>
   const [selectedSupplierContacts, setSelectedSupplierContacts] = useState<Map<number, { name: string; email: string | null; phone: string | null; type: "company" | "member"; role?: string }>>(new Map())
 
@@ -331,7 +332,7 @@ export default function NovaCotacaoPage() {
     }
   }
 
-  // ─ Validação passo 2 ─────────────────────────────────────────────────────
+  // ─ Validação passo 2 ────────────────────────────────────────���────────────
   function validateStep2() {
     if (addressMode === "obra" && !selectedObra) {
       toast.error("Selecione uma obra ou escolha outro modo de endereço de entrega.")
@@ -886,57 +887,157 @@ export default function NovaCotacaoPage() {
           )}
 
           {!loadingAI && aiRecommendedIds.length > 0 && mirrorFetched && (() => {
-            const aiSuppliers = mirrorSuppliers.filter(s => aiRecommendedIds.includes(s.id))
+            // Ordena: certificados primeiro, depois por nome
+            const aiSuppliers = mirrorSuppliers
+              .filter(s => aiRecommendedIds.includes(s.id))
+              .sort((a, b) => {
+                const aC = a.registration_type === "certified" ? 0 : 1
+                const bC = b.registration_type === "certified" ? 0 : 1
+                return aC - bC || (a.company_name ?? "").localeCompare(b.company_name ?? "")
+              })
             if (aiSuppliers.length === 0) return null
+
+            const preview = aiSuppliers[0]
+            const isSelectedPreview = selectedSupplierContacts.has(preview.id)
+
+            function toggleAiContact(s: any) {
+              setSelectedSupplierContacts(prev => {
+                const n = new Map(prev)
+                if (n.has(s.id)) { n.delete(s.id) } else {
+                  n.set(s.id, { name: s.company_name, email: s.email, phone: s.phone || s.whatsapp, type: "company" as const })
+                }
+                return n
+              })
+            }
+
+            function selectAll() {
+              setSelectedSupplierContacts(prev => {
+                const n = new Map(prev)
+                aiSuppliers.forEach(s => {
+                  if (!n.has(s.id)) n.set(s.id, { name: s.company_name, email: s.email, phone: s.phone || s.whatsapp, type: "company" as const })
+                })
+                return n
+              })
+            }
+
+            const allSelected = aiSuppliers.every(s => selectedSupplierContacts.has(s.id))
+
             return (
-              <div className="mb-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles size={14} className="text-[#1565C0]" />
-                  <p className="text-xs font-bold text-[#1565C0] uppercase tracking-wider">Recomendados pela IA</p>
-                  <span className="text-[10px] bg-[#1565C0] text-white px-2 py-0.5 rounded-full font-semibold">{aiSuppliers.length}</span>
-                </div>
-                {aiReason && (
-                  <p className="text-[11px] text-[#757575] mb-3 leading-relaxed italic">{aiReason}</p>
-                )}
-                <div className="flex flex-col gap-2">
-                  {aiSuppliers.map(s => {
-                    const selectedContact = selectedSupplierContacts.get(s.id)
-                    const isSelected = !!selectedContact
-                    function selectAiContact() {
-                      setSelectedSupplierContacts(prev => {
-                        const n = new Map(prev)
-                        if (n.has(s.id)) { n.delete(s.id) } else {
-                          n.set(s.id, { name: s.company_name, email: s.email, phone: s.phone || s.whatsapp, type: "company" as const })
-                        }
-                        return n
-                      })
+              <>
+                <div className="mb-5">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={14} className="text-[#1565C0]" />
+                      <p className="text-xs font-bold text-[#1565C0] uppercase tracking-wider">Recomendados pela IA</p>
+                      <span className="text-[10px] bg-[#1565C0] text-white px-2 py-0.5 rounded-full font-semibold">{aiSuppliers.length}</span>
+                    </div>
+                  </div>
+
+                  {aiReason && (
+                    <p className="text-[11px] text-[#757575] mb-3 leading-relaxed italic">{aiReason}</p>
+                  )}
+
+                  {/* Preview: apenas 1 card */}
+                  <button type="button" onClick={() => toggleAiContact(preview)}
+                    className={`w-full rounded-xl border-2 p-3 flex items-center gap-3 transition-colors text-left mb-2 ${isSelectedPreview ? "border-[#1565C0] bg-[#E3F2FD]" : "border-[#E3F2FD] bg-white"}`}>
+                    {preview.logo_url
+                      ? <img src={preview.logo_url} alt={preview.company_name} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                      : <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: getColor(preview.company_name ?? "") }}>{getInitials(preview.company_name ?? "")}</div>
                     }
-                    return (
-                      <button key={`ai-${s.id}`} type="button" onClick={selectAiContact}
-                        className={`w-full rounded-xl border-2 p-3 flex items-center gap-3 transition-colors text-left ${isSelected ? "border-[#1565C0] bg-[#E3F2FD]" : "border-[#E3F2FD] bg-white"}`}>
-                        {s.logo_url
-                          ? <img src={s.logo_url} alt={s.company_name} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
-                          : <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: getColor(s.company_name ?? "") }}>{getInitials(s.company_name ?? "")}</div>
-                        }
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <p className="text-sm font-semibold text-[#212121] truncate">{s.company_name}</p>
-                            <span className="text-[10px] bg-[#1565C0] text-white px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Recomendado</span>
-                            {s.registration_type === "certified" && <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Certificado</span>}
-                          </div>
-                          <p className="text-[11px] text-[#9E9E9E] mt-0.5 truncate">
-                            {Array.isArray(s.category_names) ? s.category_names.slice(0, 3).join(" · ") : ""}
-                          </p>
-                          <p className="text-[11px] text-[#9E9E9E]">{[s.city_name, s.state_abbr].filter(Boolean).join(" · ")}</p>
-                        </div>
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isSelected ? "bg-[#1565C0] border-[#1565C0]" : "border-[#BDBDBD]"}`}>
-                          {isSelected && <Check size={11} className="text-white" />}
-                        </div>
-                      </button>
-                    )
-                  })}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-sm font-semibold text-[#212121] truncate">{preview.company_name}</p>
+                        <span className="text-[10px] bg-[#1565C0] text-white px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Recomendado</span>
+                        {preview.registration_type === "certified" && <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Certificado</span>}
+                      </div>
+                      <p className="text-[11px] text-[#9E9E9E] mt-0.5 truncate">
+                        {Array.isArray(preview.category_names) ? preview.category_names.slice(0, 3).join(" · ") : ""}
+                      </p>
+                      <p className="text-[11px] text-[#9E9E9E]">{[preview.city_name, preview.state_abbr].filter(Boolean).join(" · ")}</p>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isSelectedPreview ? "bg-[#1565C0] border-[#1565C0]" : "border-[#BDBDBD]"}`}>
+                      {isSelectedPreview && <Check size={11} className="text-white" />}
+                    </div>
+                  </button>
+
+                  {/* Botão Ver mais */}
+                  {aiSuppliers.length > 1 && (
+                    <button type="button" onClick={() => setShowAIModal(true)}
+                      className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-[#E3F2FD] text-xs font-semibold text-[#1565C0] hover:bg-[#E3F2FD] transition-colors">
+                      <Sparkles size={12} />
+                      Ver mais {aiSuppliers.length - 1} recomendado{aiSuppliers.length - 1 > 1 ? "s" : ""}
+                    </button>
+                  )}
                 </div>
-              </div>
+
+                {/* Modal de todos os recomendados */}
+                {showAIModal && (
+                  <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(0,0,0,0.45)" }}
+                    onClick={e => { if (e.target === e.currentTarget) setShowAIModal(false) }}>
+                    <div className="bg-white w-full rounded-t-2xl flex flex-col" style={{ maxWidth: 480, maxHeight: "80vh" }}>
+                      {/* Header do modal */}
+                      <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-[#F0F0F0] flex-shrink-0">
+                        <div className="flex items-center gap-2">
+                          <Sparkles size={15} className="text-[#1565C0]" />
+                          <p className="font-bold text-[#212121] text-sm">Recomendados pela IA</p>
+                          <span className="text-[10px] bg-[#1565C0] text-white px-2 py-0.5 rounded-full font-semibold">{aiSuppliers.length}</span>
+                        </div>
+                        <button type="button" onClick={() => setShowAIModal(false)}
+                          className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors">
+                          <X size={16} className="text-[#757575]" />
+                        </button>
+                      </div>
+
+                      {/* Botão selecionar todos */}
+                      <div className="px-5 py-3 border-b border-[#F0F0F0] flex-shrink-0">
+                        <button type="button" onClick={() => { selectAll(); setShowAIModal(false) }}
+                          className="op-btn-primary w-full">
+                          <Check size={14} />
+                          {allSelected ? "TODOS JÁ SELECIONADOS" : `SELECIONAR TODOS (${aiSuppliers.length})`}
+                        </button>
+                      </div>
+
+                      {/* Lista scrollável */}
+                      <div className="flex-1 overflow-y-auto px-5 py-3 flex flex-col gap-2">
+                        {aiSuppliers.map(s => {
+                          const isSel = selectedSupplierContacts.has(s.id)
+                          return (
+                            <button key={`aim-${s.id}`} type="button" onClick={() => toggleAiContact(s)}
+                              className={`w-full rounded-xl border-2 p-3 flex items-center gap-3 transition-colors text-left ${isSel ? "border-[#1565C0] bg-[#E3F2FD]" : "border-[#EEEEEE] bg-white"}`}>
+                              {s.logo_url
+                                ? <img src={s.logo_url} alt={s.company_name} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                                : <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: getColor(s.company_name ?? "") }}>{getInitials(s.company_name ?? "")}</div>
+                              }
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <p className="text-sm font-semibold text-[#212121] truncate">{s.company_name}</p>
+                                  {s.registration_type === "certified" && <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Certificado</span>}
+                                </div>
+                                <p className="text-[11px] text-[#9E9E9E] mt-0.5 truncate">
+                                  {Array.isArray(s.category_names) ? s.category_names.slice(0, 3).join(" · ") : ""}
+                                </p>
+                                <p className="text-[11px] text-[#9E9E9E]">{[s.city_name, s.state_abbr].filter(Boolean).join(" · ")}</p>
+                              </div>
+                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isSel ? "bg-[#1565C0] border-[#1565C0]" : "border-[#BDBDBD]"}`}>
+                                {isSel && <Check size={11} className="text-white" />}
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+
+                      {/* Footer do modal */}
+                      <div className="px-5 py-4 border-t border-[#F0F0F0] flex-shrink-0">
+                        <button type="button" onClick={() => setShowAIModal(false)}
+                          className="op-btn-secondary w-full">
+                          CONFIRMAR SELEÇÃO
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
             )
           })()}
 
