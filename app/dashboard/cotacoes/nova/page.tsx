@@ -498,7 +498,7 @@ function NovaCotacaoInner() {
     }
   }
 
-  // ─── RENDER ───────────────────────────────────────────────────────────────
+  // ─── RENDER ─────────────────────────────────────────────��─────────────────
   return (
     <div className="min-h-screen bg-[#F5F5F5] flex flex-col" style={{ maxWidth: 480, margin: "0 auto" }}>
 
@@ -1184,16 +1184,17 @@ function NovaCotacaoInner() {
                     const cats: string[] = Array.isArray(s.category_names) ? s.category_names : []
                     if (!cats.some(c => filterCategories.has(c))) return false
                   }
-                  // Filtro por tempo de resposta — parseia a string já formatada ex: "~4 min", "~13h"
+                  // Filtro por tempo de resposta
+                  // avg_finalized_answers_duration vem em segundos do banco; avg_response_time_minutes em minutos
                   if (filterResponseTime !== "all") {
                     const maxMin = parseInt(filterResponseTime)
-                    const dur = s.avg_finalized_answers_duration ?? s.avg_response_time_minutes ?? null
-                    if (!dur) return true // sem dado: não exclui
-                    const durStr = String(dur)
-                    const h = durStr.match(/(\d+)\s*h/)
-                    const m = durStr.match(/(\d+)\s*min/)
-                    const totalMin = (h ? parseInt(h[1]) * 60 : 0) + (m ? parseInt(m[1]) : 0)
-                    if (totalMin > 0 && totalMin > maxMin) return false
+                    let totalMin: number | null = null
+                    if (s.avg_finalized_answers_duration != null) {
+                      totalMin = parseFloat(s.avg_finalized_answers_duration) / 60
+                    } else if (s.avg_response_time_minutes != null) {
+                      totalMin = parseFloat(s.avg_response_time_minutes)
+                    }
+                    if (totalMin !== null && totalMin > maxMin) return false
                   }
                   return true
                 })
