@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react"
+import { useState, useEffect, useMemo, useRef, useCallback, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft, Search, Plus, X, Trash2, Loader2,
@@ -67,8 +67,8 @@ function Stepper({ step }: { step: number }) {
   )
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
-export default function NovaCotacaoPage() {
+// ─── Componente principal (interno) ──────────────────────────────────────────
+function NovaCotacaoInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { activeCompany, user } = useAuth()
@@ -332,7 +332,7 @@ export default function NovaCotacaoPage() {
     }
   }
 
-  // ─ Validação passo 2 ────────────────────────────────────────���────────────
+  // ─ Validação passo 2 ─────────────────────���──────────────────���────────────
   function validateStep2() {
     if (addressMode === "obra" && !selectedObra) {
       toast.error("Selecione uma obra ou escolha outro modo de endereço de entrega.")
@@ -1305,6 +1305,15 @@ export default function NovaCotacaoPage() {
         </div>
       )}
     </div>
+  )
+}
+
+// ─── Export default com Suspense (exigido pelo useSearchParams) ──────────────
+export default function NovaCotacaoPage() {
+  return (
+    <Suspense>
+      <NovaCotacaoInner />
+    </Suspense>
   )
 }
 
