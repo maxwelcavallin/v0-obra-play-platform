@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
     SELECT
       c.id, c.identifier, c.status, c.need_date, c.expiry_date, c.response_date,
       c.requester_name, c.created_at, c.updated_at,
+      c.obraplay_quotation_id, c.obraplay_quotation_code,
       o.name AS obra_name, o.delivery_city, o.delivery_state,
       (SELECT COUNT(*)::int FROM cotacao_itens WHERE cotacao_id = c.id) AS item_count,
       (SELECT COUNT(*)::int FROM cotacao_fornecedores WHERE cotacao_id = c.id) AS supplier_count,
@@ -183,8 +184,14 @@ export async function POST(req: NextRequest) {
 
   try {
     const opRes = await obraplay.quotations.createNested(opPayload)
-    await sql`UPDATE cotacoes SET obraplay_quotation_id = ${opRes.id} WHERE id = ${cotacao.id}`
+    const opCode = opRes.code ?? null
+    await sql`
+      UPDATE cotacoes
+      SET obraplay_quotation_id = ${opRes.id}, obraplay_quotation_code = ${opCode}
+      WHERE id = ${cotacao.id}
+    `
     cotacao.obraplay_quotation_id = opRes.id
+    cotacao.obraplay_quotation_code = opCode
     return NextResponse.json(cotacao, { status: 201 })
   } catch (err: any) {
     const errMsg = err?.message ?? "Erro desconhecido"

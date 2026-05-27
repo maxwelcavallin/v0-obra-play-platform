@@ -13,6 +13,7 @@ import { authFetch } from "@/lib/auth-fetch"
 interface Cotacao {
   id: string
   identifier: string
+  obraplay_quotation_code?: string
   status: string
   need_date?: string
   expiry_date?: string
@@ -42,7 +43,6 @@ const TABS = [
   { label: "Pendente revisão", value: "Pendente revisão" },
   { label: "Convertidas",      value: "Convertida" },
   { label: "Canceladas",       value: "Cancelada" },
-  { label: "Erro ObraPlay",    value: "Erro ObraPlay" },
 ]
 
 function StatusChip({ status }: { status: string }) {
@@ -161,8 +161,11 @@ export default function CotacoesPage() {
                   <div className="min-w-0">
                     <span className="font-bold text-[#212121] tracking-widest"
                       style={{ fontSize: "0.95rem", fontFamily: "monospace" }}>
-                      {c.identifier}
+                      {c.obraplay_quotation_code ?? c.identifier}
                     </span>
+                    {c.obraplay_quotation_code && (
+                      <p className="text-[#BDBDBD] text-[10px] mt-0.5 font-mono">{c.identifier}</p>
+                    )}
                     {c.obra_name && (
                       <p className="text-[#757575] text-xs mt-0.5 truncate">{c.obra_name}</p>
                     )}

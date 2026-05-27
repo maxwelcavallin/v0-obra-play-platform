@@ -31,6 +31,7 @@ interface CotacaoFornecedor {
 interface Cotacao {
   id: string
   identifier: string
+  obraplay_quotation_code?: string
   status: string
   need_date?: string
   expiry_date?: string
@@ -179,7 +180,7 @@ export default function CotacaoDetalhePage() {
                 </div>
                 <div>
                   <p className="font-bold text-[#212121] text-sm">Cancelar cotação</p>
-                  <p className="text-xs text-[#9E9E9E]">{cotacao.identifier}</p>
+                  <p className="text-xs text-[#9E9E9E]">{cotacao.obraplay_quotation_code ?? cotacao.identifier}</p>
                 </div>
               </div>
             </div>
@@ -221,8 +222,11 @@ export default function CotacaoDetalhePage() {
           <div className="flex-1 min-w-0">
             <p className="text-xs text-[#9E9E9E]">Cotação</p>
             <h1 className="font-bold text-[#212121] tracking-widest" style={{ fontFamily: "monospace", fontSize: "1.05rem" }}>
-              {cotacao.identifier}
+              {cotacao.obraplay_quotation_code ?? cotacao.identifier}
             </h1>
+            {cotacao.obraplay_quotation_code && (
+              <p className="text-[10px] text-[#BDBDBD] font-mono leading-none mt-0.5">{cotacao.identifier}</p>
+            )}
           </div>
           <span className="rounded-full px-3 py-1 text-xs font-bold flex-shrink-0"
             style={{ color: cfg.color, backgroundColor: cfg.bg }}>

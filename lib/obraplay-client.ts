@@ -172,6 +172,7 @@ export interface OPQuotationNestedPayload {
 
 export interface OPQuotationCreated {
   id:          number
+  code?:       string
   foreign_id?: string
   status?:     string
   [key: string]: any
