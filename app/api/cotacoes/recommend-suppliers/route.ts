@@ -1,8 +1,50 @@
 import { NextRequest, NextResponse } from "next/server"
-import { generateText, Output } from "ai"
-import { z } from "zod"
 import { sql } from "@/lib/db"
 import { requireSession } from "@/lib/session"
+
+// Remove acentos e normaliza para comparação
+function norm(s: string) {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .trim()
+}
+
+// Extrai tokens relevantes (≥3 chars) de uma string
+function tokens(s: string): string[] {
+  return norm(s)
+    .split(/\s+/)
+    .filter(t => t.length >= 3)
+}
+
+// Palavras genéricas que não devem influenciar o match
+const STOP_WORDS = new Set([
+  "para", "com", "por", "sem", "uso", "tipo", "cor", "kit",
+  "und", "pct", "unidade", "pacote", "caixa", "metro", "litro",
+  "kg", "saco", "rolo", "par", "peca",
+])
+
+function relevantTokens(s: string): string[] {
+  return tokens(s).filter(t => !STOP_WORDS.has(t))
+}
+
+// Score de similaridade: quantos tokens do item aparecem nas categorias do fornecedor
+function scoreSupplier(itemTokens: string[][], categoryTokens: string[][]): number {
+  let score = 0
+  for (const iTokens of itemTokens) {
+    for (const it of iTokens) {
+      for (const catTokens of categoryTokens) {
+        for (const ct of catTokens) {
+          if (ct === it) { score += 2; break }
+          if (ct.includes(it) || it.includes(ct)) { score += 1; break }
+        }
+      }
+    }
+  }
+  return score
+}
 
 export async function POST(req: NextRequest) {
   try { await requireSession() } catch { return NextResponse.json({ error: "Não autenticado" }, { status: 401 }) }
@@ -10,7 +52,7 @@ export async function POST(req: NextRequest) {
   const { items, city, state } = await req.json()
 
   if (!items || items.length === 0) {
-    return NextResponse.json({ recommended: [] })
+    return NextResponse.json({ recommended: [], reason: null })
   }
 
   // Busca fornecedores da região com suas categorias
@@ -29,51 +71,49 @@ export async function POST(req: NextRequest) {
       AND jsonb_array_length(category_names) > 0
       ${city ? sql`AND (lower(city) = lower(${city}) OR lower(state) = lower(${state}))` : sql``}
     ORDER BY rating DESC NULLS LAST
-    LIMIT 120
+    LIMIT 200
   `
 
   if (suppliers.length === 0) {
-    return NextResponse.json({ recommended: [] })
+    return NextResponse.json({ recommended: [], reason: null })
   }
 
-  // Formata lista para o LLM
-  const supplierList = suppliers.map((s: any) => ({
-    id: s.company_id,
-    name: s.short_name || s.full_name,
-    categories: Array.isArray(s.category_names) ? s.category_names : [],
-    city: s.city,
-    state: s.state,
-  }))
+  // Pré-computa tokens dos itens da cotação
+  const itemsTokenized: string[][] = (items as { name: string; unit: string }[])
+    .map(i => relevantTokens(i.name))
+    .filter(t => t.length > 0)
 
-  const itemNames = (items as { name: string; unit: string }[]).map(i => `${i.name} (${i.unit})`).join(", ")
+  // Pontua cada fornecedor
+  const scored = suppliers
+    .map((s: any) => {
+      const categories: string[] = Array.isArray(s.category_names) ? s.category_names : []
+      const catTokenized = categories.map(c => relevantTokens(c))
+      const score = scoreSupplier(itemsTokenized, catTokenized)
+      return { id: s.company_id as number, score }
+    })
+    .filter(s => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8)
 
-  const { experimental_output } = await generateText({
-    model: "openai/gpt-4o-mini",
-    experimental_output: Output.object({
-      schema: z.object({
-        recommended_ids: z.array(z.number()).describe(
-          "IDs dos fornecedores recomendados para os itens da cotação, em ordem de relevância. Máximo 8."
-        ),
-        reason: z.string().nullable().describe("Breve justificativa da seleção em português"),
-      }),
-    }),
-    system: `Você é um assistente especializado em construção civil e compras de materiais.
-Analise os itens de uma cotação e selecione os fornecedores mais adequados com base em suas categorias de atuação.
-Considere apenas fornecedores cujas categorias sejam compatíveis com os materiais/serviços solicitados.
-Retorne no máximo 8 fornecedores mais relevantes.`,
-    prompt: `Itens da cotação: ${itemNames}
+  const recommendedIds = scored.map(s => s.id)
 
-Fornecedores disponíveis (id, nome, categorias):
-${supplierList.map(s => `- ID ${s.id}: ${s.name} | Categorias: ${s.categories.join(", ")}`).join("\n")}
+  // Monta justificativa baseada nas categorias encontradas
+  let reason: string | null = null
+  if (recommendedIds.length > 0) {
+    const matched = suppliers
+      .filter((s: any) => recommendedIds.includes(s.company_id))
+      .map((s: any) =>
+        Array.isArray(s.category_names) ? s.category_names.slice(0, 2).join(", ") : ""
+      )
+      .filter(Boolean)
 
-Selecione os fornecedores cujas categorias sejam mais compatíveis com os itens solicitados.`,
-  })
+    const uniqueCategories = [...new Set(matched.flatMap((c: string) => c.split(", ")))]
+      .slice(0, 4)
+      .join(", ")
 
-  const recommendedIds: number[] = experimental_output?.recommended_ids ?? []
+    const itemNames = (items as { name: string }[]).map(i => i.name).join(", ")
+    reason = `Fornecedores selecionados com base nos itens "${itemNames}" e categorias compatíveis: ${uniqueCategories}.`
+  }
 
-  return NextResponse.json({
-    recommended: recommendedIds,
-    reason: experimental_output?.reason ?? null,
-    suppliers: supplierList.filter(s => recommendedIds.includes(s.id)),
-  })
+  return NextResponse.json({ recommended: recommendedIds, reason })
 }
