@@ -84,14 +84,30 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Integração ObraPlay: envia via POST /api/quotations/nested/ ─────────────
-  const opCompanyId: number | null = b.obraplay_company_id ? Number(b.obraplay_company_id) : null
+  let opCompanyId: number | null = b.obraplay_company_id ? Number(b.obraplay_company_id) : null
+
+  // Fallback: busca o ID ObraPlay pelo CNPJ da empresa no mirror se não veio no payload
+  if (!opCompanyId && b.company_id) {
+    const [fallbackRow] = await sql`
+      SELECT mc.company_id AS op_id
+      FROM companies c
+      JOIN mirror_companies mc
+        ON regexp_replace(c.cnpj, '[^0-9]', '', 'g') = regexp_replace(mc.cnpj, '[^0-9]', '', 'g')
+      WHERE c.id = ${b.company_id}
+      LIMIT 1
+    `
+    if (fallbackRow?.op_id) {
+      opCompanyId = Number(fallbackRow.op_id)
+      // Atualiza a empresa para não precisar deste fallback da próxima vez
+      await sql`UPDATE companies SET obraplay_company_id = ${opCompanyId} WHERE id = ${b.company_id}`
+    }
+  }
 
   if (!opCompanyId) {
-    // Cotação salva localmente, mas sem vínculo ObraPlay
     await sql`UPDATE cotacoes SET status = 'Erro ObraPlay' WHERE id = ${cotacao.id}`
     return NextResponse.json({
       ...cotacao,
-      _op_error: "ID ObraPlay não configurado para esta empresa. Configure em Editar Empresa antes de criar cotações.",
+      _op_error: "Empresa não encontrada no ObraPlay. Verifique o CNPJ ou configure o ID ObraPlay em Editar Empresa.",
     }, { status: 201 })
   }
 
