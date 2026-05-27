@@ -161,11 +161,8 @@ export default function CotacoesPage() {
                   <div className="min-w-0">
                     <span className="font-bold text-[#212121] tracking-widest"
                       style={{ fontSize: "0.95rem", fontFamily: "monospace" }}>
-                      {c.obraplay_quotation_code ?? c.identifier}
+                      {c.obraplay_quotation_code ? `Cotação: ${c.obraplay_quotation_code}` : c.identifier}
                     </span>
-                    {c.obraplay_quotation_code && (
-                      <p className="text-[#BDBDBD] text-[10px] mt-0.5 font-mono">{c.identifier}</p>
-                    )}
                     {c.obra_name && (
                       <p className="text-[#757575] text-xs mt-0.5 truncate">{c.obra_name}</p>
                     )}

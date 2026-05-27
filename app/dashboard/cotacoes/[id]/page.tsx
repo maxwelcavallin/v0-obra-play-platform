@@ -220,13 +220,9 @@ export default function CotacaoDetalhePage() {
             <ArrowLeft size={20} className="text-[#212121]" />
           </button>
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-[#9E9E9E]">Cotação</p>
             <h1 className="font-bold text-[#212121] tracking-widest" style={{ fontFamily: "monospace", fontSize: "1.05rem" }}>
-              {cotacao.obraplay_quotation_code ?? cotacao.identifier}
+              {cotacao.obraplay_quotation_code ? `Cotação: ${cotacao.obraplay_quotation_code}` : cotacao.identifier}
             </h1>
-            {cotacao.obraplay_quotation_code && (
-              <p className="text-[10px] text-[#BDBDBD] font-mono leading-none mt-0.5">{cotacao.identifier}</p>
-            )}
           </div>
           <span className="rounded-full px-3 py-1 text-xs font-bold flex-shrink-0"
             style={{ color: cfg.color, backgroundColor: cfg.bg }}>

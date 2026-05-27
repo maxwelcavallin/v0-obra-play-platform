@@ -148,7 +148,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
       const addr = b.shipping_address ?? {}
       const shippingAddress = {
-        foreign_id:        `${cotacao.identifier}-addr`,
+        foreign_id:        cotacao.seq ? String(cotacao.seq) + "-addr" : undefined,
         construction_name: addr.construction_name ?? b.obra_name ?? undefined,
         street:            addr.street        ?? undefined,
         number:            addr.number        ?? undefined,
@@ -161,7 +161,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
 
       const answers: OPQuotationAnswer[] = (b.suppliers ?? []).map((s: any, idx: number) => ({
-        foreign_id:           `${cotacao.identifier}-ans-${idx}`,
+        foreign_id:           cotacao.seq ? String(cotacao.seq) + "-ans-" + idx : undefined,
         name:                 s.name,
         email:                s.email  || undefined,
         phone:                s.phone  || undefined,
@@ -185,7 +185,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         name:               b.requester_name  ?? cotacao.requester_name  ?? undefined,
         email:              b.requester_email ?? cotacao.requester_email ?? undefined,
         phone:              b.requester_phone ?? cotacao.requester_phone ?? undefined,
-        foreign_id:         cotacao.identifier,
+        foreign_id:         cotacao.seq ? String(cotacao.seq) : undefined,
         is_public:          b.is_public ?? cotacao.is_public ?? false,
         is_draft:           false,
         shipping_addresses: [shippingAddress],

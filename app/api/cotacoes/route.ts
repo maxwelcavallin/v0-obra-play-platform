@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
   // Monta o endereço de entrega
   const addr = b.shipping_address ?? {}
   const shippingAddress = {
-    foreign_id:        `${identifier}-addr`,
+    foreign_id:        cotacao.seq ? String(cotacao.seq) + "-addr" : undefined,
     construction_name: addr.construction_name ?? b.obra_name ?? undefined,
     street:            addr.street        ?? undefined,
     number:            addr.number        ?? undefined,
@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
 
   // Monta os fornecedores (answers)
   const answers: OPQuotationAnswer[] = (b.suppliers ?? []).map((s: any, idx: number) => ({
-    foreign_id:          `${identifier}-ans-${idx}`,
+    foreign_id:          cotacao.seq ? String(cotacao.seq) + "-ans-" + idx : undefined,
     name:                s.name,
     email:               s.email  || undefined,
     phone:               s.phone  || undefined,
@@ -174,7 +174,7 @@ export async function POST(req: NextRequest) {
     name:               b.requester_name  ?? undefined,
     email:              b.requester_email ?? undefined,
     phone:              b.requester_phone ?? undefined,
-    foreign_id:         identifier,
+    foreign_id:         cotacao.seq ? String(cotacao.seq) : undefined,
     observations:       b.general_notes  ?? undefined,
     is_public:          b.is_public ?? false,
     is_draft:           false,
