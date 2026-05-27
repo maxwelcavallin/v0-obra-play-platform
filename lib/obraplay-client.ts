@@ -212,6 +212,13 @@ export const obraplay = {
     async memberships(id: number): Promise<OPListResponse<OPMember>> {
       return request<OPListResponse<OPMember>>(`/api/companies/${id}/memberships/`)
     },
+
+    async lookup(cnpj: string): Promise<{ id: number; cnpj: string; short_name: string; full_name: string; display_name: string; state_registration: string }> {
+      return request(`/api/companies/lookup/`, {
+        method: "POST",
+        body: JSON.stringify({ cnpj }),
+      })
+    },
   },
 
   quotations: {

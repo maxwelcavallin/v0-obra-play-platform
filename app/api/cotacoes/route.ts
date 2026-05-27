@@ -83,16 +83,41 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Integração ObraPlay: envia via POST /api/quotations/nested/ ─────────────
-  const opCompanyId: number | null = b.obraplay_company_id ? Number(b.obraplay_company_id) : null
+  // ── Integração ObraPlay: resolve o ID ObraPlay da empresa construtora ────────
+  let opCompanyId: number | null = b.obraplay_company_id ? Number(b.obraplay_company_id) : null
 
   if (!opCompanyId) {
-    // Cotação salva localmente, mas sem vínculo ObraPlay
-    await sql`UPDATE cotacoes SET status = 'Erro ObraPlay' WHERE id = ${cotacao.id}`
-    return NextResponse.json({
-      ...cotacao,
-      _op_error: "ID ObraPlay não configurado para esta empresa. Configure em Editar Empresa antes de criar cotações.",
-    }, { status: 201 })
+    // Busca o CNPJ da empresa no nosso banco para fazer o lookup
+    const [companyRow] = await sql`SELECT cnpj, obraplay_company_id FROM companies WHERE id = ${b.company_id}`
+
+    // Pode já ter sido salvo em outro fluxo
+    if (companyRow?.obraplay_company_id) {
+      opCompanyId = Number(companyRow.obraplay_company_id)
+    } else if (companyRow?.cnpj) {
+      // Primeira cotação: cria/busca a empresa no ObraPlay via lookup pelo CNPJ
+      const rawCnpj = companyRow.cnpj.replace(/[^0-9]/g, "")
+      try {
+        const lookupRes = await obraplay.companies.lookup(rawCnpj)
+        opCompanyId = lookupRes.id
+        // Persiste para não fazer lookup novamente nas próximas cotações
+        await sql`UPDATE companies SET obraplay_company_id = ${opCompanyId} WHERE id = ${b.company_id}`
+        console.log(`[cotacoes] Empresa vinculada ao ObraPlay via lookup: company=${b.company_id} → op_id=${opCompanyId}`)
+      } catch (lookupErr: any) {
+        console.error(`[cotacoes] Falha no lookup da empresa no ObraPlay (CNPJ: ${rawCnpj}):`, lookupErr?.message ?? lookupErr)
+        await sql`UPDATE cotacoes SET status = 'Erro ObraPlay' WHERE id = ${cotacao.id}`
+        return NextResponse.json({
+          ...cotacao,
+          _op_error: `Não foi possível identificar a empresa no ObraPlay: ${lookupErr?.message ?? "erro no lookup"}`,
+        }, { status: 201 })
+      }
+    } else {
+      // Empresa sem CNPJ cadastrado — não é possível fazer lookup
+      await sql`UPDATE cotacoes SET status = 'Erro ObraPlay' WHERE id = ${cotacao.id}`
+      return NextResponse.json({
+        ...cotacao,
+        _op_error: "CNPJ da empresa não cadastrado. Preencha o CNPJ em Editar Empresa para integrar com ObraPlay.",
+      }, { status: 201 })
+    }
   }
 
   // Monta os itens — type "I" = item avulso, measurement_unit como string
