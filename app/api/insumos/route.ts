@@ -11,18 +11,31 @@ export async function GET(req: NextRequest) {
     const company_id = req.nextUrl.searchParams.get("company_id")
     const tab = req.nextUrl.searchParams.get("tab") ?? "sistema" // "sistema" | "meus"
 
-    if (tab === "sistema") {
-      return NextResponse.json(INSUMOS_SISTEMA)
+    if (tab === "meus") {
+      // Apenas insumos personalizados da empresa
+      if (!company_id) return NextResponse.json({ error: "company_id obrigatório" }, { status: 400 })
+      const rows = await sql`
+        SELECT * FROM insumos
+        WHERE company_id = ${company_id} AND origin = 'Personalizado'
+        ORDER BY created_at DESC
+      `
+      return NextResponse.json(rows)
     }
 
-    // Meus insumos — personalizados da empresa
-    if (!company_id) return NextResponse.json({ error: "company_id obrigatório" }, { status: 400 })
-    const rows = await sql`
-      SELECT * FROM insumos
-      WHERE company_id = ${company_id} AND origin = 'Personalizado'
-      ORDER BY created_at DESC
-    `
-    return NextResponse.json(rows)
+    // Padrão (tab=sistema ou sem tab): retorna sistema + próprios mesclados
+    const sistemaMapped = INSUMOS_SISTEMA.map((i: any) => ({ ...i, origin: "Sistema" }))
+
+    if (company_id) {
+      const proprios = await sql`
+        SELECT * FROM insumos
+        WHERE company_id = ${company_id} AND origin = 'Personalizado'
+        ORDER BY created_at DESC
+      `
+      // Próprios primeiro, depois sistema
+      return NextResponse.json([...proprios, ...sistemaMapped])
+    }
+
+    return NextResponse.json(sistemaMapped)
   } catch (err: any) {
     console.error("[api/insumos GET]", err)
     return NextResponse.json({ error: err.message }, { status: 500 })

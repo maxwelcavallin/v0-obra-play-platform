@@ -475,16 +475,24 @@ export default function NovaCotacaoPage() {
               </div>
               {showInsumoDrop && filteredInsumos.length > 0 && (
                 <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl border border-[#E0E0E0] shadow-lg z-30 max-h-52 overflow-y-auto">
-                  {filteredInsumos.map(i => (
-                    <button key={i.id} onMouseDown={() => addInsumo(i)}
-                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#F5F5F5] border-b border-[#F5F5F5] last:border-0 text-left">
-                      <div>
-                        <p className="text-sm font-medium text-[#212121]">{i.name}</p>
-                        <p className="text-xs text-[#9E9E9E]">{i.category}</p>
-                      </div>
-                      <span className="text-xs text-[#757575] bg-[#F5F5F5] px-2 py-0.5 rounded-full">{i.unit}</span>
-                    </button>
-                  ))}
+                  {filteredInsumos.map(i => {
+                    const isMeu = i.origin === "Personalizado" || (i.origin !== "Sistema" && i.company_id)
+                    return (
+                      <button key={i.id} onMouseDown={() => addInsumo(i)}
+                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#F5F5F5] border-b border-[#F5F5F5] last:border-0 text-left">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-[#212121] truncate">{i.name}</p>
+                            {isMeu && (
+                              <span className="text-[10px] font-semibold text-[#1565C0] bg-[#E3F2FD] px-1.5 py-0.5 rounded-full flex-shrink-0">Meu cadastro</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-[#9E9E9E]">{i.category}</p>
+                        </div>
+                        <span className="text-xs text-[#757575] bg-[#F5F5F5] px-2 py-0.5 rounded-full ml-2 flex-shrink-0">{i.unit}</span>
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>
