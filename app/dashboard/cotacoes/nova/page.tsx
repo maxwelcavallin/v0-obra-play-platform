@@ -328,14 +328,13 @@ export default function NovaCotacaoPage() {
       })
       if (!res.ok) throw new Error("Erro ao criar cotação")
       const data = await res.json()
-      if (data._op_warning) {
-        toast.success("Cotação salva localmente.")
-        toast.error("Aviso: " + data._op_warning, { duration: 6000 })
-      } else {
-        toast.success(data.obraplay_quotation_id
-          ? "Cotação enviada à ObraPlay com sucesso!"
-          : "Cotação salva com sucesso!")
+      if (data._op_error) {
+        // Cotação salva no banco mas falhou no ObraPlay — não redireciona
+        toast.error(data._op_error, { duration: 10000 })
+        setSubmitting(false)
+        return
       }
+      toast.success("Cotação enviada à ObraPlay com sucesso!")
       router.push("/dashboard/cotacoes")
     } catch (e: any) {
       toast.error(e.message ?? "Erro ao enviar cotação")

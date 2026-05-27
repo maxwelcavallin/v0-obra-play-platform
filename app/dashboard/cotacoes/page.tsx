@@ -32,6 +32,7 @@ const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> =
   "Pendente revisão": { label: "Pendente revisão", color: "#FF9800", bg: "#FFF3E0" },
   "Convertida":       { label: "Convertida",       color: "#9C27B0", bg: "#F3E5F5" },
   "Cancelada":        { label: "Cancelada",        color: "#F44336", bg: "#FFEBEE" },
+  "Erro ObraPlay":    { label: "Erro ObraPlay",    color: "#E65100", bg: "#FBE9E7" },
 }
 
 const TABS = [
@@ -41,6 +42,7 @@ const TABS = [
   { label: "Pendente revisão", value: "Pendente revisão" },
   { label: "Convertidas",      value: "Convertida" },
   { label: "Canceladas",       value: "Cancelada" },
+  { label: "Erro ObraPlay",    value: "Erro ObraPlay" },
 ]
 
 function StatusChip({ status }: { status: string }) {

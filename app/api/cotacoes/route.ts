@@ -83,77 +83,83 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Integração ObraPlay: envia a cotação via POST /api/quotations/nested/ ──
-  const opCompanyId: number | null = b.obraplay_company_id ?? null
+  // ── Integração ObraPlay: envia via POST /api/quotations/nested/ ─────────────
+  const opCompanyId: number | null = b.obraplay_company_id ? Number(b.obraplay_company_id) : null
 
-  if (opCompanyId) {
-    try {
-      // Monta os itens — type "I" = item avulso, measurement_unit como string
-      const opItems: OPQuotationItem[] = (b.items ?? []).map((item: any) => ({
-        name:                  item.name,
-        quantity:              Number(item.quantity) || 1,
-        total_quantity_micros: Math.round((Number(item.quantity) || 1) * 1_000_000),
-        measurement_unit:      item.unit ?? "UN",
-        type:                  "I" as const,
-      }))
-
-      // Monta o endereço de entrega
-      const addr = b.shipping_address ?? {}
-      const shippingAddress = {
-        foreign_id:        `${identifier}-addr`,
-        construction_name: addr.construction_name ?? b.obra_name ?? undefined,
-        street:            addr.street        ?? undefined,
-        number:            addr.number        ?? undefined,
-        neighbourhood:     addr.neighbourhood ?? undefined,
-        city:              addr.city          ?? undefined,
-        state:             addr.state         ?? undefined,
-        zipcode:           addr.zipcode       ?? undefined,
-        complement:        addr.complement    ?? undefined,
-        items:             opItems,
-      }
-
-      // Monta os fornecedores (answers)
-      const answers: OPQuotationAnswer[] = (b.suppliers ?? []).map((s: any, idx: number) => ({
-        foreign_id:           `${identifier}-ans-${idx}`,
-        name:                 s.name,
-        email:                s.email  || undefined,
-        phone:                s.phone  || undefined,
-        notify_by_email:      !!s.email,
-        notify_by_whatsapp:   !s.email && !!s.phone,
-        own_supplier:         false,
-        // Vincula ao cadastro ObraPlay do fornecedor quando disponível
-        ...(s.mirror_company_id ? { company: Number(s.mirror_company_id) } : {}),
-        supplier_foreign_id:  s.mirror_company_id ? String(s.mirror_company_id) : undefined,
-      }))
-
-      const opPayload = {
-        company:            opCompanyId,
-        requirement_date:   b.need_date    ?? undefined,
-        expires_at:         b.expiry_date  ?? undefined,
-        name:               b.requester_name  ?? undefined,
-        email:              b.requester_email ?? undefined,
-        phone:              b.requester_phone ?? undefined,
-        foreign_id:         identifier,
-        observations:       b.general_notes  ?? undefined,
-        is_public:          b.is_public ?? false,
-        is_draft:           false,
-        shipping_addresses: [shippingAddress],
-        answers:            answers.length > 0 ? answers : undefined,
-      }
-
-      console.log("[v0] Enviando para ObraPlay:", JSON.stringify(opPayload, null, 2))
-
-      const opRes = await obraplay.quotations.createNested(opPayload)
-
-      console.log("[v0] ObraPlay respondeu:", opRes)
-
-      await sql`UPDATE cotacoes SET obraplay_quotation_id = ${opRes.id} WHERE id = ${cotacao.id}`
-      cotacao.obraplay_quotation_id = opRes.id
-    } catch (err: any) {
-      console.error("[v0] Erro ao enviar cotação para ObraPlay:", err?.message ?? err)
-      cotacao._op_warning = "Cotação salva localmente. Falha ao enviar ao ObraPlay: " + (err?.message ?? "erro desconhecido")
-    }
+  if (!opCompanyId) {
+    // Cotação salva localmente, mas sem vínculo ObraPlay
+    await sql`UPDATE cotacoes SET status = 'Erro ObraPlay' WHERE id = ${cotacao.id}`
+    return NextResponse.json({
+      ...cotacao,
+      _op_error: "ID ObraPlay não configurado para esta empresa. Configure em Editar Empresa antes de criar cotações.",
+    }, { status: 201 })
   }
 
-  return NextResponse.json(cotacao, { status: 201 })
+  // Monta os itens — type "I" = item avulso, measurement_unit como string
+  const opItems: OPQuotationItem[] = (b.items ?? []).map((item: any) => ({
+    name:                  item.name,
+    quantity:              Number(item.quantity) || 1,
+    total_quantity_micros: Math.round((Number(item.quantity) || 1) * 1_000_000),
+    measurement_unit:      item.unit ?? "UN",
+    type:                  "I" as const,
+  }))
+
+  // Monta o endereço de entrega
+  const addr = b.shipping_address ?? {}
+  const shippingAddress = {
+    foreign_id:        `${identifier}-addr`,
+    construction_name: addr.construction_name ?? b.obra_name ?? undefined,
+    street:            addr.street        ?? undefined,
+    number:            addr.number        ?? undefined,
+    neighbourhood:     addr.neighbourhood ?? undefined,
+    city:              addr.city          ?? undefined,
+    state:             addr.state         ?? undefined,
+    zipcode:           addr.zipcode       ?? undefined,
+    complement:        addr.complement    ?? undefined,
+    items:             opItems,
+  }
+
+  // Monta os fornecedores (answers)
+  const answers: OPQuotationAnswer[] = (b.suppliers ?? []).map((s: any, idx: number) => ({
+    foreign_id:          `${identifier}-ans-${idx}`,
+    name:                s.name,
+    email:               s.email  || undefined,
+    phone:               s.phone  || undefined,
+    notify_by_email:     !!s.email,
+    notify_by_whatsapp:  !s.email && !!s.phone,
+    own_supplier:        false,
+    ...(s.mirror_company_id ? { company: Number(s.mirror_company_id) } : {}),
+    supplier_foreign_id: s.mirror_company_id ? String(s.mirror_company_id) : undefined,
+  }))
+
+  const opPayload = {
+    company:            opCompanyId,
+    requirement_date:   b.need_date    ?? undefined,
+    expires_at:         b.expiry_date  ?? undefined,
+    name:               b.requester_name  ?? undefined,
+    email:              b.requester_email ?? undefined,
+    phone:              b.requester_phone ?? undefined,
+    foreign_id:         identifier,
+    observations:       b.general_notes  ?? undefined,
+    is_public:          b.is_public ?? false,
+    is_draft:           false,
+    shipping_addresses: [shippingAddress],
+    answers:            answers.length > 0 ? answers : undefined,
+  }
+
+  try {
+    const opRes = await obraplay.quotations.createNested(opPayload)
+    await sql`UPDATE cotacoes SET obraplay_quotation_id = ${opRes.id} WHERE id = ${cotacao.id}`
+    cotacao.obraplay_quotation_id = opRes.id
+    return NextResponse.json(cotacao, { status: 201 })
+  } catch (err: any) {
+    const errMsg = err?.message ?? "Erro desconhecido"
+    console.error(`[cotacoes] Falha ao enviar cotação ${identifier} para ObraPlay:`, errMsg)
+    // Atualiza status para indicar falha na integração
+    await sql`UPDATE cotacoes SET status = 'Erro ObraPlay' WHERE id = ${cotacao.id}`
+    return NextResponse.json({
+      ...cotacao,
+      _op_error: `Cotação salva (${identifier}), mas falha ao enviar ao ObraPlay: ${errMsg}`,
+    }, { status: 201 })
+  }
 }
