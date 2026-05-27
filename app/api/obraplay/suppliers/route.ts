@@ -136,7 +136,6 @@ export async function GET(req: NextRequest) {
 
   const offset = (page - 1) * perPage
   const searchPct = search ? `%${search}%` : null
-  const cityPct   = city   ? `%${city}%`   : null
 
   // Para busca por cidade: descobre o(s) estado(s) ao qual a cidade pertence no mirror
   // para incluir fornecedores que cobrem o estado inteiro (type="state", shipping_location_names vazio)
@@ -148,18 +147,18 @@ export async function GET(req: NextRequest) {
            jsonb_array_elements(shipping_locations) AS loc
       WHERE has_confirmed_configuration = true
         AND loc->>'type' = 'city'
-        AND loc->'city'->>'name' ILIKE ${cityPct}
+        AND lower(loc->'city'->>'name') = lower(${city})
         AND loc->'state'->>'code' IS NOT NULL
     `
     cityStates = stateRows.map((r: any) => r.code).filter(Boolean)
   }
 
   // Filtro de cidade:
-  //   1) fornecedor tem a cidade explícita em shipping_location_names  OU
+  //   1) fornecedor tem a cidade exata em shipping_location_names (comparação exata, case-insensitive)  OU
   //   2) fornecedor cobre o estado inteiro (shipping_location_names vazio) e o estado está em shipping_state_names
   const cityFilter = city
     ? sql`AND (
-        EXISTS (SELECT 1 FROM jsonb_array_elements_text(shipping_location_names) AS loc_city WHERE loc_city ILIKE ${cityPct})
+        EXISTS (SELECT 1 FROM jsonb_array_elements_text(shipping_location_names) AS loc_city WHERE lower(loc_city) = lower(${city}))
         ${cityStates.length > 0
           ? sql`OR (
               jsonb_array_length(shipping_location_names) = 0
