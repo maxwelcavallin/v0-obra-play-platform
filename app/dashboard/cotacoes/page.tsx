@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import {
   Search, Plus, Package, MapPin, Calendar,
   Eye, Loader2, ShoppingCart, Clock,
-  Pencil, Trash2, MoreVertical, Copy
+  Pencil, Trash2, MoreVertical, Copy, BarChart2
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/auth-fetch"
@@ -283,11 +283,19 @@ export default function CotacoesPage() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <button
-                        onClick={() => router.push(`/dashboard/cotacoes/${c.id}`)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-[#1565C0] border border-[#1565C0] hover:bg-[#E3F2FD] transition-colors">
-                        <Eye size={12} /> Ver
-                      </button>
+                      {c.status === "Respondida" ? (
+                        <button
+                          onClick={() => router.push(`/dashboard/cotacoes/${c.id}/mapa`)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-white bg-[#1565C0] hover:bg-[#0D47A1] transition-colors">
+                          <BarChart2 size={12} /> Mapa de cotação
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => router.push(`/dashboard/cotacoes/${c.id}`)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-[#1565C0] border border-[#1565C0] hover:bg-[#E3F2FD] transition-colors">
+                          <Eye size={12} /> Ver
+                        </button>
+                      )}
                       {/* Menu de três pontinhos */}
                       <div className="relative">
                         <button
