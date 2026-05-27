@@ -26,10 +26,26 @@ const TYPE_ORDER: Record<RegistrationType, number> = { certified: 0, validated: 
 
 function sortSuppliers(list: any[]) {
   return list.sort((a, b) => {
+    // 1. Credenciados primeiro (certified → validated → basic)
     const typeCompare = TYPE_ORDER[a.registration_type as RegistrationType] - TYPE_ORDER[b.registration_type as RegistrationType]
     if (typeCompare !== 0) return typeCompare
-    const timeCompare = parseResponseMinutes(a.avg_finalized_answers_duration) - parseResponseMinutes(b.avg_finalized_answers_duration)
-    if (timeCompare !== 0) return timeCompare
+
+    const aCount = a.finalized_answers_count ?? 0
+    const bCount = b.finalized_answers_count ?? 0
+    const aHas = aCount > 0
+    const bHas = bCount > 0
+
+    // 2. Quem tem respostas vem antes de quem não tem
+    if (aHas !== bHas) return aHas ? -1 : 1
+
+    if (aHas && bHas) {
+      // 3. Entre os que têm respostas: maior quantidade primeiro
+      if (bCount !== aCount) return bCount - aCount
+      // 4. Empate na quantidade: menor tempo de resposta primeiro
+      return parseResponseMinutes(a.avg_finalized_answers_duration) - parseResponseMinutes(b.avg_finalized_answers_duration)
+    }
+
+    // 5. Entre os que não têm respostas: ordem alfabética
     return (a.company_name ?? "").localeCompare(b.company_name ?? "", "pt-BR")
   })
 }
