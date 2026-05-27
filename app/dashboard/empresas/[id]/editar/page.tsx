@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { EmpresaForm } from "@/components/empresas/empresa-form"
 import { toast } from "sonner"
+import { authFetch } from "@/lib/auth-fetch"
 
 export default function EditarEmpresaPage() {
   const router = useRouter()
@@ -14,7 +15,7 @@ export default function EditarEmpresaPage() {
   const [initial, setInitial] = useState<any>(null)
 
   useEffect(() => {
-    fetch(`/api/empresas/${id}`)
+    authFetch(`/api/empresas/${id}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.id) {
@@ -44,7 +45,7 @@ export default function EditarEmpresaPage() {
   async function handleSave(data: any) {
     setLoading(true)
     try {
-      const res = await fetch(`/api/empresas/${id}`, {
+      const res = await authFetch(`/api/empresas/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
