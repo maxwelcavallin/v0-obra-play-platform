@@ -5,7 +5,8 @@ import { useParams, useRouter } from "next/navigation"
 import {
   ArrowLeft, Package, MapPin, Calendar, Clock, FileText,
   Building2, Phone, Mail, Check, Globe, Loader2, User,
-  ChevronDown, ChevronUp, AlertCircle, MoreVertical, Pencil, XCircle, Copy
+  ChevronDown, ChevronUp, AlertCircle, MoreVertical, Pencil, XCircle, Copy,
+  BarChart2
 } from "lucide-react"
 import { authFetch } from "@/lib/auth-fetch"
 import { toast } from "sonner"
@@ -430,6 +431,16 @@ export default function CotacaoDetalhePage() {
             </button>
           )}
         </Section>
+
+        {/* Botão Visualizar mapa — somente para cotações respondidas */}
+        {cotacao.status === "Respondida" && (
+          <button
+            onClick={() => router.push(`/dashboard/cotacoes/${id}/mapa`)}
+            className="w-full py-3.5 rounded-2xl bg-[#1565C0] text-white font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#0D47A1] transition-colors shadow-sm">
+            <BarChart2 size={16} />
+            Visualizar mapa de cotação
+          </button>
+        )}
 
       </div>
     </div>

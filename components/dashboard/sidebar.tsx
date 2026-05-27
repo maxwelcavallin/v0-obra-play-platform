@@ -37,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Obras", href: "/dashboard/obras", icon: Hammer },
   { label: "Insumos", href: "/dashboard/insumos", icon: Package },
   { label: "Cotações", href: "/dashboard/cotacoes", icon: ShoppingCart },
+  { label: "Ordens de Compra", href: "/dashboard/ordens-compra", icon: FileText },
   { label: "Financeiro", href: "/dashboard/financeiro", icon: DollarSign },
   { label: "Empresas", href: "/dashboard/empresas", icon: Building2 },
   { label: "Usuários", href: "/dashboard/usuarios", icon: HardHat },

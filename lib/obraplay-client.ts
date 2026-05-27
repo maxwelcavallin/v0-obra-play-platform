@@ -243,5 +243,37 @@ export const obraplay = {
         body: JSON.stringify(payload),
       })
     },
+
+    async getAnswers(opQuotationId: number): Promise<any[]> {
+      const res = await request<any>(`/api/quotation_answers/?quotation=${opQuotationId}&page_size=100`)
+      return res?.results ?? res ?? []
+    },
+
+    async finalizeAnswer(opAnswerId: number, payload: Record<string, any>): Promise<any> {
+      return request<any>(`/api/quotation_answers/${opAnswerId}/finalize/`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      })
+    },
+  },
+
+  purchaseOrders: {
+    async create(payload: Record<string, any>): Promise<any> {
+      return request<any>(`/api/purchase_orders/`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      })
+    },
+
+    async get(id: number): Promise<any> {
+      return request<any>(`/api/purchase_orders/${id}/`)
+    },
+
+    async list(params: { company?: number; page?: number }): Promise<any> {
+      const qs = new URLSearchParams()
+      if (params.company) qs.set("company", String(params.company))
+      qs.set("page", String(params.page ?? 1))
+      return request<any>(`/api/purchase_orders/?${qs}`)
+    },
   },
 }
