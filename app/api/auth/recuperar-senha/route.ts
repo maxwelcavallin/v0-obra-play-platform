@@ -50,6 +50,8 @@ export async function POST(req: NextRequest) {
           templateId: 408,
           params: { TOKEN: resetLink },
           attributes: { TOKEN: resetLink },
+          // Desativa o rastreamento de cliques da Brevo para preservar a URL original do link
+          trackClicks: false,
         }
         const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
           method: "POST",
