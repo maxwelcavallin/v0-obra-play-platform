@@ -33,6 +33,13 @@ interface Supplier {
 const AVATAR_COLORS = ["#1565C0","#FF9800","#F44336","#2196F3","#795548","#607D8B","#E91E63","#4CAF50","#9C27B0","#FF5722"]
 function getInitials(name: string) { return name.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase() }
 function getColor(name: string) { let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0; return AVATAR_COLORS[h % AVATAR_COLORS.length] }
+function formatDuration(value?: string | number | null): string | null {
+  if (!value) return null
+  const seconds = parseFloat(String(value))
+  if (isNaN(seconds) || seconds <= 0) return null
+  if (seconds < 3600) return `~${Math.round(seconds / 60)} min`
+  return `~${Math.round(seconds / 3600)}h`
+}
 
 const MIN_RATINGS = ["Todas", "4.0+", "4.5+", "4.8+"]
 
@@ -952,10 +959,21 @@ function NovaCotacaoInner() {
                         <span className="text-[10px] bg-[#1565C0] text-white px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Recomendado</span>
                         {preview.registration_type === "certified" && <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Certificado</span>}
                       </div>
-                      <p className="text-[11px] text-[#9E9E9E] mt-0.5 truncate">
-                        {Array.isArray(preview.category_names) ? preview.category_names.slice(0, 3).join(" · ") : ""}
-                      </p>
-                      <p className="text-[11px] text-[#9E9E9E]">{[preview.city_name, preview.state_abbr].filter(Boolean).join(" · ")}</p>
+                          <p className="text-[11px] text-[#9E9E9E] mt-0.5 truncate">
+                            {Array.isArray(preview.category_names) ? preview.category_names.slice(0, 3).join(" · ") : ""}
+                          </p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[11px] text-[#9E9E9E]">{[preview.city_name, preview.state_abbr].filter(Boolean).join(" · ")}</span>
+                            {formatDuration(preview.avg_finalized_answers_duration) && (
+                              <div className="flex items-center gap-1">
+                                <Clock size={10} className="text-[#9E9E9E]" />
+                                <span className="text-[11px] text-[#9E9E9E]">{formatDuration(preview.avg_finalized_answers_duration)}</span>
+                              </div>
+                            )}
+                          </div>
+                          {preview.finalized_answers_count > 0 && (
+                            <p className="text-[11px] text-[#1565C0] font-medium">+{preview.finalized_answers_count} cotações respondidas</p>
+                          )}
                     </div>
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isSelectedPreview ? "bg-[#1565C0] border-[#1565C0]" : "border-[#BDBDBD]"}`}>
                       {isSelectedPreview && <Check size={11} className="text-white" />}
@@ -1018,7 +1036,18 @@ function NovaCotacaoInner() {
                                 <p className="text-[11px] text-[#9E9E9E] mt-0.5 truncate">
                                   {Array.isArray(s.category_names) ? s.category_names.slice(0, 3).join(" · ") : ""}
                                 </p>
-                                <p className="text-[11px] text-[#9E9E9E]">{[s.city_name, s.state_abbr].filter(Boolean).join(" · ")}</p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-[11px] text-[#9E9E9E]">{[s.city_name, s.state_abbr].filter(Boolean).join(" · ")}</span>
+                                  {formatDuration(s.avg_finalized_answers_duration) && (
+                                    <div className="flex items-center gap-1">
+                                      <Clock size={10} className="text-[#9E9E9E]" />
+                                      <span className="text-[11px] text-[#9E9E9E]">{formatDuration(s.avg_finalized_answers_duration)}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                {s.finalized_answers_count > 0 && (
+                                  <p className="text-[11px] text-[#1565C0] font-medium">+{s.finalized_answers_count} cotações respondidas</p>
+                                )}
                               </div>
                               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isSel ? "bg-[#1565C0] border-[#1565C0]" : "border-[#BDBDBD]"}`}>
                                 {isSel && <Check size={11} className="text-white" />}
@@ -1140,7 +1169,18 @@ function NovaCotacaoInner() {
                             {s.registration_type === "certified" && <span className="text-[10px] bg-[#1565C0] text-white px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Certificado</span>}
                             {s.registration_type === "validated" && <span className="text-[10px] bg-[#E3F2FD] text-[#1565C0] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Validado</span>}
                           </div>
-                          <p className="text-xs text-[#9E9E9E] mt-0.5">{[s.city_name, s.state_abbr].filter(Boolean).join(" · ")}{s.avg_finalized_answers_duration ? ` · ${s.avg_finalized_answers_duration}` : ""}</p>
+                          <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                            <span className="text-xs text-[#9E9E9E]">{[s.city_name, s.state_abbr].filter(Boolean).join(" · ")}</span>
+                            {formatDuration(s.avg_finalized_answers_duration) && (
+                              <div className="flex items-center gap-1">
+                                <Clock size={11} className="text-[#9E9E9E]" />
+                                <span className="text-xs text-[#9E9E9E]">{formatDuration(s.avg_finalized_answers_duration)}</span>
+                              </div>
+                            )}
+                          </div>
+                          {s.finalized_answers_count > 0 && (
+                            <p className="text-[11px] text-[#1565C0] font-medium">+{s.finalized_answers_count} cotações respondidas</p>
+                          )}
                         </div>
                         {/* Botão expandir vendedores */}
                         {hasMembers && (

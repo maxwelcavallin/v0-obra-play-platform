@@ -69,7 +69,10 @@ export async function POST(req: NextRequest) {
       logo,
       rating,
       registration_type,
-      category_names
+      category_names,
+      avg_finalized_answers_duration,
+      finalized_answers_count,
+      avg_response_time_minutes
     FROM mirror_companies
     WHERE
       has_confirmed_configuration = true
@@ -110,17 +113,20 @@ export async function POST(req: NextRequest) {
       const s = supplierMap.get(id) as any
       if (!s) return null
       return {
-        id:                s.company_id,
-        company_name:      s.full_name || s.short_name,
-        email:             s.email ?? null,
-        phone:             s.phone ?? null,
-        whatsapp:          s.whatsapp ?? null,
-        logo_url:          s.logo ?? null,
-        rating:            s.rating ?? null,
-        registration_type: s.registration_type ?? null,
-        category_names:    s.category_names ?? [],
-        city_name:         s.city ?? null,
-        state_abbr:        s.state ?? null,
+        id:                          s.company_id,
+        company_name:                s.full_name || s.short_name,
+        email:                       s.email ?? null,
+        phone:                       s.phone ?? null,
+        whatsapp:                    s.whatsapp ?? null,
+        logo_url:                    s.logo ?? null,
+        rating:                      s.rating ?? null,
+        registration_type:           s.registration_type ?? null,
+        category_names:              s.category_names ?? [],
+        city_name:                   s.city ?? null,
+        state_abbr:                  s.state ?? null,
+        avg_finalized_answers_duration: s.avg_finalized_answers_duration ?? null,
+        finalized_answers_count:     s.finalized_answers_count ?? 0,
+        avg_response_time_minutes:   s.avg_response_time_minutes ?? null,
       }
     })
     .filter(Boolean)
