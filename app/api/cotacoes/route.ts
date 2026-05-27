@@ -141,16 +141,31 @@ export async function POST(req: NextRequest) {
 
   // Monta o endereço de entrega
   const addr = b.shipping_address ?? {}
+  const addrStreet       = addr.street?.trim()        || null
+  const addrNumber       = addr.number?.trim()        || null
+  const addrNeighbourhood = addr.neighbourhood?.trim() || null
+
+  // ObraPlay exige street, number e neighbourhood — se não vieram, aborta com mensagem clara
+  if (!addrStreet || !addrNumber || !addrNeighbourhood) {
+    const missing = [!addrStreet && "rua", !addrNumber && "número", !addrNeighbourhood && "bairro"].filter(Boolean).join(", ")
+    console.error(`[cotacoes] Endereço de entrega incompleto para cotação ${cotacao.identifier}: faltando ${missing}`)
+    await sql`UPDATE cotacoes SET status = 'Erro ObraPlay' WHERE id = ${cotacao.id}`
+    return NextResponse.json({
+      ...cotacao,
+      _op_error: `Cotação salva, mas o endereço de entrega está incompleto (faltando: ${missing}). Preencha o endereço da obra ou empresa e tente novamente.`,
+    }, { status: 201 })
+  }
+
   const shippingAddress = {
     foreign_id:        cotacao.seq ? String(cotacao.seq) + "-addr" : undefined,
     construction_name: addr.construction_name ?? b.obra_name ?? undefined,
-    street:            addr.street        ?? undefined,
-    number:            addr.number        ?? undefined,
-    neighbourhood:     addr.neighbourhood ?? undefined,
-    city:              addr.city          ?? undefined,
-    state:             addr.state         ?? undefined,
-    zipcode:           addr.zipcode       ?? undefined,
-    complement:        addr.complement    ?? undefined,
+    street:            addrStreet,
+    number:            addrNumber,
+    neighbourhood:     addrNeighbourhood,
+    city:              addr.city?.trim()     || undefined,
+    state:             addr.state?.trim()    || undefined,
+    zipcode:           addr.zipcode?.trim()  || undefined,
+    complement:        addr.complement?.trim() || undefined,
     items:             opItems,
   }
 

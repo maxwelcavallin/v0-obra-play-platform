@@ -485,13 +485,13 @@ export default function NovaCotacaoPage() {
               <div>
                 <label className="block text-xs text-[#9E9E9E] mb-1">Data de necessidade *</label>
                 <input type="date" value={needDate} onChange={e => setNeedDate(e.target.value)}
-                  min={new Date().toISOString().slice(0, 10)}
+                  min={(() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10) })()}
                   className="w-full border border-[#E0E0E0] rounded-xl px-3 py-2.5 text-sm text-[#212121] outline-none focus:border-[#1565C0]" />
               </div>
               <div>
                 <label className="block text-xs text-[#9E9E9E] mb-1">Expiração da cotação *</label>
                 <input type="date" value={expiryDate} onChange={e => setExpiryDate(e.target.value)}
-                  min={new Date().toISOString().slice(0, 10)}
+                  min={(() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10) })()}
                   className="w-full border border-[#E0E0E0] rounded-xl px-3 py-2.5 text-sm text-[#212121] outline-none focus:border-[#1565C0]" />
               </div>
             </div>
