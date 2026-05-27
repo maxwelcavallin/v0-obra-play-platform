@@ -279,7 +279,7 @@ export default function NovaCotacaoPage() {
 
   // ─ Enviar cotação ─────────────────────────────────────────────────────────
   async function handleSubmit() {
-    if (!isPublic && selectedSupplierContacts.size === 0 && manualSuppliers.length === 0) {
+    if (!isPublic && selectedSupplierContacts.size === 0) {
       toast.error("Selecione pelo menos um fornecedor ou marque a cotação como pública.")
       return
     }
@@ -296,10 +296,7 @@ export default function NovaCotacaoPage() {
           mirror_company_id: companyId,
         }
       })
-      const supplierList = [
-        ...mirrorSelected,
-        ...manualSuppliers.map(s => ({ name: s.name, email: s.email || undefined, phone: s.phone || undefined, is_recommended: false })),
-      ]
+      const supplierList = [...mirrorSelected]
       // Monta o endereço de entrega conforme modo selecionado no passo 2
       const co = activeCompany
       const shippingAddress = addressMode === "obra" && selectedObra
@@ -708,27 +705,6 @@ export default function NovaCotacaoPage() {
             </div>
           </button>
 
-          {/* Aviso quando ID ObraPlay não está configurado */}
-          {!activeCompany?.obraplayCompanyId && (
-            <div className="flex items-start gap-3 bg-[#FFF3E0] border border-[#FFB74D] rounded-xl p-3 mb-4">
-              <AlertCircle size={16} className="text-[#E65100] flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-semibold text-[#E65100]">Integração ObraPlay não configurada</p>
-                <p className="text-xs text-[#BF360C] mt-0.5">
-                  Configure o ID ObraPlay da empresa em{" "}
-                  <button
-                    type="button"
-                    className="underline font-semibold"
-                    onClick={() => router.push(`/dashboard/empresas/${activeCompany?.id}/editar`)}
-                  >
-                    Editar Empresa
-                  </button>{" "}
-                  para que a cotação seja enviada automaticamente à plataforma ObraPlay.
-                </p>
-              </div>
-            </div>
-          )}
-
           {/* Fornecedores do mirror ObraPlay */}
           <p className="text-[#616161] font-bold mb-1 text-xs uppercase tracking-wider">FORNECEDORES OBRAPLAY</p>
 
@@ -903,61 +879,18 @@ export default function NovaCotacaoPage() {
             </>
           )}
 
-          {/* Fornecedores adicionados manualmente */}
-          <p className="text-[#616161] font-bold mb-1 mt-4 text-xs uppercase tracking-wider">CONVIDAR MANUALMENTE</p>
-          <p className="text-xs text-[#9E9E9E] mb-3">Fornecedores fora da plataforma ObraPlay.</p>
-
-          {manualSuppliers.length > 0 && (
-            <div className="flex flex-col gap-2 mb-3">
-              {manualSuppliers.map((s, i) => (
-                <div key={i} className="bg-white rounded-xl border border-[#E0E0E0] px-4 py-3 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: getColor(s.name) }}>{getInitials(s.name)}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#212121] truncate">{s.name}</p>
-                    <p className="text-xs text-[#9E9E9E] truncate">{[s.email, s.phone].filter(Boolean).join(" · ")}</p>
-                  </div>
-                  <button onClick={() => setManualSuppliers(prev => prev.filter((_, idx) => idx !== i))}
-                    className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#FFEBEE] transition-colors flex-shrink-0">
-                    <Trash2 size={14} className="text-[#E53935]" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {showAddSupplier ? (
-            <div className="bg-white rounded-xl border-2 border-[#1565C0] p-4 mb-4 flex flex-col gap-3">
-              <OpInput label="Nome *" value={newSupName} onChange={e => setNewSupName(e.target.value)} placeholder="Ex: Distribuidora ABC" />
-              <OpInput label="E-mail" value={newSupEmail} onChange={e => setNewSupEmail(e.target.value)} placeholder="contato@fornecedor.com" type="email" />
-              <OpInput label="Telefone / WhatsApp" value={newSupPhone} onChange={e => setNewSupPhone(e.target.value)} placeholder="+55 (41) 99999-0000" type="tel" />
-              <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => { setShowAddSupplier(false); setNewSupName(""); setNewSupEmail(""); setNewSupPhone("") }}
-                  className="flex-1 py-2.5 rounded-xl border border-[#E0E0E0] text-sm text-[#757575] font-semibold">Cancelar</button>
-                <button type="button" onClick={() => {
-                  if (!newSupName.trim()) { toast.error("Informe o nome."); return }
-                  setManualSuppliers(prev => [...prev, { name: newSupName.trim(), email: newSupEmail.trim(), phone: newSupPhone.trim() }])
-                  setNewSupName(""); setNewSupEmail(""); setNewSupPhone(""); setShowAddSupplier(false)
-                }} className="flex-1 py-2.5 rounded-xl bg-[#1565C0] text-white text-sm font-semibold">Adicionar</button>
-              </div>
-            </div>
-          ) : (
-            <button type="button" onClick={() => setShowAddSupplier(true)}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-[#BDBDBD] text-[#757575] hover:border-[#1565C0] hover:text-[#1565C0] transition-colors text-sm font-semibold mb-4">
-              <Plus size={16} />Adicionar fornecedor externo
-            </button>
-          )}
         </div>
       )}
 
       {/* ─── Footer fixo ─────────────────────────────────────────────────── */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#EEEEEE] px-4 py-4 z-20" style={{ maxWidth: 480, margin: "0 auto" }}>
-        {step === 3 && (isPublic || selectedSupplierContacts.size > 0 || manualSuppliers.length > 0) && (
+        {step === 3 && (isPublic || selectedSupplierContacts.size > 0) && (
           <div className="flex items-center gap-2 mb-3 bg-[#E3F2FD] rounded-xl px-4 py-2">
             <Check size={14} className="text-[#1565C0]" />
             <span className="text-xs text-[#1565C0] font-semibold">
-              {isPublic ? "Pública · " : ""}
-              {selectedSupplierContacts.size > 0 && `${selectedSupplierContacts.size} ObraPlay`}
-              {manualSuppliers.length > 0 && ` · ${manualSuppliers.length} externo${manualSuppliers.length > 1 ? "s" : ""}`}
+              {isPublic ? "Pública" : ""}
+              {isPublic && selectedSupplierContacts.size > 0 ? " · " : ""}
+              {selectedSupplierContacts.size > 0 && `${selectedSupplierContacts.size} fornecedor${selectedSupplierContacts.size > 1 ? "es" : ""} ObraPlay`}
             </span>
           </div>
         )}
@@ -985,7 +918,7 @@ export default function NovaCotacaoPage() {
         ) : (
           <button
             onClick={handleSubmit}
-            disabled={submitting || (!isPublic && selectedSupplierContacts.size === 0 && manualSuppliers.length === 0)}
+            disabled={submitting || (!isPublic && selectedSupplierContacts.size === 0)}
             className="w-full py-3.5 rounded-2xl bg-[#1565C0] text-white font-semibold flex items-center justify-center gap-2 hover:bg-[#1255A8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
             {submitting ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
             {submitting ? "Enviando..." : "Enviar cotação"}
