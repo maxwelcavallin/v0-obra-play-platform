@@ -348,7 +348,9 @@ export default function UsuariosPage() {
                 )}
               </div>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                <span className={`op-chip text-xs ${ROLE_COLORS[u.role]}`}>{u.role}</span>
+                <span className={`op-chip text-xs ${ROLE_COLORS[u.role]}`}>
+                  {/admin/i.test(u.role) ? "Administrador" : u.role}
+                </span>
                 <span className="text-[#9E9E9E]" style={{ fontSize: "0.7rem" }}>
                   {u.status === "ativo" ? "Ativo" : "Inativo"}
                 </span>

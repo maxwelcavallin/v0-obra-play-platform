@@ -1185,7 +1185,9 @@ function NovaCotacaoInner() {
                               <p className="text-[11px] text-[#9E9E9E] truncate">{[m.email, m.phone].filter(Boolean).join(" · ") || "Sem contato"}</p>
                             </div>
                             {m.role && m.role !== "member" && (
-                              <span className="text-[10px] text-[#9E9E9E] capitalize flex-shrink-0">{m.role}</span>
+                              <span className="text-[10px] text-[#9E9E9E] flex-shrink-0">
+                                {/admin/i.test(m.role) ? "Administrador" : m.role}
+                              </span>
                             )}
                             <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isSelected && selectedContact.type === "member" && selectedContact.name === m.name ? "bg-[#1565C0] border-[#1565C0]" : "border-[#BDBDBD]"}`}>
                               {isSelected && selectedContact.type === "member" && selectedContact.name === m.name && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
