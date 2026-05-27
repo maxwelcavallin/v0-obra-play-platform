@@ -577,16 +577,20 @@ export default function NovaCotacaoPage() {
           {addressMode === "empresa" && (
             <div className="bg-[#E3F2FD] rounded-xl p-4 mb-4 border border-[#BBDEFB]">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-[#1565C0] flex items-center justify-center flex-shrink-0">
-                  <Building2 size={14} className="text-white" />
+                <div className="w-9 h-9 rounded-full bg-[#1565C0] flex items-center justify-center flex-shrink-0">
+                  <Building2 size={15} className="text-white" />
                 </div>
-                <div>
-                  <p className="font-semibold text-[#1565C0] text-sm">{activeCompany?.fantasy_name ?? "Empresa"}</p>
-                  {(activeCompany as any)?.street && (
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-[#1565C0] text-sm truncate">
+                    {activeCompany?.fantasyName ?? "Empresa"}
+                  </p>
+                  {(activeCompany?.city || activeCompany?.state) ? (
                     <p className="text-xs text-[#1565C0]/80 mt-0.5">
-                      {[(activeCompany as any).street, (activeCompany as any).number].filter(Boolean).join(", ")}
-                      {(activeCompany as any).city ? ` — ${(activeCompany as any).city}` : ""}
-                      {(activeCompany as any).state ? ` - ${(activeCompany as any).state}` : ""}
+                      {[activeCompany.city, activeCompany.state].filter(Boolean).join(" - ")}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-[#1565C0]/60 mt-0.5 italic">
+                      Endereço completo não cadastrado
                     </p>
                   )}
                 </div>
@@ -597,6 +601,7 @@ export default function NovaCotacaoPage() {
           {/* Modo Manual */}
           {addressMode === "manual" && (
             <div className="bg-white rounded-xl border border-[#E0E0E0] p-4 mb-4 flex flex-col gap-3">
+              <OpInput label="CEP" value={manualZipcode} onChange={e => setManualZipcode(e.target.value)} placeholder="00000-000" />
               <OpInput label="Rua / Logradouro *" value={manualStreet} onChange={e => setManualStreet(e.target.value)} placeholder="Ex: Rua das Flores" />
               <div className="flex gap-3">
                 <div className="flex-[2]">
@@ -614,7 +619,6 @@ export default function NovaCotacaoPage() {
                   <OpInput label="UF *" value={manualState} onChange={e => setManualState(e.target.value.toUpperCase().slice(0, 2))} placeholder="SP" />
                 </div>
               </div>
-              <OpInput label="CEP" value={manualZipcode} onChange={e => setManualZipcode(e.target.value)} placeholder="00000-000" />
             </div>
           )}
 
