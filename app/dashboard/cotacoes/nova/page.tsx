@@ -110,6 +110,7 @@ export default function NovaCotacaoPage() {
   // Passo 3 — Fornecedores
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loadingSuppliers, setLoadingSuppliers] = useState(false)
+  const [suppliersFetched, setSuppliersFetched] = useState(false)
   const [supplierSearch, setSupplierSearch] = useState("")
   const [ratingFilter, setRatingFilter] = useState("Todas")
   const [selectedSuppliers, setSelectedSuppliers] = useState<Set<string>>(new Set())
@@ -137,6 +138,7 @@ export default function NovaCotacaoPage() {
     const state = obra.delivery_state ?? ""
     if (!city && !state) return
     setLoadingSuppliers(true)
+    setSuppliersFetched(true)
     setSuppliers([])
     try {
       const res = await authFetch(`/api/obraplay/fornecedores?city=${encodeURIComponent(city)}&state=${encodeURIComponent(state)}`)
@@ -687,14 +689,22 @@ export default function NovaCotacaoPage() {
         <div className="flex-1 overflow-y-auto pb-36 px-4 pt-4">
 
           {/* Contexto de localização */}
-          {selectedObra?.delivery_city && (
-            <div className="flex items-center gap-2 mb-4 bg-[#E3F2FD] rounded-xl px-3 py-2.5 border border-[#BBDEFB]">
-              <MapPin size={13} className="text-[#1565C0] flex-shrink-0" />
-              <p className="text-xs text-[#1565C0] font-medium">
-                Fornecedores que entregam em <strong>{selectedObra.delivery_city} - {selectedObra.delivery_state}</strong>
-              </p>
-            </div>
-          )}
+          {suppliersFetched && (() => {
+            const city  = addressMode === "obra"    ? selectedObra?.delivery_city
+                        : addressMode === "empresa" ? (companyDetail?.city ?? (activeCompany as any)?.city)
+                        : manualCity
+            const state = addressMode === "obra"    ? selectedObra?.delivery_state
+                        : addressMode === "empresa" ? (companyDetail?.state ?? (activeCompany as any)?.state)
+                        : manualState
+            return city ? (
+              <div className="flex items-center gap-2 mb-4 bg-[#E3F2FD] rounded-xl px-3 py-2.5 border border-[#BBDEFB]">
+                <MapPin size={13} className="text-[#1565C0] flex-shrink-0" />
+                <p className="text-xs text-[#1565C0] font-medium">
+                  Fornecedores que entregam em <strong>{city}{state ? ` - ${state}` : ""}</strong>
+                </p>
+              </div>
+            ) : null
+          })()}
 
           {/* Busca + filtro de avaliação */}
           <div className="flex flex-col gap-2 mb-4">
@@ -722,11 +732,11 @@ export default function NovaCotacaoPage() {
             </div>
           )}
 
-          {/* Sem obra selecionada */}
-          {!loadingSuppliers && !selectedObra && (
+          {/* Endereço ainda não definido */}
+          {!loadingSuppliers && !suppliersFetched && (
             <div className="flex flex-col items-center justify-center pt-12 gap-2 text-[#9E9E9E]">
-              <Building2 size={36} strokeWidth={1.2} />
-              <p className="text-sm text-center">Selecione uma obra no passo anterior para carregar os fornecedores da região.</p>
+              <MapPin size={36} strokeWidth={1.2} />
+              <p className="text-sm text-center">Defina um endereço de entrega no passo anterior para carregar os fornecedores da região.</p>
             </div>
           )}
 
@@ -753,8 +763,8 @@ export default function NovaCotacaoPage() {
             </div>
           )}
 
-          {/* Nenhum resultado após busca */}
-          {!loadingSuppliers && selectedObra && !loadingSuppliers && filteredSuppliers.length === 0 && suppliers.length > 0 && (
+          {/* Nenhum resultado após filtro */}
+          {!loadingSuppliers && suppliersFetched && filteredSuppliers.length === 0 && suppliers.length > 0 && (
             <div className="flex flex-col items-center justify-center pt-8 gap-2 text-[#9E9E9E]">
               <Building2 size={36} strokeWidth={1.2} />
               <p className="text-sm">Nenhum fornecedor encontrado com esses filtros.</p>
@@ -762,7 +772,7 @@ export default function NovaCotacaoPage() {
           )}
 
           {/* Sem fornecedores na região */}
-          {!loadingSuppliers && selectedObra && suppliers.length === 0 && (
+          {!loadingSuppliers && suppliersFetched && suppliers.length === 0 && (
             <div className="flex flex-col items-center justify-center pt-8 gap-2 text-[#9E9E9E]">
               <AlertCircle size={36} strokeWidth={1.2} />
               <p className="text-sm text-center">Nenhum fornecedor ObraPlay encontrado nesta região.</p>
