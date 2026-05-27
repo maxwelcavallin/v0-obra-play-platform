@@ -54,10 +54,15 @@ export async function POST() {
           // Garantia extra: nunca persiste empresa sem has_confirmed_configuration
           if (!company.has_confirmed_configuration) continue
 
-          // Resolve category_names
-          const categoryNames    = resolveCategoryNames(company)
-          const shippingNames   = resolveShippingNames(company)
-          const shippingStates  = resolveShippingStates(company)
+          // shipping_locations pode vir como array de IDs na resposta do client.
+          // O payload bruto (detail) contém os objetos completos — usamos ele.
+          const rawShipping = ((detail as any).shipping_locations ?? []) as (number | OPShippingLocation)[]
+          const shippingObjs: OPShippingLocation[] = rawShipping.filter((s): s is OPShippingLocation => typeof s === "object")
+
+          // Resolve nomes/estados a partir dos objetos completos
+          const categoryNames  = resolveCategoryNames(company)
+          const shippingNames  = resolveShippingNamesFromObjs(shippingObjs)
+          const shippingStates = resolveShippingStatesFromObjs(shippingObjs)
 
           await sql`
             INSERT INTO mirror_companies (
@@ -96,7 +101,7 @@ export async function POST() {
               ${JSON.stringify(company.operation_types ?? [])}::jsonb,
               ${JSON.stringify(resolveIds(company.categories ?? []))}::jsonb,
               ${JSON.stringify(categoryNames)}::jsonb,
-              ${JSON.stringify(company.shipping_locations ?? [])}::jsonb,
+              ${JSON.stringify(shippingObjs)}::jsonb,
               ${JSON.stringify(shippingNames)}::jsonb,
               ${JSON.stringify(shippingStates)}::jsonb,
               ${company.has_confirmed_address ?? false},
@@ -228,28 +233,28 @@ function resolveCategoryNames(company: OPCompany): string[] {
     .map(c => (c as { name: string }).name)
 }
 
-// Estrutura real da API ObraPlay: { id, type: "state"|"city", city: {id,name,state} | null, state: {id,code,name}, ... }
+// Estrutura real da API ObraPlay: { id, type: "state"|"city", city: {id,name,state}|null, state: {id,code,name}, ... }
 type OPShippingLocation = {
-  id:    number
-  type:  "state" | "city" | string
-  city?: { id: number; name: string; state: number } | null
+  id:     number
+  type:   "state" | "city" | string
+  city?:  { id: number; name: string; state: number } | null
   state?: { id: number; code: string; name: string }
 }
 
-function resolveShippingNames(company: OPCompany): string[] {
-  const locs = (company.shipping_locations ?? []) as OPShippingLocation[]
-  // Apenas entradas do tipo "city" possuem nome de cidade específico
-  const names = locs
-    .filter(s => typeof s === "object" && s.type === "city" && s.city?.name)
-    .map(s => s.city!.name)
-  return [...new Set(names)]
+/** Extrai nomes de cidades de entrega (apenas registros type="city") */
+function resolveShippingNamesFromObjs(locs: OPShippingLocation[]): string[] {
+  return [...new Set(
+    locs
+      .filter(s => s.type === "city" && s.city?.name)
+      .map(s => s.city!.name)
+  )]
 }
 
-function resolveShippingStates(company: OPCompany): string[] {
-  const locs = (company.shipping_locations ?? []) as OPShippingLocation[]
-  // Extrai state.code de todos os registros (tanto tipo "state" quanto "city")
-  const codes = locs
-    .filter(s => typeof s === "object" && s.state?.code)
-    .map(s => s.state!.code)
-  return [...new Set(codes)]
+/** Extrai códigos de estado de atuação (type="state" e type="city") */
+function resolveShippingStatesFromObjs(locs: OPShippingLocation[]): string[] {
+  return [...new Set(
+    locs
+      .filter(s => s.state?.code)
+      .map(s => s.state!.code)
+  )]
 }

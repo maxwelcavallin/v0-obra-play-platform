@@ -138,13 +138,44 @@ export async function GET(req: NextRequest) {
   const searchPct = search ? `%${search}%` : null
   const cityPct   = city   ? `%${city}%`   : null
 
-  // Neon não suporta sql.unsafe com array de parâmetros — usa tagged template condicional
+  // Para busca por cidade: descobre o(s) estado(s) ao qual a cidade pertence no mirror
+  // para incluir fornecedores que cobrem o estado inteiro (type="state", shipping_location_names vazio)
+  let cityStates: string[] = []
+  if (city) {
+    const stateRows = await sql`
+      SELECT DISTINCT elem->>'code' AS code
+      FROM mirror_companies,
+           jsonb_array_elements(shipping_locations) AS loc,
+           jsonb_to_record(loc->'state') AS elem(code text)
+      WHERE has_confirmed_configuration = true
+        AND loc->>'type' = 'city'
+        AND loc->'city'->>'name' ILIKE ${cityPct}
+        AND loc->'state'->>'code' IS NOT NULL
+    `
+    cityStates = stateRows.map((r: any) => r.code).filter(Boolean)
+  }
+
+  // Filtro de cidade:
+  //   1) fornecedor tem a cidade explícita em shipping_location_names  OU
+  //   2) fornecedor cobre o estado inteiro (shipping_location_names vazio) e o estado está em shipping_state_names
+  const cityFilter = city
+    ? sql`AND (
+        EXISTS (SELECT 1 FROM jsonb_array_elements_text(shipping_location_names) AS loc_city WHERE loc_city ILIKE ${cityPct})
+        ${cityStates.length > 0
+          ? sql`OR (
+              jsonb_array_length(shipping_location_names) = 0
+              AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(shipping_state_names) AS s WHERE s = ANY(${cityStates}::text[]))
+            )`
+          : sql``}
+      )`
+    : sql``
+
   const rows = await sql`
     SELECT * FROM mirror_companies
     WHERE has_confirmed_configuration = true
       ${search ? sql`AND (short_name ILIKE ${searchPct} OR full_name ILIKE ${searchPct} OR cnpj ILIKE ${searchPct})` : sql``}
       ${state  ? sql`AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(shipping_state_names) AS s WHERE s ILIKE ${state})` : sql``}
-      ${city   ? sql`AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(shipping_location_names) AS loc_city WHERE loc_city ILIKE ${cityPct})` : sql``}
+      ${cityFilter}
       ${minRating > 0 ? sql`AND rating >= ${minRating}` : sql``}
       ${typeFilter === "insumos"  ? sql`AND operation_types @> '["product"]'::jsonb`  : sql``}
       ${typeFilter === "servicos" ? sql`AND operation_types @> '["service"]'::jsonb` : sql``}
@@ -156,7 +187,7 @@ export async function GET(req: NextRequest) {
     WHERE has_confirmed_configuration = true
       ${search ? sql`AND (short_name ILIKE ${searchPct} OR full_name ILIKE ${searchPct} OR cnpj ILIKE ${searchPct})` : sql``}
       ${state  ? sql`AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(shipping_state_names) AS s WHERE s ILIKE ${state})` : sql``}
-      ${city   ? sql`AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(shipping_location_names) AS loc_city WHERE loc_city ILIKE ${cityPct})` : sql``}
+      ${cityFilter}
       ${minRating > 0 ? sql`AND rating >= ${minRating}` : sql``}
       ${typeFilter === "insumos"  ? sql`AND operation_types @> '["product"]'::jsonb`  : sql``}
       ${typeFilter === "servicos" ? sql`AND operation_types @> '["service"]'::jsonb` : sql``}
