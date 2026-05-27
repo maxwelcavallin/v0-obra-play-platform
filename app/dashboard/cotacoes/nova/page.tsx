@@ -299,7 +299,6 @@ export default function NovaCotacaoPage() {
           expiry_date: expiryDate || null,
           general_notes: generalNotes || null,
           address_type: useBilling ? "cobrança" : "entrega",
-          financial_box: financialBox,
           requester_name: reqName || null,
           requester_email: reqEmail || null,
           requester_phone: reqPhone || null,
