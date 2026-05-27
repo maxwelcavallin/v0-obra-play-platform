@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft, Search, Plus, X, Trash2, Loader2,
-  Package, MapPin, Building2, User, Star, Clock,
+  Package, MapPin, Building2, User,
   ChevronRight, Check, Sparkles, AlertCircle
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
@@ -30,22 +30,10 @@ interface Supplier {
   email?: string; phone?: string; initials: string; color: string
 }
 
-// ─── Mock de fornecedores de construção civil ─────────────────────────────────
-const MOCK_SUPPLIERS: Supplier[] = [
-  { id: "s1",  name: "Cimento Brasil Distribuidora", city: "São Paulo - SP",   categories: ["Cimento", "Argamassa"],        rating: 4.8, response_time: "< 2h",   is_recommended: true,  email: "vendas@cimentobrasil.com.br", phone: "(11) 9 9000-1111", initials: "CB", color: "#1565C0" },
-  { id: "s2",  name: "TijoloBom Materiais",          city: "São Paulo - SP",   categories: ["Tijolos", "Blocos"],           rating: 4.6, response_time: "< 4h",   is_recommended: true,  email: "contato@tijolobom.com",       phone: "(11) 9 9000-2222", initials: "TB", color: "#FF9800" },
-  { id: "s3",  name: "ElétricaMax Fornecimentos",    city: "São Paulo - SP",   categories: ["Elétrica", "Iluminação"],      rating: 4.9, response_time: "< 1h",   is_recommended: true,  email: "orcamento@eletricamax.com",   phone: "(11) 9 9000-3333", initials: "EM", color: "#F44336" },
-  { id: "s4",  name: "HidroSul Materiais",           city: "Curitiba - PR",    categories: ["Hidráulica", "Tubulação"],     rating: 4.5, response_time: "< 3h",   is_recommended: true,  email: "vendas@hidrosul.com.br",      phone: "(41) 9 9000-4444", initials: "HS", color: "#2196F3" },
-  { id: "s5",  name: "AreiaPedra Rio",               city: "Rio de Janeiro - RJ", categories: ["Areia", "Pedra", "Brita"], rating: 4.3, response_time: "< 6h",   is_recommended: false, email: "compras@areiaped.com.br",     phone: "(21) 9 9000-5555", initials: "AP", color: "#795548" },
-  { id: "s6",  name: "AçoFlex Estruturas",           city: "São Paulo - SP",   categories: ["Aço", "Ferragem"],            rating: 4.7, response_time: "< 2h",   is_recommended: false, email: "orcamentos@acoflex.com",      phone: "(11) 9 9000-6666", initials: "AF", color: "#607D8B" },
-  { id: "s7",  name: "PinturaViva Tintas",           city: "Belo Horizonte - MG", categories: ["Tintas", "Impermeabilização"], rating: 4.4, response_time: "< 4h", is_recommended: false, email: "vendas@pinturaviva.com",     phone: "(31) 9 9000-7777", initials: "PV", color: "#E91E63" },
-  { id: "s8",  name: "MadeiraMestra Madeireiras",    city: "Curitiba - PR",    categories: ["Madeira", "Esquadrias"],       rating: 4.2, response_time: "< 8h",   is_recommended: false, email: "pedidos@madeiramestra.com",   phone: "(41) 9 9000-8888", initials: "MM", color: "#4CAF50" },
-  { id: "s9",  name: "CerâmicaFina Revestimentos",  city: "São Paulo - SP",   categories: ["Cerâmica", "Revestimentos"],   rating: 4.6, response_time: "< 3h",   is_recommended: false, email: "vendas@ceramicafina.com",     phone: "(11) 9 9000-9999", initials: "CF", color: "#9C27B0" },
-  { id: "s10", name: "Imperial Construções",         city: "Recife - PE",      categories: ["Cimento", "Argamassa", "Areia"], rating: 4.1, response_time: "< 6h", is_recommended: false, email: "imperial@imperialconst.com",  phone: "(81) 9 9000-0001", initials: "IC", color: "#FF5722" },
-]
+const AVATAR_COLORS = ["#1565C0","#FF9800","#F44336","#2196F3","#795548","#607D8B","#E91E63","#4CAF50","#9C27B0","#FF5722"]
+function getInitials(name: string) { return name.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase() }
+function getColor(name: string) { let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0; return AVATAR_COLORS[h % AVATAR_COLORS.length] }
 
-const ALL_CATEGORIES = Array.from(new Set(MOCK_SUPPLIERS.flatMap(s => s.categories))).sort()
-const RESPONSE_TIMES = ["Todos", "< 1h", "< 2h", "< 4h", "< 6h", "< 8h"]
 const MIN_RATINGS = ["Todas", "4.0+", "4.5+", "4.8+"]
 
 // ─── Stepper ─────────────────────────────────────────────────────────────────
@@ -111,9 +99,9 @@ export default function NovaCotacaoPage() {
   const [reqPhone, setReqPhone] = useState("")
 
   // Passo 3 — Fornecedores
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [loadingSuppliers, setLoadingSuppliers] = useState(false)
   const [supplierSearch, setSupplierSearch] = useState("")
-  const [categoryFilter, setCategoryFilter] = useState("Todas")
-  const [timeFilter, setTimeFilter] = useState("Todos")
   const [ratingFilter, setRatingFilter] = useState("Todas")
   const [selectedSuppliers, setSelectedSuppliers] = useState<Set<string>>(new Set())
   const [submitting, setSubmitting] = useState(false)
@@ -129,9 +117,42 @@ export default function NovaCotacaoPage() {
   }, [activeCompany?.id])
 
   useEffect(() => {
-    if (user?.name) setReqName(user.name)
+    if (user?.name)  setReqName(user.name)
     if (user?.email) setReqEmail(user.email)
+    if (user?.phone) setReqPhone(user.phone)
   }, [user])
+
+  // Busca fornecedores reais da ObraPlay quando uma obra é selecionada
+  async function fetchSuppliers(obra: Obra) {
+    const city  = obra.delivery_city  ?? ""
+    const state = obra.delivery_state ?? ""
+    if (!city && !state) return
+    setLoadingSuppliers(true)
+    setSuppliers([])
+    try {
+      const res = await authFetch(`/api/obraplay/fornecedores?city=${encodeURIComponent(city)}&state=${encodeURIComponent(state)}`)
+      const data = await res.json()
+      // A API retorna { results: [...] } (paginado) ou array direto
+      const list: any[] = Array.isArray(data) ? data : (data.results ?? [])
+      setSuppliers(list.map((s: any) => ({
+        id:             String(s.id),
+        name:           s.name ?? s.company_name ?? "Fornecedor",
+        city:           s.city ? `${s.city}${s.state ? " - " + s.state : ""}` : "",
+        categories:     s.categories ?? [],
+        rating:         parseFloat(s.rating ?? s.score ?? "0") || 0,
+        response_time:  s.response_time ?? "",
+        is_recommended: Boolean(s.is_certified ?? s.is_recommended),
+        email:          s.email ?? "",
+        phone:          s.phone ?? "",
+        initials:       getInitials(s.name ?? s.company_name ?? "?"),
+        color:          getColor(s.name ?? s.company_name ?? "?"),
+      })))
+    } catch {
+      toast.error("Não foi possível carregar fornecedores para esta localização.")
+    } finally {
+      setLoadingSuppliers(false)
+    }
+  }
 
   const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
 
@@ -179,7 +200,12 @@ export default function NovaCotacaoPage() {
     ).slice(0, 15)
   }, [obras, obraSearch])
 
-  function selectObra(o: Obra) { setSelectedObra(o); setObraSearch(o.name); setShowObraDrop(false) }
+  function selectObra(o: Obra) {
+    setSelectedObra(o)
+    setObraSearch(o.name)
+    setShowObraDrop(false)
+    fetchSuppliers(o)
+  }
 
   const displayAddress = useMemo(() => {
     if (!selectedObra) return null
@@ -197,19 +223,22 @@ export default function NovaCotacaoPage() {
     }
   }, [selectedObra, useBilling])
 
-  // ─ Fornecedores filtrados ─────────────────────────────────────────────────
+  // ─ Fornecedores filtrados (certificados primeiro) ─────────────────────────
   const filteredSuppliers = useMemo(() => {
-    let list = MOCK_SUPPLIERS
+    let list = [...suppliers]
     const q = norm(supplierSearch.trim())
     if (q) list = list.filter(s => norm(s.name).includes(q) || norm(s.city).includes(q))
-    if (categoryFilter !== "Todas") list = list.filter(s => s.categories.includes(categoryFilter))
-    if (timeFilter !== "Todos") list = list.filter(s => s.response_time === timeFilter)
     if (ratingFilter !== "Todas") {
       const min = parseFloat(ratingFilter)
       list = list.filter(s => s.rating >= min)
     }
+    // Certificados primeiro, depois por rating decrescente
+    list.sort((a, b) => {
+      if (a.is_recommended !== b.is_recommended) return a.is_recommended ? -1 : 1
+      return b.rating - a.rating
+    })
     return list
-  }, [supplierSearch, categoryFilter, timeFilter, ratingFilter])
+  }, [suppliers, supplierSearch, ratingFilter])
 
   const recommended = filteredSuppliers.filter(s => s.is_recommended)
   const others = filteredSuppliers.filter(s => !s.is_recommended)
@@ -227,7 +256,7 @@ export default function NovaCotacaoPage() {
     if (selectedSuppliers.size === 0) { toast.error("Selecione pelo menos um fornecedor."); return }
     setSubmitting(true)
     try {
-      const suppliers = MOCK_SUPPLIERS.filter(s => selectedSuppliers.has(s.id)).map(s => ({
+      const supplierList = suppliers.filter(s => selectedSuppliers.has(s.id)).map(s => ({
         name: s.name, city: s.city, email: s.email, phone: s.phone, is_recommended: s.is_recommended
       }))
       const res = await authFetch("/api/cotacoes", {
@@ -245,7 +274,7 @@ export default function NovaCotacaoPage() {
           requester_email: reqEmail || null,
           requester_phone: reqPhone || null,
           items: items.map(i => ({ insumo_id: i.insumo_id ?? null, name: i.name, unit: i.unit, quantity: parseFloat(i.quantity) || 1 })),
-          suppliers,
+          suppliers: supplierList,
         }),
       })
       if (!res.ok) throw new Error("Erro ao criar cotação")
@@ -523,42 +552,57 @@ export default function NovaCotacaoPage() {
       {/* ════════════ PASSO 3 — FORNECEDORES ════════════ */}
       {step === 3 && (
         <div className="flex-1 overflow-y-auto pb-36 px-4 pt-4">
-          <p className="text-[#757575] text-sm mb-4">
-            Fornecedores disponíveis{selectedObra?.delivery_city ? ` em ${selectedObra.delivery_city}` : ""}
-          </p>
 
-          {/* Filtros */}
+          {/* Contexto de localização */}
+          {selectedObra?.delivery_city && (
+            <div className="flex items-center gap-2 mb-4 bg-[#E3F2FD] rounded-xl px-3 py-2.5 border border-[#BBDEFB]">
+              <MapPin size={13} className="text-[#1565C0] flex-shrink-0" />
+              <p className="text-xs text-[#1565C0] font-medium">
+                Fornecedores que entregam em <strong>{selectedObra.delivery_city} - {selectedObra.delivery_state}</strong>
+              </p>
+            </div>
+          )}
+
+          {/* Busca + filtro de avaliação */}
           <div className="flex flex-col gap-2 mb-4">
             <div className="flex items-center gap-2 bg-white rounded-xl border border-[#E0E0E0] px-3 py-2.5">
               <Search size={15} className="text-[#9E9E9E] flex-shrink-0" />
               <input value={supplierSearch} onChange={e => setSupplierSearch(e.target.value)}
-                placeholder="Buscar fornecedor por nome ou cidade..."
+                placeholder="Buscar por nome..."
                 className="flex-1 outline-none text-[#212121] placeholder-[#9E9E9E] bg-transparent"
                 style={{ fontSize: "0.875rem" }} />
+              {supplierSearch && (
+                <button onClick={() => setSupplierSearch("")}><X size={14} className="text-[#9E9E9E]" /></button>
+              )}
             </div>
-            <div className="flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-              <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
-                className="flex-shrink-0 border border-[#E0E0E0] rounded-xl px-3 py-2 text-xs bg-white text-[#212121] outline-none">
-                <option value="Todas">Todas as categorias</option>
-                {ALL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <select value={timeFilter} onChange={e => setTimeFilter(e.target.value)}
-                className="flex-shrink-0 border border-[#E0E0E0] rounded-xl px-3 py-2 text-xs bg-white text-[#212121] outline-none">
-                {RESPONSE_TIMES.map(t => <option key={t} value={t}>{t === "Todos" ? "Todos os tempos" : t}</option>)}
-              </select>
-              <select value={ratingFilter} onChange={e => setRatingFilter(e.target.value)}
-                className="flex-shrink-0 border border-[#E0E0E0] rounded-xl px-3 py-2 text-xs bg-white text-[#212121] outline-none">
-                {MIN_RATINGS.map(r => <option key={r} value={r}>{r === "Todas" ? "Todas as avaliações" : `Acima de ${r}`}</option>)}
-              </select>
-            </div>
+            <select value={ratingFilter} onChange={e => setRatingFilter(e.target.value)}
+              className="border border-[#E0E0E0] rounded-xl px-3 py-2.5 text-sm bg-white text-[#212121] outline-none">
+              {MIN_RATINGS.map(r => <option key={r} value={r}>{r === "Todas" ? "Todas as avaliações" : `Avaliação acima de ${r}`}</option>)}
+            </select>
           </div>
 
-          {/* Recomendados pela IA */}
-          {recommended.length > 0 && (
+          {/* Loading */}
+          {loadingSuppliers && (
+            <div className="flex flex-col items-center justify-center pt-12 gap-3 text-[#9E9E9E]">
+              <Loader2 size={28} className="animate-spin text-[#1565C0]" />
+              <p className="text-sm">Buscando fornecedores na região...</p>
+            </div>
+          )}
+
+          {/* Sem obra selecionada */}
+          {!loadingSuppliers && !selectedObra && (
+            <div className="flex flex-col items-center justify-center pt-12 gap-2 text-[#9E9E9E]">
+              <Building2 size={36} strokeWidth={1.2} />
+              <p className="text-sm text-center">Selecione uma obra no passo anterior para carregar os fornecedores da região.</p>
+            </div>
+          )}
+
+          {/* Certificados */}
+          {!loadingSuppliers && recommended.length > 0 && (
             <div className="mb-5">
               <div className="flex items-center gap-2 mb-3">
                 <Sparkles size={15} className="text-[#1565C0]" />
-                <p className="text-[#1565C0] font-bold text-xs uppercase tracking-wider">Recomendados pela IA</p>
+                <p className="text-[#1565C0] font-bold text-xs uppercase tracking-wider">Fornecedores Certificados</p>
               </div>
               <div className="flex flex-col gap-2">
                 {recommended.map(s => <SupplierCard key={s.id} supplier={s} selected={selectedSuppliers.has(s.id)} onToggle={() => toggleSupplier(s.id)} />)}
@@ -566,20 +610,29 @@ export default function NovaCotacaoPage() {
             </div>
           )}
 
-          {/* Lista completa */}
-          {others.length > 0 && (
+          {/* Demais fornecedores */}
+          {!loadingSuppliers && others.length > 0 && (
             <div className="mb-4">
-              <p className="text-[#616161] font-bold mb-3 text-xs uppercase tracking-wider">TODOS OS FORNECEDORES</p>
+              <p className="text-[#616161] font-bold mb-3 text-xs uppercase tracking-wider">OUTROS FORNECEDORES</p>
               <div className="flex flex-col gap-2">
                 {others.map(s => <SupplierCard key={s.id} supplier={s} selected={selectedSuppliers.has(s.id)} onToggle={() => toggleSupplier(s.id)} />)}
               </div>
             </div>
           )}
 
-          {filteredSuppliers.length === 0 && (
+          {/* Nenhum resultado após busca */}
+          {!loadingSuppliers && selectedObra && !loadingSuppliers && filteredSuppliers.length === 0 && suppliers.length > 0 && (
             <div className="flex flex-col items-center justify-center pt-8 gap-2 text-[#9E9E9E]">
               <Building2 size={36} strokeWidth={1.2} />
-              <p className="text-sm">Nenhum fornecedor encontrado</p>
+              <p className="text-sm">Nenhum fornecedor encontrado com esses filtros.</p>
+            </div>
+          )}
+
+          {/* Sem fornecedores na região */}
+          {!loadingSuppliers && selectedObra && suppliers.length === 0 && (
+            <div className="flex flex-col items-center justify-center pt-8 gap-2 text-[#9E9E9E]">
+              <AlertCircle size={36} strokeWidth={1.2} />
+              <p className="text-sm text-center">Nenhum fornecedor ObraPlay encontrado nesta região.</p>
             </div>
           )}
         </div>
