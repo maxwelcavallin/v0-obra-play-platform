@@ -286,16 +286,20 @@ export default function NovaCotacaoPage() {
     setSubmitting(true)
     try {
       // Para cada empresa selecionada, pega o contato escolhido (empresa ou vendedor)
-      const mirrorSelected = Array.from(selectedSupplierContacts.entries()).map(([companyId, contact]) => {
-        const s = mirrorSuppliers.find(x => x.id === companyId)
-        return {
-          name: contact.name,
-          email: contact.email || undefined,
-          phone: contact.phone || undefined,
-          is_recommended: s?.registration_type === "certified",
-          mirror_company_id: companyId,
-        }
-      })
+      const mirrorSelected = Array.from(selectedSupplierContacts.entries())
+        .map(([companyId, contact]) => {
+          const s = mirrorSuppliers.find(x => x.id === companyId)
+          // Fallback: usa o nome curto/completo da empresa se o contato não tiver nome
+          const name = contact.name?.trim() || s?.short_name?.trim() || s?.full_name?.trim() || ""
+          return {
+            name,
+            email: contact.email?.trim() || undefined,
+            phone: contact.phone?.trim() || undefined,
+            is_recommended: s?.registration_type === "certified",
+            mirror_company_id: companyId,
+          }
+        })
+        .filter(s => !!s.name) // garante que nunca envia fornecedor sem nome
       const supplierList = [...mirrorSelected]
       // Monta o endereço de entrega conforme modo selecionado no passo 2
       const co = activeCompany

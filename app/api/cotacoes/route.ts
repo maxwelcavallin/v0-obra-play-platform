@@ -154,18 +154,24 @@ export async function POST(req: NextRequest) {
     items:             opItems,
   }
 
-  // Monta os fornecedores (answers)
-  const answers: OPQuotationAnswer[] = (b.suppliers ?? []).map((s: any, idx: number) => ({
-    foreign_id:          cotacao.seq ? String(cotacao.seq) + "-ans-" + idx : undefined,
-    name:                s.name,
-    email:               s.email  || undefined,
-    phone:               s.phone  || undefined,
-    notify_by_email:     !!s.email,
-    notify_by_whatsapp:  !s.email && !!s.phone,
-    own_supplier:        false,
-    ...(s.mirror_company_id ? { company: Number(s.mirror_company_id) } : {}),
-    supplier_foreign_id: s.mirror_company_id ? String(s.mirror_company_id) : undefined,
-  }))
+  // Monta os fornecedores (answers) — filtra entradas sem nome para evitar erro 400
+  const answers: OPQuotationAnswer[] = (b.suppliers ?? [])
+    .filter((s: any) => {
+      const hasName = typeof s.name === "string" && s.name.trim().length > 0
+      if (!hasName) console.error(`[cotacoes] Fornecedor ignorado por não ter nome:`, JSON.stringify(s))
+      return hasName
+    })
+    .map((s: any, idx: number) => ({
+      foreign_id:          cotacao.seq ? String(cotacao.seq) + "-ans-" + idx : undefined,
+      name:                s.name.trim(),
+      email:               s.email?.trim() || undefined,
+      phone:               s.phone?.trim() || undefined,
+      notify_by_email:     !!s.email?.trim(),
+      notify_by_whatsapp:  !s.email?.trim() && !!s.phone?.trim(),
+      own_supplier:        false,
+      ...(s.mirror_company_id ? { company: Number(s.mirror_company_id) } : {}),
+      supplier_foreign_id: s.mirror_company_id ? String(s.mirror_company_id) : undefined,
+    }))
 
   const opPayload = {
     company:            opCompanyId,
