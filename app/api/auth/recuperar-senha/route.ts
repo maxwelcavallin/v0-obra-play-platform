@@ -42,11 +42,14 @@ export async function POST(req: NextRequest) {
 
       // Envia e-mail transacional via Brevo (template ID 408)
       if (BREVO_API_KEY) {
+        // Templates Brevo v2 usam {{ params.TOKEN }}, templates v1/legados usam {{ TOKEN }}
+        // Enviamos em ambos os formatos para garantir compatibilidade
         const brevoPayload = {
           sender: { name: BREVO_SENDER_NAME, email: BREVO_SENDER_EMAIL },
           to: [{ email: user.email, name: user.name ?? user.email }],
           templateId: 408,
           params: { TOKEN: resetLink },
+          attributes: { TOKEN: resetLink },
         }
         const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
           method: "POST",
