@@ -48,8 +48,6 @@ export async function POST(req: NextRequest) {
           templateId: 408,
           params: { TOKEN: resetLink },
         }
-        console.log("[v0] Brevo payload:", JSON.stringify(brevoPayload))
-
         const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
           method: "POST",
           headers: {
@@ -60,15 +58,11 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify(brevoPayload),
         })
 
-        const brevoBody = await brevoRes.json().catch(() => ({}))
-        console.log("[v0] Brevo status:", brevoRes.status, JSON.stringify(brevoBody))
-
         if (!brevoRes.ok) {
+          const brevoBody = await brevoRes.json().catch(() => ({}))
           const msg = brevoBody?.message ?? "Erro ao enviar e-mail."
           return NextResponse.json({ error: msg }, { status: 500 })
         }
-      } else {
-        console.warn("[v0] BREVO_API_KEY não configurada — token gerado:", token)
       }
     }
 
