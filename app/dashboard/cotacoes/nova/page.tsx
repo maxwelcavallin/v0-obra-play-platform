@@ -985,7 +985,7 @@ export default function NovaCotacaoPage() {
         ) : (
           <button
             onClick={handleSubmit}
-            disabled={submitting || (!isPublic && selectedSupplierIds.size === 0 && manualSuppliers.length === 0)}
+            disabled={submitting || (!isPublic && selectedSupplierContacts.size === 0 && manualSuppliers.length === 0)}
             className="w-full py-3.5 rounded-2xl bg-[#1565C0] text-white font-semibold flex items-center justify-center gap-2 hover:bg-[#1255A8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
             {submitting ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
             {submitting ? "Enviando..." : "Enviar cotação"}
