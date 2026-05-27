@@ -18,10 +18,22 @@ export default function RecuperarSenhaPage() {
     if (!email) { setError("E-mail obrigatório"); return }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("E-mail inválido"); return }
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 1000))
-    setLoading(false)
-    setSent(true)
-    toast.success("Link enviado com sucesso!")
+    try {
+      const res = await fetch("/api/auth/recuperar-senha", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Erro ao enviar e-mail.")
+      setSent(true)
+      toast.success("Link enviado com sucesso!")
+    } catch (err: any) {
+      setError(err.message)
+      toast.error(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
