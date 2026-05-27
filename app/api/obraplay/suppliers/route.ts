@@ -134,45 +134,33 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ suppliers: [], total: 0, page, perPage, needsSync: true, source: "local" })
   }
 
-  // Filtros dinâmicos — sem null para evitar erro 42P18 do postgres
-  const conditions: string[] = ["has_confirmed_configuration = true"]
-  const values: any[] = []
-  let i = 1
-
-  if (search) { conditions.push(`(short_name ILIKE $${i} OR full_name ILIKE $${i} OR cnpj ILIKE $${i})`); values.push(`%${search}%`); i++ }
-  if (state) {
-    // Filtra por estado de atuação (shipping_state_names), não pelo estado da sede
-    conditions.push(`EXISTS (
-      SELECT 1 FROM jsonb_array_elements_text(shipping_state_names) AS s
-      WHERE s ILIKE $${i}
-    )`)
-    values.push(state)
-    i++
-  }
-  if (city) {
-    // Filtra por cidade de entrega usando shipping_location_names (array de strings já extraído no sync)
-    conditions.push(`EXISTS (
-      SELECT 1 FROM jsonb_array_elements_text(shipping_location_names) AS loc_city
-      WHERE loc_city ILIKE $${i}
-    )`)
-    values.push(`%${city}%`)
-    i++
-  }
-  if (minRating > 0) { conditions.push(`rating >= $${i}`); values.push(minRating); i++ }
-  if (typeFilter === "insumos")  { conditions.push(`operation_types @> '["product"]'::jsonb`); }
-  if (typeFilter === "servicos") { conditions.push(`operation_types @> '["service"]'::jsonb`); }
-
-  const where = conditions.join(" AND ")
   const offset = (page - 1) * perPage
+  const searchPct = search ? `%${search}%` : null
+  const cityPct   = city   ? `%${city}%`   : null
 
-  const rows = await sql.unsafe(
-    `SELECT * FROM mirror_companies WHERE ${where} LIMIT ${perPage} OFFSET ${offset}`,
-    values
-  )
-  const [{ total }] = await sql.unsafe(
-    `SELECT COUNT(*)::int AS total FROM mirror_companies WHERE ${where}`,
-    values
-  )
+  // Neon não suporta sql.unsafe com array de parâmetros — usa tagged template condicional
+  const rows = await sql`
+    SELECT * FROM mirror_companies
+    WHERE has_confirmed_configuration = true
+      ${search ? sql`AND (short_name ILIKE ${searchPct} OR full_name ILIKE ${searchPct} OR cnpj ILIKE ${searchPct})` : sql``}
+      ${state  ? sql`AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(shipping_state_names) AS s WHERE s ILIKE ${state})` : sql``}
+      ${city   ? sql`AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(shipping_location_names) AS loc_city WHERE loc_city ILIKE ${cityPct})` : sql``}
+      ${minRating > 0 ? sql`AND rating >= ${minRating}` : sql``}
+      ${typeFilter === "insumos"  ? sql`AND operation_types @> '["product"]'::jsonb`  : sql``}
+      ${typeFilter === "servicos" ? sql`AND operation_types @> '["service"]'::jsonb` : sql``}
+    LIMIT ${perPage} OFFSET ${offset}
+  `
+
+  const [{ total }] = await sql`
+    SELECT COUNT(*)::int AS total FROM mirror_companies
+    WHERE has_confirmed_configuration = true
+      ${search ? sql`AND (short_name ILIKE ${searchPct} OR full_name ILIKE ${searchPct} OR cnpj ILIKE ${searchPct})` : sql``}
+      ${state  ? sql`AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(shipping_state_names) AS s WHERE s ILIKE ${state})` : sql``}
+      ${city   ? sql`AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(shipping_location_names) AS loc_city WHERE loc_city ILIKE ${cityPct})` : sql``}
+      ${minRating > 0 ? sql`AND rating >= ${minRating}` : sql``}
+      ${typeFilter === "insumos"  ? sql`AND operation_types @> '["product"]'::jsonb`  : sql``}
+      ${typeFilter === "servicos" ? sql`AND operation_types @> '["service"]'::jsonb` : sql``}
+  `
 
   let suppliers = rows.map(mapLocalRow)
 
