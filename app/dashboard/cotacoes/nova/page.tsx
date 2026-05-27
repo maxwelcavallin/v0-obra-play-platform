@@ -95,12 +95,13 @@ export default function NovaCotacaoPage() {
   const [useBilling, setUseBilling] = useState(false)
   // Modo de endereço de entrega: obra | empresa | manual
   const [addressMode, setAddressMode] = useState<"obra" | "empresa" | "manual">("obra")
+  const [manualZipcode, setManualZipcode] = useState("")
   const [manualStreet, setManualStreet] = useState("")
   const [manualNumber, setManualNumber] = useState("")
   const [manualNeighbourhood, setManualNeighbourhood] = useState("")
   const [manualCity, setManualCity] = useState("")
   const [manualState, setManualState] = useState("")
-  const [manualZipcode, setManualZipcode] = useState("")
+  const [cepLoading, setCepLoading] = useState(false)
   const [reqName, setReqName] = useState(user?.name ?? "")
   const [reqEmail, setReqEmail] = useState(user?.email ?? "")
   const [reqPhone, setReqPhone] = useState("")
@@ -196,6 +197,28 @@ export default function NovaCotacaoPage() {
     if (!needDate) { toast.error("Informe a data de necessidade."); return false }
     if (!expiryDate) { toast.error("Informe a data de expiração."); return false }
     return true
+  }
+
+  // ─ Auto-preenchimento de CEP (endereço manual) ───────────────────────────
+  async function fetchManualCep(raw: string) {
+    const digits = raw.replace(/\D/g, "")
+    const formatted = digits.length <= 5 ? digits : `${digits.slice(0, 5)}-${digits.slice(5, 8)}`
+    setManualZipcode(formatted)
+    if (digits.length !== 8) return
+    setCepLoading(true)
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`)
+      const json = await res.json()
+      if (json.erro) return
+      setManualStreet(json.logradouro ?? "")
+      setManualNeighbourhood(json.bairro ?? "")
+      setManualCity(json.localidade ?? "")
+      setManualState(json.uf ?? "")
+    } catch {
+      // CEP não encontrado — usuário preenche manualmente
+    } finally {
+      setCepLoading(false)
+    }
   }
 
   // ─ Validação passo 2 ─────────────────────────────────────────────────────
@@ -600,7 +623,18 @@ export default function NovaCotacaoPage() {
           {/* Modo Manual */}
           {addressMode === "manual" && (
             <div className="bg-white rounded-xl border border-[#E0E0E0] p-4 mb-4 flex flex-col gap-3">
-              <OpInput label="CEP" value={manualZipcode} onChange={e => setManualZipcode(e.target.value)} placeholder="00000-000" />
+              <div className="relative">
+                <OpInput
+                  label="CEP"
+                  value={manualZipcode}
+                  onChange={e => fetchManualCep(e.target.value)}
+                  placeholder="00000-000"
+                  maxLength={9}
+                />
+                {cepLoading && (
+                  <Loader2 size={14} className="animate-spin text-[#9E9E9E] absolute right-0 bottom-2" />
+                )}
+              </div>
               <OpInput label="Rua / Logradouro *" value={manualStreet} onChange={e => setManualStreet(e.target.value)} placeholder="Ex: Rua das Flores" />
               <div className="flex gap-3">
                 <div className="flex-[2]">
