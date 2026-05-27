@@ -95,6 +95,7 @@ export default function NovaCotacaoPage() {
   const [useBilling, setUseBilling] = useState(false)
   // Modo de endereço de entrega: obra | empresa | manual
   const [addressMode, setAddressMode] = useState<"obra" | "empresa" | "manual">("obra")
+  const [companyDetail, setCompanyDetail] = useState<any>(null)
   const [manualZipcode, setManualZipcode] = useState("")
   const [manualStreet, setManualStreet] = useState("")
   const [manualNumber, setManualNumber] = useState("")
@@ -504,7 +505,15 @@ export default function NovaCotacaoPage() {
               <button
                 key={mode}
                 type="button"
-                onClick={() => setAddressMode(mode)}
+                onClick={() => {
+                  setAddressMode(mode)
+                  if (mode === "empresa" && activeCompany?.id && !companyDetail) {
+                    authFetch(`/api/empresas/${activeCompany.id}`)
+                      .then(r => r.json())
+                      .then(d => setCompanyDetail(d))
+                      .catch(() => {})
+                  }
+                }}
                 className={`flex-1 py-2.5 rounded-xl text-xs font-semibold border-2 transition-colors ${
                   addressMode === mode
                     ? "border-[#1565C0] bg-[#E3F2FD] text-[#1565C0]"
@@ -606,14 +615,22 @@ export default function NovaCotacaoPage() {
                   <p className="font-semibold text-[#1565C0] text-sm truncate">
                     {activeCompany?.fantasyName ?? "Empresa"}
                   </p>
-                  {(activeCompany?.city || activeCompany?.state) ? (
-                    <p className="text-xs text-[#1565C0]/80 mt-0.5">
-                      {[activeCompany.city, activeCompany.state].filter(Boolean).join(" - ")}
-                    </p>
+                  {companyDetail ? (
+                    <>
+                      {(companyDetail.street || companyDetail.city) ? (
+                        <p className="text-xs text-[#1565C0]/80 mt-0.5 leading-relaxed">
+                          {[companyDetail.street, companyDetail.number].filter(Boolean).join(", ")}
+                          {companyDetail.complement ? ` — ${companyDetail.complement}` : ""}
+                          {companyDetail.neighbourhood ? `, ${companyDetail.neighbourhood}` : ""}
+                          {(companyDetail.city || companyDetail.state) ? ` · ${[companyDetail.city, companyDetail.state].filter(Boolean).join(" - ")}` : ""}
+                          {companyDetail.zipcode ? ` · CEP ${companyDetail.zipcode}` : ""}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-[#1565C0]/60 mt-0.5 italic">Endereço não cadastrado</p>
+                      )}
+                    </>
                   ) : (
-                    <p className="text-xs text-[#1565C0]/60 mt-0.5 italic">
-                      Endereço completo não cadastrado
-                    </p>
+                    <p className="text-xs text-[#1565C0]/60 mt-0.5 italic">Carregando...</p>
                   )}
                 </div>
               </div>
