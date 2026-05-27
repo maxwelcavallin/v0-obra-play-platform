@@ -498,7 +498,7 @@ function NovaCotacaoInner() {
     }
   }
 
-  // ─── RENDER ───────────────────────────────────────────────────────────────
+  // ─── RENDER ─────────────────────────────────────────────��─────────────────
   return (
     <div className="min-h-screen bg-[#F5F5F5] flex flex-col" style={{ maxWidth: 480, margin: "0 auto" }}>
 
@@ -1184,10 +1184,10 @@ function NovaCotacaoInner() {
                     const cats: string[] = Array.isArray(s.category_names) ? s.category_names : []
                     if (!cats.some(c => filterCategories.has(c))) return false
                   }
-                  // Filtro por tempo de resposta
+                  // Filtro por tempo de resposta — só exclui quem tem dado conhecido e está acima do limite
                   if (filterResponseTime !== "all") {
                     const maxMin = parseInt(filterResponseTime)
-                    if (!s.avg_response_time_minutes || s.avg_response_time_minutes > maxMin) return false
+                    if (s.avg_response_time_minutes != null && s.avg_response_time_minutes > maxMin) return false
                   }
                   return true
                 })
