@@ -63,6 +63,11 @@ function fmt(d?: string) {
   return date.toLocaleDateString("pt-BR") + " " + date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
 }
 
+function fmtDate(d?: string) {
+  if (!d) return "—"
+  return new Date(d).toLocaleDateString("pt-BR")
+}
+
 export default function CotacoesPage() {
   const router = useRouter()
   const { activeCompany } = useAuth()
@@ -216,7 +221,7 @@ export default function CotacoesPage() {
                   </span>
                   {c.need_date && (
                     <span className="flex items-center gap-1 text-xs text-[#9E9E9E]">
-                      <Clock size={11} /> Necessidade: {fmt(c.need_date)}
+                      <Clock size={11} /> Necessidade: {fmtDate(c.need_date)}
                     </span>
                   )}
                 </div>
