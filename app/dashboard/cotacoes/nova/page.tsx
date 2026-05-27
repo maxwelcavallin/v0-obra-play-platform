@@ -873,7 +873,7 @@ function NovaCotacaoInner() {
               <p className="text-xs text-[#757575] mt-0.5">
                 {aiRecommendedIds.length > 0
                   ? `Envia automaticamente para os ${aiRecommendedIds.length} fornecedores recomendados pela IA e abre para toda a plataforma.`
-                  : "Qualquer fornecedor da plataforma ObraPlay poderá ver e responder esta cotação."}
+                  : "Enviaremos a sua cotação para fornecedores que atuem no seu endereço de entrega"}
               </p>
             </div>
           </button>
