@@ -273,33 +273,6 @@ export default function NovaCotacaoPage() {
     }
   }, [selectedObra, useBilling])
 
-  // ─ Fornecedores filtrados (certificados primeiro) ─────────────────────────
-  const filteredSuppliers = useMemo(() => {
-    let list = [...suppliers]
-    const q = norm(supplierSearch.trim())
-    if (q) list = list.filter(s => norm(s.name).includes(q) || norm(s.city).includes(q))
-    if (ratingFilter !== "Todas") {
-      const min = parseFloat(ratingFilter)
-      list = list.filter(s => s.rating >= min)
-    }
-    // Certificados primeiro, depois por rating decrescente
-    list.sort((a, b) => {
-      if (a.is_recommended !== b.is_recommended) return a.is_recommended ? -1 : 1
-      return b.rating - a.rating
-    })
-    return list
-  }, [suppliers, supplierSearch, ratingFilter])
-
-  const recommended = filteredSuppliers.filter(s => s.is_recommended)
-  const others = filteredSuppliers.filter(s => !s.is_recommended)
-
-  function toggleSupplier(id: string) {
-    setSelectedSuppliers(prev => {
-      const n = new Set(prev)
-      n.has(id) ? n.delete(id) : n.add(id)
-      return n
-    })
-  }
 
   // ─ Enviar cotação ─────────────────────────────────────────────────────────
   async function handleSubmit() {
