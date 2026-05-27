@@ -16,8 +16,13 @@ export interface Company {
   fantasyName: string
   companyName: string
   cnpj: string
+  street: string
+  number: string
+  complement?: string
+  neighbourhood: string
   city: string
   state: string
+  zipcode: string
   logoUrl?: string
 }
 
@@ -51,8 +56,13 @@ function mapCompany(row: any): Company {
     fantasyName: row.fantasy_name,
     companyName: row.company_name ?? "",
     cnpj: row.cnpj ?? "",
+    street: row.street ?? "",
+    number: row.number ?? "",
+    complement: row.complement ?? undefined,
+    neighbourhood: row.neighbourhood ?? "",
     city: row.city ?? "",
     state: row.state ?? "",
+    zipcode: row.zipcode ?? "",
     logoUrl: row.logo_url ?? undefined,
   }
 }

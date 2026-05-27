@@ -302,12 +302,41 @@ export default function NovaCotacaoPage() {
         .filter(s => !!s.name) // garante que nunca envia fornecedor sem nome
       const supplierList = [...mirrorSelected]
       // Monta o endereço de entrega conforme modo selecionado no passo 2
-      const co = activeCompany
-      const shippingAddress = addressMode === "obra" && selectedObra
-        ? { construction_name: selectedObra.name, street: selectedObra.delivery_street, number: selectedObra.delivery_number, neighbourhood: selectedObra.delivery_neighbourhood, city: selectedObra.delivery_city, state: selectedObra.delivery_state, zipcode: selectedObra.delivery_zipcode }
-        : addressMode === "empresa" && co
-        ? { construction_name: co.fantasyName || co.companyName, street: co.street, number: co.number, neighbourhood: co.neighbourhood, city: co.city, state: co.state, zipcode: co.zipcode }
-        : { street: manualStreet, number: manualNumber, neighbourhood: manualNeighbourhood, city: manualCity, state: manualState, zipcode: manualZipcode }
+      let shippingAddress: Record<string, any>
+      if (addressMode === "obra" && selectedObra) {
+        shippingAddress = {
+          construction_name: selectedObra.name,
+          street:            selectedObra.delivery_street,
+          number:            selectedObra.delivery_number,
+          neighbourhood:     selectedObra.delivery_neighbourhood,
+          city:              selectedObra.delivery_city,
+          state:             selectedObra.delivery_state,
+          zipcode:           selectedObra.delivery_zipcode,
+        }
+      } else if (addressMode === "empresa" && activeCompany) {
+        // Busca direto da API para garantir endereço completo (não depende do cache do localStorage)
+        const coRes = await authFetch(`/api/empresas/${activeCompany.id}`)
+        const coData = await coRes.json()
+        shippingAddress = {
+          construction_name: coData.fantasy_name || coData.company_name,
+          street:            coData.street,
+          number:            coData.number,
+          complement:        coData.complement,
+          neighbourhood:     coData.neighbourhood,
+          city:              coData.city,
+          state:             coData.state,
+          zipcode:           coData.zipcode,
+        }
+      } else {
+        shippingAddress = {
+          street:        manualStreet,
+          number:        manualNumber,
+          neighbourhood: manualNeighbourhood,
+          city:          manualCity,
+          state:         manualState,
+          zipcode:       manualZipcode,
+        }
+      }
 
       const res = await authFetch("/api/cotacoes", {
         method: "POST",
