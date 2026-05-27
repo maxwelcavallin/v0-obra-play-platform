@@ -1,0 +1,178 @@
+import { NextRequest, NextResponse } from "next/server"
+import { sql } from "@/lib/db"
+
+export const dynamic = "force-dynamic"
+
+// O ObraPlay envia o payload como POST com um header de autenticação.
+// Configure OBRAPLAY_WEBHOOK_SECRET com o token que o ObraPlay usa no header
+// "Authorization: Token <secret>" ou "X-Webhook-Secret: <secret>".
+function validateSecret(req: NextRequest): boolean {
+  const secret = process.env.OBRAPLAY_WEBHOOK_SECRET
+  if (!secret) return true // sem configuração: aceita tudo (apenas dev)
+
+  const authHeader = req.headers.get("authorization") ?? ""
+  const secretHeader = req.headers.get("x-webhook-secret") ?? ""
+
+  if (authHeader.startsWith("Token ")) {
+    return authHeader.slice(6).trim() === secret
+  }
+  if (secretHeader) {
+    return secretHeader.trim() === secret
+  }
+  return false
+}
+
+export async function POST(req: NextRequest) {
+  // Valida autenticação
+  if (!validateSecret(req)) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+  }
+
+  let payload: any
+  try {
+    payload = await req.json()
+  } catch {
+    return NextResponse.json({ error: "Payload inválido" }, { status: 400 })
+  }
+
+  // O webhook pode envolver o objeto em { event, data } ou enviar direto.
+  // Suporta ambos os formatos.
+  const answer = payload?.data ?? payload
+
+  const opAnswerId: number | undefined = answer?.id
+  const opQuotationId: number | undefined = answer?.quotation ?? payload?.quotation_id ?? payload?.quotation
+
+  if (!opAnswerId || !opQuotationId) {
+    return NextResponse.json({ error: "Campos obrigatórios ausentes: id, quotation" }, { status: 422 })
+  }
+
+  // Busca a cotação local pelo obraplay_quotation_id
+  const [cotacao] = await sql`
+    SELECT id, status FROM cotacoes
+    WHERE obraplay_quotation_id = ${opQuotationId}
+    LIMIT 1
+  `
+  if (!cotacao) {
+    // Cotação não encontrada localmente — registra mas retorna 200 para não gerar retry
+    console.log("[webhook] Cotação ObraPlay", opQuotationId, "não encontrada localmente")
+    return NextResponse.json({ ok: true, warning: "cotação não encontrada localmente" })
+  }
+
+  const cotacaoId: string = cotacao.id
+
+  // Tenta casar o fornecedor pelo supplier_foreign_id (mirror_company_id) ou pelo índice da resposta
+  let fornecedorId: string | null = null
+  if (answer.supplier_foreign_id) {
+    const mirrorId = parseInt(answer.supplier_foreign_id)
+    if (!isNaN(mirrorId)) {
+      const [forn] = await sql`
+        SELECT id FROM cotacao_fornecedores
+        WHERE cotacao_id = ${cotacaoId}
+          AND mirror_company_id = ${mirrorId}
+        LIMIT 1
+      `
+      fornecedorId = forn?.id ?? null
+    }
+  }
+
+  // Upsert na tabela cotacao_respostas
+  const [resposta] = await sql`
+    INSERT INTO cotacao_respostas (
+      cotacao_id, cotacao_fornecedor_id, op_answer_id,
+      supplier_foreign_id, payment_method, installments,
+      installments_obs, arrival_estimate, valid_until,
+      observations, answered_at, raw_payload
+    ) VALUES (
+      ${cotacaoId},
+      ${fornecedorId},
+      ${opAnswerId},
+      ${answer.supplier_foreign_id ?? null},
+      ${answer.payment_method ?? null},
+      ${answer.installments ?? null},
+      ${answer.installments_observations ?? null},
+      ${answer.arrival_estimate ?? null},
+      ${answer.valid_until ?? null},
+      ${answer.observations ?? null},
+      ${answer.answered_at ?? null},
+      ${JSON.stringify(payload)}
+    )
+    ON CONFLICT (cotacao_id, op_answer_id) DO UPDATE SET
+      payment_method   = EXCLUDED.payment_method,
+      installments     = EXCLUDED.installments,
+      installments_obs = EXCLUDED.installments_obs,
+      arrival_estimate = EXCLUDED.arrival_estimate,
+      valid_until      = EXCLUDED.valid_until,
+      observations     = EXCLUDED.observations,
+      answered_at      = EXCLUDED.answered_at,
+      raw_payload      = EXCLUDED.raw_payload,
+      updated_at       = now()
+    RETURNING id
+  `
+
+  const respostaId: string = resposta.id
+
+  // Salva itens respondidos
+  if (Array.isArray(answer.answered_items)) {
+    for (const ai of answer.answered_items) {
+      // Tenta casar o item da cotação pelo op_item_id que foi enviado ao criar (cotacao_itens.op_item_id)
+      const [localItem] = await sql`
+        SELECT id FROM cotacao_itens
+        WHERE cotacao_id = ${cotacaoId}
+          AND op_item_id = ${ai.id}
+        LIMIT 1
+      `
+
+      await sql`
+        INSERT INTO cotacao_resposta_itens (
+          resposta_id, cotacao_item_id, op_item_id,
+          answered, available, unit_price_micros,
+          quantity, total_quantity_micros,
+          discount, total_discount_micros
+        ) VALUES (
+          ${respostaId},
+          ${localItem?.id ?? null},
+          ${ai.id},
+          ${ai.answered ?? false},
+          ${ai.available ?? false},
+          ${ai.unit_price_micros ?? null},
+          ${ai.quantity ?? null},
+          ${ai.total_quantity_micros ?? null},
+          ${ai.discount ?? 0},
+          ${ai.total_discount_micros ?? null}
+        )
+        ON CONFLICT DO NOTHING
+      `
+    }
+  }
+
+  // Salva fretes
+  if (Array.isArray(answer.answered_shipping_addresses)) {
+    for (const addr of answer.answered_shipping_addresses) {
+      await sql`
+        INSERT INTO cotacao_resposta_fretes (
+          resposta_id, op_address_id, freight,
+          total_freight_micros, free_shipping, answered
+        ) VALUES (
+          ${respostaId},
+          ${addr.id},
+          ${addr.freight ?? null},
+          ${addr.total_freight_micros ?? null},
+          ${addr.free_shipping ?? false},
+          ${addr.answered ?? false}
+        )
+        ON CONFLICT DO NOTHING
+      `
+    }
+  }
+
+  // Atualiza status da cotação para "Respondida" automaticamente
+  if (cotacao.status !== "Respondida" && cotacao.status !== "Cancelada") {
+    await sql`
+      UPDATE cotacoes
+      SET status = 'Respondida', updated_at = now()
+      WHERE id = ${cotacaoId}
+    `
+  }
+
+  return NextResponse.json({ ok: true, resposta_id: respostaId })
+}

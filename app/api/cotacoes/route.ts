@@ -266,6 +266,23 @@ export async function POST(req: NextRequest) {
     `
     cotacao.obraplay_quotation_id = opRes.id
     cotacao.obraplay_quotation_code = opCode
+
+    // Tenta salvar op_item_id nos itens locais casando por nome com os itens retornados pelo ObraPlay
+    // O ObraPlay retorna os itens dentro de shipping_addresses[0].items
+    try {
+      const opItems: any[] = opRes.shipping_addresses?.[0]?.items ?? opRes.items ?? []
+      if (opItems.length > 0) {
+        const localItems = await sql`SELECT id, name FROM cotacao_itens WHERE cotacao_id = ${cotacao.id} ORDER BY created_at`
+        for (let i = 0; i < localItems.length; i++) {
+          // Casa por posição (mesma ordem de envio) ou por nome
+          const opItem = opItems[i] ?? opItems.find((oi: any) => oi.name?.toLowerCase() === localItems[i].name?.toLowerCase())
+          if (opItem?.id) {
+            await sql`UPDATE cotacao_itens SET op_item_id = ${opItem.id} WHERE id = ${localItems[i].id}`
+          }
+        }
+      }
+    } catch { /* não crítico — o casamento por nome no webhook funciona como fallback */ }
+
     return NextResponse.json(cotacao, { status: 201 })
   } catch (err: any) {
     return failAsDraft(`Falha ao enviar ao ObraPlay: ${err?.message ?? "erro desconhecido"}`)
