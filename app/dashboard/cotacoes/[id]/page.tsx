@@ -65,7 +65,8 @@ const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> =
 
 function fmt(d?: string) {
   if (!d) return "—"
-  return new Date(d).toLocaleDateString("pt-BR")
+  const date = new Date(d)
+  return date.toLocaleDateString("pt-BR") + " " + date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
 }
 
 function getInitials(name: string) {
