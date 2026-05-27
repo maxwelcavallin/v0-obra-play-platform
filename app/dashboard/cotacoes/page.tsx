@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import {
   Search, Plus, Package, MapPin, Calendar,
   Eye, Loader2, ShoppingCart, Clock,
-  Pencil, Trash2
+  Pencil, Trash2, MoreVertical, Copy
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/auth-fetch"
@@ -75,6 +75,24 @@ export default function CotacoesPage() {
   const [tab, setTab] = useState("Todas")
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
+
+  async function duplicateCotacao(id: string) {
+    setOpenMenuId(null)
+    setDuplicatingId(id)
+    try {
+      const res = await authFetch(`/api/cotacoes/${id}/duplicate`, { method: "POST" })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Erro ao duplicar")
+      toast.success("Cotação duplicada como rascunho!")
+      router.push(`/dashboard/cotacoes/nova?draft_id=${data.id}`)
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erro ao duplicar cotação")
+    } finally {
+      setDuplicatingId(null)
+    }
+  }
 
   useEffect(() => {
     if (!activeCompany?.id) return
@@ -264,11 +282,36 @@ export default function CotacoesPage() {
                       )}
                     </div>
                   ) : (
-                    <button
-                      onClick={() => router.push(`/dashboard/cotacoes/${c.id}`)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-[#1565C0] border border-[#1565C0] hover:bg-[#E3F2FD] transition-colors flex-shrink-0">
-                      <Eye size={12} /> Visualizar resumo
-                    </button>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        onClick={() => router.push(`/dashboard/cotacoes/${c.id}`)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-[#1565C0] border border-[#1565C0] hover:bg-[#E3F2FD] transition-colors">
+                        <Eye size={12} /> Ver
+                      </button>
+                      {/* Menu de três pontinhos */}
+                      <div className="relative">
+                        <button
+                          onClick={e => { e.stopPropagation(); setOpenMenuId(openMenuId === c.id ? null : c.id) }}
+                          disabled={duplicatingId === c.id}
+                          className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors">
+                          {duplicatingId === c.id
+                            ? <Loader2 size={13} className="animate-spin text-[#1565C0]" />
+                            : <MoreVertical size={15} className="text-[#616161]" />}
+                        </button>
+                        {openMenuId === c.id && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
+                            <div className="absolute right-0 bottom-8 z-20 bg-white rounded-xl shadow-lg border border-[#F0F0F0] min-w-[160px] overflow-hidden">
+                              <button
+                                onClick={() => duplicateCotacao(c.id)}
+                                className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-[#212121] hover:bg-[#F5F5F5] transition-colors text-left">
+                                <Copy size={13} className="text-[#1565C0]" /> Duplicar
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>

@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import {
   ArrowLeft, Package, MapPin, Calendar, Clock, FileText,
   Building2, Phone, Mail, Check, Globe, Loader2, User,
-  ChevronDown, ChevronUp, AlertCircle, MoreVertical, Pencil, XCircle
+  ChevronDown, ChevronUp, AlertCircle, MoreVertical, Pencil, XCircle, Copy
 } from "lucide-react"
 import { authFetch } from "@/lib/auth-fetch"
 import { toast } from "sonner"
@@ -112,6 +112,23 @@ export default function CotacaoDetalhePage() {
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancelReason, setCancelReason] = useState("")
   const [cancelling, setCancelling] = useState(false)
+  const [duplicating, setDuplicating] = useState(false)
+
+  async function handleDuplicate() {
+    setShowMenu(false)
+    setDuplicating(true)
+    try {
+      const res = await authFetch(`/api/cotacoes/${id}/duplicate`, { method: "POST" })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Erro ao duplicar")
+      toast.success("Cotação duplicada como rascunho!")
+      router.push(`/dashboard/cotacoes/nova?draft_id=${data.id}`)
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erro ao duplicar cotação")
+    } finally {
+      setDuplicating(false)
+    }
+  }
 
   useEffect(() => {
     if (!id) return
@@ -233,33 +250,45 @@ export default function CotacaoDetalhePage() {
             style={{ color: cfg.color, backgroundColor: cfg.bg }}>
             {cfg.label}
           </span>
-          {/* Menu de ações */}
-          {canAct && (
-            <div className="relative">
-              <button onClick={() => setShowMenu(p => !p)}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors">
-                <MoreVertical size={18} className="text-[#616161]" />
-              </button>
-              {showMenu && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                  <div className="absolute right-0 top-9 z-20 bg-white rounded-xl shadow-lg border border-[#F0F0F0] min-w-[160px] overflow-hidden">
-                    <button
-                      onClick={() => { setShowMenu(false); router.push(`/dashboard/cotacoes/${id}/editar`) }}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-[#212121] hover:bg-[#F5F5F5] transition-colors text-left">
-                      <Pencil size={14} className="text-[#1565C0]" /> Editar cotação
-                    </button>
-                    <div className="h-px bg-[#F5F5F5]" />
-                    <button
-                      onClick={() => { setShowMenu(false); setShowCancelModal(true) }}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-[#E53935] hover:bg-[#FFEBEE] transition-colors text-left">
-                      <XCircle size={14} /> Cancelar cotação
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+          {/* Menu de ações — sempre visível */}
+          <div className="relative">
+            <button onClick={() => setShowMenu(p => !p)}
+              disabled={duplicating}
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors">
+              {duplicating
+                ? <Loader2 size={16} className="animate-spin text-[#1565C0]" />
+                : <MoreVertical size={18} className="text-[#616161]" />}
+            </button>
+            {showMenu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                <div className="absolute right-0 top-9 z-20 bg-white rounded-xl shadow-lg border border-[#F0F0F0] min-w-[170px] overflow-hidden">
+                  {/* Duplicar — disponível para qualquer cotação */}
+                  <button
+                    onClick={handleDuplicate}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-[#212121] hover:bg-[#F5F5F5] transition-colors text-left">
+                    <Copy size={14} className="text-[#1565C0]" /> Duplicar cotação
+                  </button>
+                  {canAct && (
+                    <>
+                      <div className="h-px bg-[#F5F5F5]" />
+                      <button
+                        onClick={() => { setShowMenu(false); router.push(`/dashboard/cotacoes/${id}/editar`) }}
+                        className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-[#212121] hover:bg-[#F5F5F5] transition-colors text-left">
+                        <Pencil size={14} className="text-[#1565C0]" /> Editar cotação
+                      </button>
+                      <div className="h-px bg-[#F5F5F5]" />
+                      <button
+                        onClick={() => { setShowMenu(false); setShowCancelModal(true) }}
+                        className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-[#E53935] hover:bg-[#FFEBEE] transition-colors text-left">
+                        <XCircle size={14} /> Cancelar cotação
+                      </button>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -277,7 +306,7 @@ export default function CotacaoDetalhePage() {
           {cotacao.is_public && (
             <div className="flex items-center gap-2 mt-2 bg-[#E3F2FD] rounded-xl px-3 py-2">
               <Globe size={13} className="text-[#1565C0]" />
-              <p className="text-xs text-[#1565C0] font-semibold">Cotação pública — visível a todos os fornecedores</p>
+              <p className="text-xs text-[#1565C0] font-semibold">Cotação pública ��� visível a todos os fornecedores</p>
             </div>
           )}
         </Section>
