@@ -101,7 +101,6 @@ export default function NovaCotacaoPage() {
   const [manualCity, setManualCity] = useState("")
   const [manualState, setManualState] = useState("")
   const [manualZipcode, setManualZipcode] = useState("")
-  const [financialBox, setFinancialBox] = useState<"empresa" | "obra">("empresa")
   const [reqName, setReqName] = useState(user?.name ?? "")
   const [reqEmail, setReqEmail] = useState(user?.email ?? "")
   const [reqPhone, setReqPhone] = useState("")
@@ -621,23 +620,6 @@ export default function NovaCotacaoPage() {
               </div>
             </div>
           )}
-
-          {/* Caixa financeiro */}
-          <p className="text-[#616161] font-bold mb-2 text-xs uppercase tracking-wider">CAIXA FINANCEIRO</p>
-          <div className="bg-white rounded-xl border border-[#E0E0E0] p-4 mb-4 flex gap-3">
-            {(["empresa", "obra"] as const).map(opt => (
-              <button key={opt} onClick={() => setFinancialBox(opt)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-colors ${
-                  financialBox === opt
-                    ? "border-[#1565C0] bg-[#E3F2FD] text-[#1565C0]"
-                    : "border-[#E0E0E0] text-[#757575]"
-                }`}>
-                {opt === "empresa"
-                  ? (activeCompany?.fantasy_name ?? "Empresa")
-                  : (selectedObra?.name ?? "Obra")}
-              </button>
-            ))}
-          </div>
 
           {/* Dados do solicitante */}
           <p className="text-[#616161] font-bold mb-2 text-xs uppercase tracking-wider">DADOS DO SOLICITANTE</p>
