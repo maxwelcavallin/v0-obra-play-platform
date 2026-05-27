@@ -128,27 +128,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   // 4. Integração ObraPlay: cancela a cotação anterior e reenvia nova
   let opWarning: string | undefined
-  let opCompanyId: number | null = b.obraplay_company_id
-    ? Number(b.obraplay_company_id)
-    : cotacao.obraplay_company_id
-    ? Number(cotacao.obraplay_company_id)
-    : null
-
-  // Fallback: busca pelo CNPJ da empresa no mirror
-  if (!opCompanyId && cotacao.company_id) {
-    const [fallbackRow] = await sql`
-      SELECT mc.company_id AS op_id
-      FROM companies c
-      JOIN mirror_companies mc
-        ON regexp_replace(c.cnpj, '[^0-9]', '', 'g') = regexp_replace(mc.cnpj, '[^0-9]', '', 'g')
-      WHERE c.id = ${cotacao.company_id}
-      LIMIT 1
-    `
-    if (fallbackRow?.op_id) {
-      opCompanyId = Number(fallbackRow.op_id)
-      await sql`UPDATE companies SET obraplay_company_id = ${opCompanyId} WHERE id = ${cotacao.company_id}`
-    }
-  }
+  const opCompanyId: number | null = b.obraplay_company_id ?? cotacao.obraplay_company_id ?? null
 
   if (opCompanyId) {
     try {
