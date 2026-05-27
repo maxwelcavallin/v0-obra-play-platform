@@ -172,10 +172,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         supplier_foreign_id:  s.mirror_company_id ? String(s.mirror_company_id) : undefined,
       }))
 
+      function toOpDate(d: string | undefined | null): string | undefined {
+        if (!d) return undefined
+        if (d.includes("T")) return d
+        return `${d}T00:00:00Z`
+      }
+
       const opRes = await obraplay.quotations.createNested({
         company:            opCompanyId,
-        requirement_date:   b.need_date    ?? cotacao.need_date   ?? undefined,
-        expires_at:         b.expiry_date  ?? cotacao.expiry_date ?? undefined,
+        requirement_date:   toOpDate(b.need_date    ?? cotacao.need_date),
+        expires_at:         toOpDate(b.expiry_date  ?? cotacao.expiry_date),
         name:               b.requester_name  ?? cotacao.requester_name  ?? undefined,
         email:              b.requester_email ?? cotacao.requester_email ?? undefined,
         phone:              b.requester_phone ?? cotacao.requester_phone ?? undefined,

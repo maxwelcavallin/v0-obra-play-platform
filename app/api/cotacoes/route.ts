@@ -120,6 +120,15 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Converte datas YYYY-MM-DD → YYYY-MM-DDT00:00:00Z (formato exigido pela API ObraPlay)
+  function toOpDate(d: string | undefined | null): string | undefined {
+    if (!d) return undefined
+    // Já está no formato ISO completo
+    if (d.includes("T")) return d
+    // Converte YYYY-MM-DD → YYYY-MM-DDT00:00:00Z
+    return `${d}T00:00:00Z`
+  }
+
   // Monta os itens — type "I" = item avulso, measurement_unit como string
   const opItems: OPQuotationItem[] = (b.items ?? []).map((item: any) => ({
     name:                  item.name,
@@ -159,8 +168,8 @@ export async function POST(req: NextRequest) {
 
   const opPayload = {
     company:            opCompanyId,
-    requirement_date:   b.need_date    ?? undefined,
-    expires_at:         b.expiry_date  ?? undefined,
+    requirement_date:   toOpDate(b.need_date),
+    expires_at:         toOpDate(b.expiry_date),
     name:               b.requester_name  ?? undefined,
     email:              b.requester_email ?? undefined,
     phone:              b.requester_phone ?? undefined,
