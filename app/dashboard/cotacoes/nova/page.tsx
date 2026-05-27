@@ -507,7 +507,7 @@ export default function NovaCotacaoPage() {
                             value={item.quantity}
                             onChange={e => updateItem(item.id, "quantity", e.target.value)}
                             className="w-16 border border-[#E0E0E0] rounded-lg px-2 py-1 text-xs text-[#212121] outline-none focus:border-[#1565C0]"
-                            placeholder="Qtd" type="number" min="0.01" step="0.01" />
+                            placeholder="Qtd" type="number" min="1" step="1" />
                           <input
                             value={item.unit}
                             onChange={e => updateItem(item.id, "unit", e.target.value)}
