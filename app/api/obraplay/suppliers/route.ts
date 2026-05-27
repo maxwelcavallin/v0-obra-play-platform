@@ -143,10 +143,9 @@ export async function GET(req: NextRequest) {
   let cityStates: string[] = []
   if (city) {
     const stateRows = await sql`
-      SELECT DISTINCT elem->>'code' AS code
+      SELECT DISTINCT loc->'state'->>'code' AS code
       FROM mirror_companies,
-           jsonb_array_elements(shipping_locations) AS loc,
-           jsonb_to_record(loc->'state') AS elem(code text)
+           jsonb_array_elements(shipping_locations) AS loc
       WHERE has_confirmed_configuration = true
         AND loc->>'type' = 'city'
         AND loc->'city'->>'name' ILIKE ${cityPct}
