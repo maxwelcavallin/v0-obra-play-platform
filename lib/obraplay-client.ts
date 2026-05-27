@@ -212,5 +212,19 @@ export const obraplay = {
         body: JSON.stringify(payload),
       })
     },
+
+    async cancel(opQuotationId: number, cancelReason: string): Promise<any> {
+      return request<any>(`/api/quotations/${opQuotationId}/cancel/`, {
+        method: "POST",
+        body: JSON.stringify({ cancel_reason: cancelReason }),
+      })
+    },
+
+    async renegotiate(opAnswerId: number, payload: Record<string, any>): Promise<any> {
+      return request<any>(`/api/quotation_answers/${opAnswerId}/renegotiate/`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      })
+    },
   },
 }

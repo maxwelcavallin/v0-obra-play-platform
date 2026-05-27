@@ -5,9 +5,10 @@ import { useParams, useRouter } from "next/navigation"
 import {
   ArrowLeft, Package, MapPin, Calendar, Clock, FileText,
   Building2, Phone, Mail, Check, Globe, Loader2, User,
-  ChevronDown, ChevronUp, AlertCircle
+  ChevronDown, ChevronUp, AlertCircle, MoreVertical, Pencil, XCircle
 } from "lucide-react"
 import { authFetch } from "@/lib/auth-fetch"
+import { toast } from "sonner"
 
 interface CotacaoItem {
   id: string
@@ -104,6 +105,10 @@ export default function CotacaoDetalhePage() {
   const [cotacao, setCotacao] = useState<Cotacao | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAllSuppliers, setShowAllSuppliers] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancelReason, setCancelReason] = useState("")
+  const [cancelling, setCancelling] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -113,6 +118,28 @@ export default function CotacaoDetalhePage() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [id])
+
+  async function handleCancel() {
+    if (!cancelReason.trim()) { toast.error("Informe o motivo do cancelamento."); return }
+    setCancelling(true)
+    try {
+      const res = await authFetch(`/api/cotacoes/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cancel_reason: cancelReason }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Erro ao cancelar")
+      if (data._op_warning) toast.error(data._op_warning, { duration: 6000 })
+      else toast.success("Cotação cancelada com sucesso.")
+      setShowCancelModal(false)
+      setCotacao(prev => prev ? { ...prev, status: "Cancelada" } : prev)
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erro ao cancelar cotação")
+    } finally {
+      setCancelling(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -133,9 +160,53 @@ export default function CotacaoDetalhePage() {
 
   const cfg = STATUS_CFG[cotacao.status] ?? { label: cotacao.status, color: "#757575", bg: "#F5F5F5" }
   const suppliersToShow = showAllSuppliers ? cotacao.suppliers : cotacao.suppliers.slice(0, 3)
+  const canAct = cotacao.status !== "Cancelada" && cotacao.status !== "Convertida"
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] flex flex-col pb-10" style={{ maxWidth: 480, margin: "0 auto" }}>
+
+      {/* Modal de cancelamento */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-6"
+          onClick={e => { if (e.target === e.currentTarget) setShowCancelModal(false) }}>
+          <div className="bg-white w-full rounded-2xl shadow-2xl overflow-hidden" style={{ maxWidth: 480 }}>
+            <div className="px-5 pt-5 pb-4 border-b border-[#F5F5F5]">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-[#FFEBEE] flex items-center justify-center flex-shrink-0">
+                  <XCircle size={18} className="text-[#E53935]" />
+                </div>
+                <div>
+                  <p className="font-bold text-[#212121] text-sm">Cancelar cotação</p>
+                  <p className="text-xs text-[#9E9E9E]">{cotacao.identifier}</p>
+                </div>
+              </div>
+            </div>
+            <div className="px-5 py-4 flex flex-col gap-3">
+              <p className="text-xs text-[#616161]">
+                Esta ação cancela a cotação localmente e, se vinculada ao ObraPlay, também na plataforma. Informe o motivo:
+              </p>
+              <textarea
+                value={cancelReason}
+                onChange={e => setCancelReason(e.target.value)}
+                rows={3}
+                placeholder="Ex: Compra realizada diretamente com o fornecedor"
+                className="w-full rounded-xl border border-[#E0E0E0] px-3 py-2.5 text-sm text-[#212121] focus:outline-none focus:border-[#E53935] focus:ring-1 focus:ring-[#E53935] transition-colors placeholder:text-[#BDBDBD] resize-none"
+              />
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setShowCancelModal(false)} disabled={cancelling}
+                  className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-[#616161] border border-[#E0E0E0] hover:bg-[#F5F5F5] transition-colors">
+                  Voltar
+                </button>
+                <button onClick={handleCancel} disabled={cancelling}
+                  className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white bg-[#E53935] hover:bg-[#C62828] disabled:opacity-60 transition-colors flex items-center justify-center gap-2">
+                  {cancelling ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
+                  {cancelling ? "Cancelando..." : "Confirmar cancelamento"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="bg-white border-b border-[#EEEEEE] sticky top-0 z-10">
@@ -155,6 +226,33 @@ export default function CotacaoDetalhePage() {
             style={{ color: cfg.color, backgroundColor: cfg.bg }}>
             {cfg.label}
           </span>
+          {/* Menu de ações */}
+          {canAct && (
+            <div className="relative">
+              <button onClick={() => setShowMenu(p => !p)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors">
+                <MoreVertical size={18} className="text-[#616161]" />
+              </button>
+              {showMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                  <div className="absolute right-0 top-9 z-20 bg-white rounded-xl shadow-lg border border-[#F0F0F0] min-w-[160px] overflow-hidden">
+                    <button
+                      onClick={() => { setShowMenu(false); router.push(`/dashboard/cotacoes/${id}/editar`) }}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-[#212121] hover:bg-[#F5F5F5] transition-colors text-left">
+                      <Pencil size={14} className="text-[#1565C0]" /> Editar cotação
+                    </button>
+                    <div className="h-px bg-[#F5F5F5]" />
+                    <button
+                      onClick={() => { setShowMenu(false); setShowCancelModal(true) }}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-[#E53935] hover:bg-[#FFEBEE] transition-colors text-left">
+                      <XCircle size={14} /> Cancelar cotação
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
