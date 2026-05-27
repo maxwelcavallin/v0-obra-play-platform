@@ -78,37 +78,6 @@ export default function NovaCotacaoPage() {
   const [showLeaveModal, setShowLeaveModal] = useState(false)
   const [savingDraft, setSavingDraft] = useState(false)
 
-  const saveDraft = useCallback(async () => {
-    if (!activeCompany?.id || items.length === 0) return
-    setSavingDraft(true)
-    try {
-      const res = await authFetch("/api/cotacoes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          company_id: activeCompany.id,
-          cotacao_id: draftId ?? undefined,
-          is_draft: true,
-          need_date: needDate || null,
-          expiry_date: expiryDate || null,
-          general_notes: generalNotes || null,
-          items: items.map(i => ({ insumo_id: i.insumo_id ?? null, name: i.name, unit: i.unit, quantity: parseFloat(i.quantity) || 1 })),
-          draft_payload: { items, need_date: needDate, expiry_date: expiryDate, general_notes: generalNotes },
-        }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setDraftId(data.id ?? draftId)
-        draftSavedRef.current = true
-        toast.success("Rascunho salvo!")
-      }
-    } catch {
-      toast.error("Erro ao salvar rascunho")
-    } finally {
-      setSavingDraft(false)
-    }
-  }, [activeCompany?.id, draftId, items, needDate, expiryDate, generalNotes])
-
   // Passo 1 — Itens
   const [items, setItems] = useState<Item[]>([])
   const [insumos, setInsumos] = useState<Insumo[]>([])
@@ -152,6 +121,38 @@ export default function NovaCotacaoPage() {
   const [supplierSearch, setSupplierSearch] = useState("")
   // Map<companyId, { name, email, phone, type: "company"|"member", role? }>
   const [selectedSupplierContacts, setSelectedSupplierContacts] = useState<Map<number, { name: string; email: string | null; phone: string | null; type: "company" | "member"; role?: string }>>(new Map())
+
+  // ─ saveDraft definido após todos os estados ───────────────────────────────
+  const saveDraft = useCallback(async () => {
+    if (!activeCompany?.id || items.length === 0) return
+    setSavingDraft(true)
+    try {
+      const res = await authFetch("/api/cotacoes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_id: activeCompany.id,
+          cotacao_id: draftId ?? undefined,
+          is_draft: true,
+          need_date: needDate || null,
+          expiry_date: expiryDate || null,
+          general_notes: generalNotes || null,
+          items: items.map(i => ({ insumo_id: i.insumo_id ?? null, name: i.name, unit: i.unit, quantity: parseFloat(i.quantity) || 1 })),
+          draft_payload: { items, need_date: needDate, expiry_date: expiryDate, general_notes: generalNotes },
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setDraftId(data.id ?? draftId)
+        draftSavedRef.current = true
+        toast.success("Rascunho salvo!")
+      }
+    } catch {
+      toast.error("Erro ao salvar rascunho")
+    } finally {
+      setSavingDraft(false)
+    }
+  }, [activeCompany?.id, draftId, items, needDate, expiryDate, generalNotes])
   const [expandedMembers, setExpandedMembers] = useState<Set<number>>(new Set())
   const [manualSuppliers, setManualSuppliers] = useState<{ name: string; email: string; phone: string }[]>([])
   const [showAddSupplier, setShowAddSupplier] = useState(false)
