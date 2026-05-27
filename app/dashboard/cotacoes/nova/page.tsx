@@ -93,6 +93,14 @@ export default function NovaCotacaoPage() {
   const [obraSearch, setObraSearch] = useState("")
   const [showObraDrop, setShowObraDrop] = useState(false)
   const [useBilling, setUseBilling] = useState(false)
+  // Modo de endereço de entrega: obra | empresa | manual
+  const [addressMode, setAddressMode] = useState<"obra" | "empresa" | "manual">("obra")
+  const [manualStreet, setManualStreet] = useState("")
+  const [manualNumber, setManualNumber] = useState("")
+  const [manualNeighbourhood, setManualNeighbourhood] = useState("")
+  const [manualCity, setManualCity] = useState("")
+  const [manualState, setManualState] = useState("")
+  const [manualZipcode, setManualZipcode] = useState("")
   const [financialBox, setFinancialBox] = useState<"empresa" | "obra">("empresa")
   const [reqName, setReqName] = useState(user?.name ?? "")
   const [reqEmail, setReqEmail] = useState(user?.email ?? "")
@@ -188,6 +196,25 @@ export default function NovaCotacaoPage() {
     if (items.length === 0) { toast.error("Adicione pelo menos um item."); return false }
     if (!needDate) { toast.error("Informe a data de necessidade."); return false }
     if (!expiryDate) { toast.error("Informe a data de expiração."); return false }
+    return true
+  }
+
+  // ─ Validação passo 2 ─────────────────────────────────────────────────────
+  function validateStep2() {
+    if (addressMode === "obra" && !selectedObra) {
+      toast.error("Selecione uma obra ou escolha outro modo de endereço de entrega.")
+      return false
+    }
+    if (addressMode === "empresa" && !activeCompany) {
+      toast.error("Nenhuma empresa ativa encontrada para usar como endereço.")
+      return false
+    }
+    if (addressMode === "manual") {
+      if (!manualStreet.trim() || !manualCity.trim() || !manualState.trim()) {
+        toast.error("Preencha ao menos rua, cidade e estado do endereço manual.")
+        return false
+      }
+    }
     return true
   }
 
@@ -448,7 +475,28 @@ export default function NovaCotacaoPage() {
       {step === 2 && (
         <div className="flex-1 overflow-y-auto pb-28 px-4 pt-4">
 
-          <p className="text-[#616161] font-bold mb-2 text-xs uppercase tracking-wider">OBRA</p>
+          {/* Seletor de modo de endereço de entrega */}
+          <p className="text-[#616161] font-bold mb-2 text-xs uppercase tracking-wider">ENDEREÇO DE ENTREGA *</p>
+          <div className="flex gap-2 mb-4">
+            {(["obra", "empresa", "manual"] as const).map(mode => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setAddressMode(mode)}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-semibold border-2 transition-colors ${
+                  addressMode === mode
+                    ? "border-[#1565C0] bg-[#E3F2FD] text-[#1565C0]"
+                    : "border-[#E0E0E0] text-[#757575] bg-white"
+                }`}>
+                {mode === "obra" ? "Da obra" : mode === "empresa" ? "Da empresa" : "Manual"}
+              </button>
+            ))}
+          </div>
+
+          {/* Modo Obra */}
+          {addressMode === "obra" && (
+            <>
+          <p className="text-[#9E9E9E] text-xs mb-2">Selecione uma obra para usar seu endereço de entrega.</p>
           <div className="relative mb-4">
             <div className="flex items-center gap-2 bg-white rounded-xl border border-[#E0E0E0] px-3 py-2.5">
               <Search size={15} className="text-[#9E9E9E] flex-shrink-0" />
@@ -519,6 +567,54 @@ export default function NovaCotacaoPage() {
                   <span className={`absolute top-0.5 bottom-0.5 aspect-square bg-white rounded-full shadow-sm transition-all duration-200 ${useBilling ? "left-[calc(100%-1.25rem-2px)]" : "left-[2px]"}`} />
                 </button>
               </div>
+            </div>
+          )}
+
+            </>
+          )}
+
+          {/* Modo Empresa */}
+          {addressMode === "empresa" && (
+            <div className="bg-[#E3F2FD] rounded-xl p-4 mb-4 border border-[#BBDEFB]">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-[#1565C0] flex items-center justify-center flex-shrink-0">
+                  <Building2 size={14} className="text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-[#1565C0] text-sm">{activeCompany?.fantasy_name ?? "Empresa"}</p>
+                  {(activeCompany as any)?.street && (
+                    <p className="text-xs text-[#1565C0]/80 mt-0.5">
+                      {[(activeCompany as any).street, (activeCompany as any).number].filter(Boolean).join(", ")}
+                      {(activeCompany as any).city ? ` — ${(activeCompany as any).city}` : ""}
+                      {(activeCompany as any).state ? ` - ${(activeCompany as any).state}` : ""}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modo Manual */}
+          {addressMode === "manual" && (
+            <div className="bg-white rounded-xl border border-[#E0E0E0] p-4 mb-4 flex flex-col gap-3">
+              <OpInput label="Rua / Logradouro *" value={manualStreet} onChange={e => setManualStreet(e.target.value)} placeholder="Ex: Rua das Flores" />
+              <div className="flex gap-3">
+                <div className="flex-[2]">
+                  <OpInput label="Número" value={manualNumber} onChange={e => setManualNumber(e.target.value)} placeholder="Ex: 123" />
+                </div>
+                <div className="flex-[3]">
+                  <OpInput label="Bairro" value={manualNeighbourhood} onChange={e => setManualNeighbourhood(e.target.value)} placeholder="Ex: Centro" />
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-[3]">
+                  <OpInput label="Cidade *" value={manualCity} onChange={e => setManualCity(e.target.value)} placeholder="Ex: São Paulo" />
+                </div>
+                <div className="flex-[1]">
+                  <OpInput label="UF *" value={manualState} onChange={e => setManualState(e.target.value.toUpperCase().slice(0, 2))} placeholder="SP" />
+                </div>
+              </div>
+              <OpInput label="CEP" value={manualZipcode} onChange={e => setManualZipcode(e.target.value)} placeholder="00000-000" />
             </div>
           )}
 
@@ -652,6 +748,17 @@ export default function NovaCotacaoPage() {
           <button
             onClick={() => {
               if (step === 1 && !validateStep1()) return
+              if (step === 2) {
+                if (!validateStep2()) return
+                // Busca fornecedores pelo endereço definido
+                if (addressMode === "obra" && selectedObra) {
+                  fetchSuppliers(selectedObra)
+                } else if (addressMode === "manual" && manualCity) {
+                  fetchSuppliers({ id: "", name: "", delivery_city: manualCity, delivery_state: manualState } as Obra)
+                } else if (addressMode === "empresa" && activeCompany) {
+                  fetchSuppliers({ id: "", name: "", delivery_city: (activeCompany as any).city, delivery_state: (activeCompany as any).state } as Obra)
+                }
+              }
               setStep(s => s + 1)
             }}
             className="w-full py-3.5 rounded-2xl bg-[#1565C0] text-white font-semibold flex items-center justify-center gap-2 hover:bg-[#1255A8] transition-colors">
