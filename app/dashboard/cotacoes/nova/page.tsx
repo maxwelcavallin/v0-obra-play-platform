@@ -119,6 +119,9 @@ export default function NovaCotacaoPage() {
   const [mirrorFetched, setMirrorFetched] = useState(false)
   const [mirrorNeedsSync, setMirrorNeedsSync] = useState(false)
   const [supplierSearch, setSupplierSearch] = useState("")
+  const [aiRecommendedIds, setAiRecommendedIds] = useState<number[]>([])
+  const [aiReason, setAiReason] = useState<string | null>(null)
+  const [loadingAI, setLoadingAI] = useState(false)
   // Map<companyId, { name, email, phone, type: "company"|"member", role? }>
   const [selectedSupplierContacts, setSelectedSupplierContacts] = useState<Map<number, { name: string; email: string | null; phone: string | null; type: "company" | "member"; role?: string }>>(new Map())
 
@@ -223,6 +226,26 @@ export default function NovaCotacaoPage() {
   }, [user])
 
 
+
+  // ─ Recomendação IA ao entrar no passo 3 ──────────────────────────────────
+  useEffect(() => {
+    if (step !== 3 || items.length === 0 || aiRecommendedIds.length > 0 || loadingAI) return
+    const city  = addressMode === "obra" ? selectedObra?.delivery_city  ?? "" : addressMode === "manual" ? manualCity  : activeCompany?.city  ?? ""
+    const state = addressMode === "obra" ? selectedObra?.delivery_state ?? "" : addressMode === "manual" ? manualState : activeCompany?.state ?? ""
+    setLoadingAI(true)
+    authFetch("/api/cotacoes/recommend-suppliers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: items.map(i => ({ name: i.name, unit: i.unit })), city, state }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        setAiRecommendedIds(data.recommended ?? [])
+        setAiReason(data.reason ?? null)
+      })
+      .catch(() => {})
+      .finally(() => setLoadingAI(false))
+  }, [step]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
 
@@ -822,15 +845,100 @@ export default function NovaCotacaoPage() {
 
           {/* Cotação pública */}
           <button type="button" onClick={() => setIsPublic(p => !p)}
+            onClick={() => {
+              const next = !isPublic
+              setIsPublic(next)
+              // Quando ativa pública, seleciona automaticamente os fornecedores recomendados pela IA
+              if (next && aiRecommendedIds.length > 0) {
+                setSelectedSupplierContacts(prev => {
+                  const n = new Map(prev)
+                  mirrorSuppliers
+                    .filter(s => aiRecommendedIds.includes(s.id))
+                    .forEach(s => {
+                      if (!n.has(s.id)) {
+                        n.set(s.id, { name: s.company_name, email: s.email, phone: s.phone || s.whatsapp, type: "company" as const })
+                      }
+                    })
+                  return n
+                })
+              }
+            }}
             className={`w-full flex items-center gap-3 rounded-xl p-4 mb-5 border-2 transition-colors text-left ${isPublic ? "border-[#1565C0] bg-[#E3F2FD]" : "border-[#E0E0E0] bg-white"}`}>
             <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 border-2 transition-colors ${isPublic ? "bg-[#1565C0] border-[#1565C0]" : "border-[#BDBDBD]"}`}>
               {isPublic && <Check size={12} className="text-white" />}
             </div>
             <div>
               <p className={`text-sm font-semibold ${isPublic ? "text-[#1565C0]" : "text-[#212121]"}`}>Cotação pública</p>
-              <p className="text-xs text-[#757575] mt-0.5">Qualquer fornecedor da plataforma ObraPlay poderá ver e responder esta cotação.</p>
+              <p className="text-xs text-[#757575] mt-0.5">
+                {aiRecommendedIds.length > 0
+                  ? `Envia automaticamente para os ${aiRecommendedIds.length} fornecedores recomendados pela IA e abre para toda a plataforma.`
+                  : "Qualquer fornecedor da plataforma ObraPlay poderá ver e responder esta cotação."}
+              </p>
             </div>
           </button>
+
+          {/* Seção Recomendados pela IA */}
+          {loadingAI && (
+            <div className="flex items-center gap-2 bg-[#E8F5E9] rounded-xl px-4 py-3 mb-4 border border-[#C8E6C9]">
+              <Loader2 size={14} className="animate-spin text-[#2E7D32] flex-shrink-0" />
+              <p className="text-xs text-[#2E7D32] font-semibold">Analisando itens com IA...</p>
+            </div>
+          )}
+
+          {!loadingAI && aiRecommendedIds.length > 0 && mirrorFetched && (() => {
+            const aiSuppliers = mirrorSuppliers.filter(s => aiRecommendedIds.includes(s.id))
+            if (aiSuppliers.length === 0) return null
+            return (
+              <div className="mb-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles size={14} className="text-[#1565C0]" />
+                  <p className="text-xs font-bold text-[#1565C0] uppercase tracking-wider">Recomendados pela IA</p>
+                  <span className="text-[10px] bg-[#1565C0] text-white px-2 py-0.5 rounded-full font-semibold">{aiSuppliers.length}</span>
+                </div>
+                {aiReason && (
+                  <p className="text-[11px] text-[#757575] mb-3 leading-relaxed italic">{aiReason}</p>
+                )}
+                <div className="flex flex-col gap-2">
+                  {aiSuppliers.map(s => {
+                    const selectedContact = selectedSupplierContacts.get(s.id)
+                    const isSelected = !!selectedContact
+                    function selectAiContact() {
+                      setSelectedSupplierContacts(prev => {
+                        const n = new Map(prev)
+                        if (n.has(s.id)) { n.delete(s.id) } else {
+                          n.set(s.id, { name: s.company_name, email: s.email, phone: s.phone || s.whatsapp, type: "company" as const })
+                        }
+                        return n
+                      })
+                    }
+                    return (
+                      <button key={`ai-${s.id}`} type="button" onClick={selectAiContact}
+                        className={`w-full rounded-xl border-2 p-3 flex items-center gap-3 transition-colors text-left ${isSelected ? "border-[#1565C0] bg-[#E3F2FD]" : "border-[#E3F2FD] bg-white"}`}>
+                        {s.logo_url
+                          ? <img src={s.logo_url} alt={s.company_name} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                          : <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: getColor(s.company_name ?? "") }}>{getInitials(s.company_name ?? "")}</div>
+                        }
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-sm font-semibold text-[#212121] truncate">{s.company_name}</p>
+                            <span className="text-[10px] bg-[#1565C0] text-white px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Recomendado</span>
+                            {s.registration_type === "certified" && <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Certificado</span>}
+                          </div>
+                          <p className="text-[11px] text-[#9E9E9E] mt-0.5 truncate">
+                            {Array.isArray(s.category_names) ? s.category_names.slice(0, 3).join(" · ") : ""}
+                          </p>
+                          <p className="text-[11px] text-[#9E9E9E]">{[s.city_name, s.state_abbr].filter(Boolean).join(" · ")}</p>
+                        </div>
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isSelected ? "bg-[#1565C0] border-[#1565C0]" : "border-[#BDBDBD]"}`}>
+                          {isSelected && <Check size={11} className="text-white" />}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Fornecedores do mirror ObraPlay */}
           <p className="text-[#616161] font-bold mb-1 text-xs uppercase tracking-wider">FORNECEDORES OBRAPLAY</p>
