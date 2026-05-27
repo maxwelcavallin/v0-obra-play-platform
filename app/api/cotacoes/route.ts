@@ -44,12 +44,12 @@ export async function POST(req: NextRequest) {
 
   const [cotacao] = await sql`
     INSERT INTO cotacoes (company_id, obra_id, identifier, status, need_date, expiry_date,
-      general_notes, address_type, financial_box,
+      general_notes, address_type, is_public,
       requester_name, requester_email, requester_phone, created_by)
     VALUES (
       ${b.company_id}, ${b.obra_id ?? null}, ${identifier}, 'Nova',
       ${b.need_date ?? null}, ${b.expiry_date ?? null},
-      ${b.general_notes ?? null}, ${b.address_type ?? "entrega"}, ${b.financial_box ?? "empresa"},
+      ${b.general_notes ?? null}, ${b.address_type ?? "entrega"}, ${b.is_public ?? false},
       ${b.requester_name ?? null}, ${b.requester_email ?? null}, ${b.requester_phone ?? null},
       ${session.userId}
     )
@@ -57,8 +57,8 @@ export async function POST(req: NextRequest) {
   `
 
   // Inserir itens
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   if (Array.isArray(b.items) && b.items.length > 0) {
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     for (const item of b.items) {
       const insumoId = item.insumo_id && UUID_RE.test(item.insumo_id) ? item.insumo_id : null
       await sql`
@@ -68,12 +68,15 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Inserir fornecedores
+  // Inserir fornecedores — cada registro é um destinatário independente
   if (Array.isArray(b.suppliers) && b.suppliers.length > 0) {
     for (const s of b.suppliers) {
+      const mirrorId = s.mirror_company_id && Number.isInteger(s.mirror_company_id) ? s.mirror_company_id : null
       await sql`
-        INSERT INTO cotacao_fornecedores (cotacao_id, supplier_name, supplier_city, supplier_email, supplier_phone, is_recommended)
-        VALUES (${cotacao.id}, ${s.name}, ${s.city ?? null}, ${s.email ?? null}, ${s.phone ?? null}, ${s.is_recommended ?? false})
+        INSERT INTO cotacao_fornecedores
+          (cotacao_id, supplier_name, supplier_city, supplier_email, supplier_phone, is_recommended, mirror_company_id)
+        VALUES
+          (${cotacao.id}, ${s.name}, ${s.city ?? null}, ${s.email ?? null}, ${s.phone ?? null}, ${s.is_recommended ?? false}, ${mirrorId})
       `
     }
   }

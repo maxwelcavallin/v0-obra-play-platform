@@ -284,7 +284,7 @@ export default function NovaCotacaoPage() {
     try {
       const mirrorSelected = mirrorSuppliers
         .filter(s => selectedSupplierIds.has(s.id))
-        .map(s => ({ name: s.company_name, email: s.email || undefined, phone: s.phone || s.whatsapp || undefined, is_recommended: s.registration_type === "certified" }))
+        .map(s => ({ name: s.company_name, email: s.email || undefined, phone: s.phone || s.whatsapp || undefined, is_recommended: s.registration_type === "certified", mirror_company_id: s.id }))
       const supplierList = [
         ...mirrorSelected,
         ...manualSuppliers.map(s => ({ name: s.name, email: s.email || undefined, phone: s.phone || undefined, is_recommended: false })),
@@ -299,6 +299,7 @@ export default function NovaCotacaoPage() {
           expiry_date: expiryDate || null,
           general_notes: generalNotes || null,
           address_type: useBilling ? "cobrança" : "entrega",
+          is_public: isPublic,
           requester_name: reqName || null,
           requester_email: reqEmail || null,
           requester_phone: reqPhone || null,
@@ -339,7 +340,7 @@ export default function NovaCotacaoPage() {
         </div>
       </div>
 
-      {/* ════════════ PASSO 1 — ITENS ════════════ */}
+      {/* ���═══════════ PASSO 1 — ITENS ════════════ */}
       {step === 1 && (
         <div className="flex-1 overflow-y-auto pb-28">
           <div className="px-4 pt-4">
