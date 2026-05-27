@@ -75,6 +75,39 @@ export default function NovaCotacaoPage() {
   const [step, setStep] = useState(1)
   const [draftId, setDraftId] = useState<string | null>(searchParams.get("draft_id"))
   const draftSavedRef = useRef(false) // impede salvar rascunho após submit com sucesso
+  const [showLeaveModal, setShowLeaveModal] = useState(false)
+  const [savingDraft, setSavingDraft] = useState(false)
+
+  const saveDraft = useCallback(async () => {
+    if (!activeCompany?.id || items.length === 0) return
+    setSavingDraft(true)
+    try {
+      const res = await authFetch("/api/cotacoes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_id: activeCompany.id,
+          cotacao_id: draftId ?? undefined,
+          is_draft: true,
+          need_date: needDate || null,
+          expiry_date: expiryDate || null,
+          general_notes: generalNotes || null,
+          items: items.map(i => ({ insumo_id: i.insumo_id ?? null, name: i.name, unit: i.unit, quantity: parseFloat(i.quantity) || 1 })),
+          draft_payload: { items, need_date: needDate, expiry_date: expiryDate, general_notes: generalNotes },
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setDraftId(data.id ?? draftId)
+        draftSavedRef.current = true
+        toast.success("Rascunho salvo!")
+      }
+    } catch {
+      toast.error("Erro ao salvar rascunho")
+    } finally {
+      setSavingDraft(false)
+    }
+  }, [activeCompany?.id, draftId, items, needDate, expiryDate, generalNotes])
 
   // Passo 1 — Itens
   const [items, setItems] = useState<Item[]>([])
@@ -434,7 +467,7 @@ export default function NovaCotacaoPage() {
       {/* Header fixo */}
       <div className="bg-white border-b border-[#EEEEEE] sticky top-0 z-20">
         <div className="flex items-center gap-3 px-4 pt-4 pb-3">
-          <button onClick={() => step > 1 ? setStep(s => s - 1) : router.back()}
+          <button onClick={() => step > 1 ? setStep(s => s - 1) : (items.length > 0 ? setShowLeaveModal(true) : router.back())}
             className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors">
             <ArrowLeft size={20} className="text-[#212121]" />
           </button>
@@ -976,9 +1009,9 @@ export default function NovaCotacaoPage() {
       )}
 
       {/* ─── Footer fixo ─────────────────────────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#EEEEEE] px-4 py-4 z-20" style={{ maxWidth: 480, margin: "0 auto" }}>
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#EEEEEE] px-4 pt-3 pb-5 z-20 flex flex-col gap-2" style={{ maxWidth: 480, margin: "0 auto" }}>
         {step === 3 && (isPublic || selectedSupplierContacts.size > 0) && (
-          <div className="flex items-center gap-2 mb-3 bg-[#E3F2FD] rounded-xl px-4 py-2">
+          <div className="flex items-center gap-2 mb-1 bg-[#E3F2FD] rounded-xl px-4 py-2">
             <Check size={14} className="text-[#1565C0]" />
             <span className="text-xs text-[#1565C0] font-semibold">
               {isPublic ? "Pública" : ""}
@@ -987,13 +1020,14 @@ export default function NovaCotacaoPage() {
             </span>
           </div>
         )}
+
+        {/* Botão primário — idêntico ao da tela de login */}
         {step < 3 ? (
           <button
             onClick={() => {
               if (step === 1 && !validateStep1()) return
               if (step === 2) {
                 if (!validateStep2()) return
-                // Busca fornecedores no mirror pelo endereço definido
                 if (addressMode === "obra" && selectedObra) {
                   fetchMirrorSuppliers(selectedObra.delivery_city ?? "", selectedObra.delivery_state ?? "")
                 } else if (addressMode === "manual") {
@@ -1004,20 +1038,62 @@ export default function NovaCotacaoPage() {
               }
               setStep(s => s + 1)
             }}
-            className="w-full py-3.5 rounded-2xl bg-[#1565C0] text-white font-semibold flex items-center justify-center gap-2 hover:bg-[#1255A8] transition-colors">
-            Continuar
-            <ChevronRight size={18} />
+            className="op-btn-primary">
+            CONTINUAR
+            <ChevronRight size={16} />
           </button>
         ) : (
           <button
             onClick={handleSubmit}
             disabled={submitting || (!isPublic && selectedSupplierContacts.size === 0)}
-            className="w-full py-3.5 rounded-2xl bg-[#1565C0] text-white font-semibold flex items-center justify-center gap-2 hover:bg-[#1255A8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-            {submitting ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
-            {submitting ? "Enviando..." : "Enviar cotação"}
+            className="op-btn-primary">
+            {submitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            {submitting ? "ENVIANDO..." : "ENVIAR COTAÇÃO"}
+          </button>
+        )}
+
+        {/* Botão secundário — salvar rascunho */}
+        {items.length > 0 && (
+          <button
+            onClick={saveDraft}
+            disabled={savingDraft}
+            className="op-btn-secondary">
+            {savingDraft ? <Loader2 size={14} className="animate-spin" /> : null}
+            {savingDraft ? "SALVANDO..." : "SALVAR RASCUNHO"}
           </button>
         )}
       </div>
+
+      {/* ─── Modal de abandono ───────────────────────────────────────────── */}
+      {showLeaveModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(0,0,0,0.4)" }}>
+          <div className="bg-white w-full rounded-t-2xl px-5 pt-5 pb-8" style={{ maxWidth: 480 }}>
+            <h2 className="font-bold text-[#212121] text-base mb-1">Sair da cotação?</h2>
+            <p className="text-sm text-[#757575] mb-5">Você tem itens adicionados. Deseja salvar como rascunho antes de sair?</p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={async () => {
+                  await saveDraft()
+                  setShowLeaveModal(false)
+                  router.back()
+                }}
+                className="op-btn-primary">
+                SALVAR RASCUNHO E SAIR
+              </button>
+              <button
+                onClick={() => { draftSavedRef.current = true; setShowLeaveModal(false); router.back() }}
+                className="op-btn-secondary">
+                SAIR SEM SALVAR
+              </button>
+              <button
+                onClick={() => setShowLeaveModal(false)}
+                className="text-sm text-[#9E9E9E] py-2 font-medium">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
