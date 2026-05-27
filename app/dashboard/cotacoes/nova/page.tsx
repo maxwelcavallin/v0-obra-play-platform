@@ -120,6 +120,7 @@ function NovaCotacaoInner() {
   const [mirrorNeedsSync, setMirrorNeedsSync] = useState(false)
   const [supplierSearch, setSupplierSearch] = useState("")
   const [aiRecommendedIds, setAiRecommendedIds] = useState<number[]>([])
+  const [aiSuppliers, setAiSuppliers] = useState<any[]>([])
   const [aiReason, setAiReason] = useState<string | null>(null)
   const [loadingAI, setLoadingAI] = useState(false)
   const [showAIModal, setShowAIModal] = useState(false)
@@ -242,6 +243,7 @@ function NovaCotacaoInner() {
       .then(r => r.json())
       .then(data => {
         setAiRecommendedIds(data.recommended ?? [])
+        setAiSuppliers(data.suppliers ?? [])
         setAiReason(data.reason ?? null)
       })
       .catch(() => {})
@@ -332,7 +334,7 @@ function NovaCotacaoInner() {
     }
   }
 
-  // ─ Validação passo 2 ─────────────────────���──────────────────���────────────
+  // ─ Validação passo 2 ─────────────────────���──────���───────────���────────────
   function validateStep2() {
     if (addressMode === "obra" && !selectedObra) {
       toast.error("Selecione uma obra ou escolha outro modo de endereço de entrega.")
@@ -886,18 +888,17 @@ function NovaCotacaoInner() {
             </div>
           )}
 
-          {!loadingAI && aiRecommendedIds.length > 0 && mirrorFetched && (() => {
+          {!loadingAI && aiSuppliers.length > 0 && (() => {
             // Ordena: certificados primeiro, depois por nome
-            const aiSuppliers = mirrorSuppliers
-              .filter(s => aiRecommendedIds.includes(s.id))
-              .sort((a, b) => {
-                const aC = a.registration_type === "certified" ? 0 : 1
-                const bC = b.registration_type === "certified" ? 0 : 1
-                return aC - bC || (a.company_name ?? "").localeCompare(b.company_name ?? "")
-              })
-            if (aiSuppliers.length === 0) return null
+            const sorted = [...aiSuppliers].sort((a, b) => {
+              const aC = a.registration_type === "certified" ? 0 : 1
+              const bC = b.registration_type === "certified" ? 0 : 1
+              return aC - bC || (a.company_name ?? "").localeCompare(b.company_name ?? "")
+            })
+            const aiSuppliersSorted = sorted
+            if (aiSuppliersSorted.length === 0) return null
 
-            const preview = aiSuppliers[0]
+            const preview = aiSuppliersSorted[0]
             const isSelectedPreview = selectedSupplierContacts.has(preview.id)
 
             function toggleAiContact(s: any) {
@@ -913,14 +914,14 @@ function NovaCotacaoInner() {
             function selectAll() {
               setSelectedSupplierContacts(prev => {
                 const n = new Map(prev)
-                aiSuppliers.forEach(s => {
+                aiSuppliersSorted.forEach(s => {
                   if (!n.has(s.id)) n.set(s.id, { name: s.company_name, email: s.email, phone: s.phone || s.whatsapp, type: "company" as const })
                 })
                 return n
               })
             }
 
-            const allSelected = aiSuppliers.every(s => selectedSupplierContacts.has(s.id))
+            const allSelected = aiSuppliersSorted.every(s => selectedSupplierContacts.has(s.id))
 
             return (
               <>
@@ -930,7 +931,7 @@ function NovaCotacaoInner() {
                     <div className="flex items-center gap-2">
                       <Sparkles size={14} className="text-[#1565C0]" />
                       <p className="text-xs font-bold text-[#1565C0] uppercase tracking-wider">Recomendados pela IA</p>
-                      <span className="text-[10px] bg-[#1565C0] text-white px-2 py-0.5 rounded-full font-semibold">{aiSuppliers.length}</span>
+                      <span className="text-[10px] bg-[#1565C0] text-white px-2 py-0.5 rounded-full font-semibold">{aiSuppliersSorted.length}</span>
                     </div>
                   </div>
 
@@ -962,11 +963,11 @@ function NovaCotacaoInner() {
                   </button>
 
                   {/* Botão Ver mais */}
-                  {aiSuppliers.length > 1 && (
+                  {aiSuppliersSorted.length > 1 && (
                     <button type="button" onClick={() => setShowAIModal(true)}
                       className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-[#E3F2FD] text-xs font-semibold text-[#1565C0] hover:bg-[#E3F2FD] transition-colors">
                       <Sparkles size={12} />
-                      Ver mais {aiSuppliers.length - 1} recomendado{aiSuppliers.length - 1 > 1 ? "s" : ""}
+                      Ver mais {aiSuppliersSorted.length - 1} recomendado{aiSuppliersSorted.length - 1 > 1 ? "s" : ""}
                     </button>
                   )}
                 </div>
@@ -981,7 +982,7 @@ function NovaCotacaoInner() {
                         <div className="flex items-center gap-2">
                           <Sparkles size={15} className="text-[#1565C0]" />
                           <p className="font-bold text-[#212121] text-sm">Recomendados pela IA</p>
-                          <span className="text-[10px] bg-[#1565C0] text-white px-2 py-0.5 rounded-full font-semibold">{aiSuppliers.length}</span>
+                          <span className="text-[10px] bg-[#1565C0] text-white px-2 py-0.5 rounded-full font-semibold">{aiSuppliersSorted.length}</span>
                         </div>
                         <button type="button" onClick={() => setShowAIModal(false)}
                           className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors">
@@ -994,13 +995,13 @@ function NovaCotacaoInner() {
                         <button type="button" onClick={() => { selectAll(); setShowAIModal(false) }}
                           className="op-btn-primary w-full">
                           <Check size={14} />
-                          {allSelected ? "TODOS JÁ SELECIONADOS" : `SELECIONAR TODOS (${aiSuppliers.length})`}
+                          {allSelected ? "TODOS JÁ SELECIONADOS" : `SELECIONAR TODOS (${aiSuppliersSorted.length})`}
                         </button>
                       </div>
 
                       {/* Lista scrollável */}
                       <div className="flex-1 overflow-y-auto px-5 py-3 flex flex-col gap-2">
-                        {aiSuppliers.map(s => {
+                        {aiSuppliersSorted.map(s => {
                           const isSel = selectedSupplierContacts.has(s.id)
                           return (
                             <button key={`aim-${s.id}`} type="button" onClick={() => toggleAiContact(s)}

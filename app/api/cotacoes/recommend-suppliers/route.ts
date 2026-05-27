@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ recommended: [], reason: null })
   }
 
-  // Busca fornecedores da região com suas categorias
+  // Busca fornecedores da região com todos os dados necessários para o card
   const suppliers = await sql`
     SELECT
       company_id,
@@ -63,6 +63,12 @@ export async function POST(req: NextRequest) {
       full_name,
       city,
       state,
+      email,
+      phone,
+      whatsapp,
+      logo,
+      rating,
+      registration_type,
       category_names
     FROM mirror_companies
     WHERE
@@ -97,23 +103,37 @@ export async function POST(req: NextRequest) {
 
   const recommendedIds = scored.map(s => s.id)
 
-  // Monta justificativa baseada nas categorias encontradas
+  // Monta objetos completos dos fornecedores recomendados (mesma ordem do score)
+  const supplierMap = new Map(suppliers.map((s: any) => [s.company_id, s]))
+  const recommendedSuppliers = recommendedIds
+    .map(id => {
+      const s = supplierMap.get(id) as any
+      if (!s) return null
+      return {
+        id:                s.company_id,
+        company_name:      s.full_name || s.short_name,
+        email:             s.email ?? null,
+        phone:             s.phone ?? null,
+        whatsapp:          s.whatsapp ?? null,
+        logo_url:          s.logo ?? null,
+        rating:            s.rating ?? null,
+        registration_type: s.registration_type ?? null,
+        category_names:    s.category_names ?? [],
+        city_name:         s.city ?? null,
+        state_abbr:        s.state ?? null,
+      }
+    })
+    .filter(Boolean)
+
+  // Monta justificativa
   let reason: string | null = null
   if (recommendedIds.length > 0) {
-    const matched = suppliers
-      .filter((s: any) => recommendedIds.includes(s.company_id))
-      .map((s: any) =>
-        Array.isArray(s.category_names) ? s.category_names.slice(0, 2).join(", ") : ""
-      )
-      .filter(Boolean)
-
-    const uniqueCategories = [...new Set(matched.flatMap((c: string) => c.split(", ")))]
-      .slice(0, 4)
-      .join(", ")
-
+    const allCats = recommendedSuppliers
+      .flatMap((s: any) => (Array.isArray(s.category_names) ? s.category_names.slice(0, 2) : []))
+    const uniqueCategories = [...new Set(allCats)].slice(0, 4).join(", ")
     const itemNames = (items as { name: string }[]).map(i => i.name).join(", ")
     reason = `Fornecedores selecionados com base nos itens "${itemNames}" e categorias compatíveis: ${uniqueCategories}.`
   }
 
-  return NextResponse.json({ recommended: recommendedIds, reason })
+  return NextResponse.json({ recommended: recommendedIds, suppliers: recommendedSuppliers, reason })
 }
