@@ -58,10 +58,12 @@ export async function POST(req: NextRequest) {
 
   // Inserir itens
   if (Array.isArray(b.items) && b.items.length > 0) {
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     for (const item of b.items) {
+      const insumoId = item.insumo_id && UUID_RE.test(item.insumo_id) ? item.insumo_id : null
       await sql`
         INSERT INTO cotacao_itens (cotacao_id, insumo_id, name, unit, quantity)
-        VALUES (${cotacao.id}, ${item.insumo_id ?? null}, ${item.name}, ${item.unit}, ${item.quantity})
+        VALUES (${cotacao.id}, ${insumoId}, ${item.name}, ${item.unit}, ${item.quantity})
       `
     }
   }
