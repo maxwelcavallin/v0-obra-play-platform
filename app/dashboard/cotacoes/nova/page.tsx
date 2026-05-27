@@ -289,12 +289,22 @@ export default function NovaCotacaoPage() {
         ...mirrorSelected,
         ...manualSuppliers.map(s => ({ name: s.name, email: s.email || undefined, phone: s.phone || undefined, is_recommended: false })),
       ]
+      // Monta o endereço de entrega conforme modo selecionado no passo 2
+      const co = companyDetail ?? activeCompany
+      const shippingAddress = addressMode === "obra" && selectedObra
+        ? { construction_name: selectedObra.name, street: selectedObra.delivery_street, number: selectedObra.delivery_number, neighbourhood: selectedObra.delivery_neighbourhood, city: selectedObra.delivery_city, state: selectedObra.delivery_state, zipcode: selectedObra.delivery_zipcode }
+        : addressMode === "empresa" && co
+        ? { construction_name: (co as any).fantasy_name ?? (co as any).company_name, street: (co as any).street, number: (co as any).number, neighbourhood: (co as any).neighbourhood, city: (co as any).city, state: (co as any).state, zipcode: (co as any).zipcode }
+        : { street: manualStreet, number: manualNumber, neighbourhood: manualNeighbourhood, city: manualCity, state: manualState, zipcode: manualZipcode }
+
       const res = await authFetch("/api/cotacoes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           company_id: activeCompany?.id,
+          obraplay_company_id: (activeCompany as any)?.obraplay_company_id ?? null,
           obra_id: selectedObra?.id ?? null,
+          obra_name: selectedObra?.name ?? null,
           need_date: needDate || null,
           expiry_date: expiryDate || null,
           general_notes: generalNotes || null,
@@ -303,12 +313,21 @@ export default function NovaCotacaoPage() {
           requester_name: reqName || null,
           requester_email: reqEmail || null,
           requester_phone: reqPhone || null,
+          shipping_address: shippingAddress,
           items: items.map(i => ({ insumo_id: i.insumo_id ?? null, name: i.name, unit: i.unit, quantity: parseFloat(i.quantity) || 1 })),
           suppliers: supplierList,
         }),
       })
       if (!res.ok) throw new Error("Erro ao criar cotação")
-      toast.success("Cotação enviada com sucesso!")
+      const data = await res.json()
+      if (data._op_warning) {
+        toast.success("Cotação salva localmente.")
+        toast.error("Aviso: " + data._op_warning, { duration: 6000 })
+      } else {
+        toast.success(data.obraplay_quotation_id
+          ? "Cotação enviada à ObraPlay com sucesso!"
+          : "Cotação salva com sucesso!")
+      }
       router.push("/dashboard/cotacoes")
     } catch (e: any) {
       toast.error(e.message ?? "Erro ao enviar cotação")

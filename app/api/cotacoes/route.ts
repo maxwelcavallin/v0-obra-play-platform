@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import { requireSession } from "@/lib/session"
+import { obraplay } from "@/lib/obraplay-client"
+import type { OPQuotationAnswer, OPQuotationItem } from "@/lib/obraplay-client"
 
 export const dynamic = "force-dynamic"
 
@@ -78,6 +80,70 @@ export async function POST(req: NextRequest) {
         VALUES
           (${cotacao.id}, ${s.name}, ${s.city ?? null}, ${s.email ?? null}, ${s.phone ?? null}, ${s.is_recommended ?? false}, ${mirrorId})
       `
+    }
+  }
+
+  // ── Integração ObraPlay: envia a cotação via POST /api/quotations/nested/ ──
+  const opCompanyId: number | null = b.obraplay_company_id ?? null
+
+  if (opCompanyId) {
+    try {
+      // Monta os itens da cotação — measurement_unit padrão 1 (unidade)
+      const opItems: OPQuotationItem[] = (b.items ?? []).map((item: any) => ({
+        name:                  item.name,
+        quantity:              Number(item.quantity) || 1,
+        total_quantity_micros: Math.round((Number(item.quantity) || 1) * 1_000_000),
+        measurement_unit:      item.measurement_unit_id ?? 1,
+        type:                  "custom" as const,
+      }))
+
+      // Monta o endereço de entrega
+      const addr = b.shipping_address ?? {}
+      const shippingAddress = {
+        construction_name: addr.construction_name ?? b.obra_name ?? undefined,
+        street:            addr.street     ?? undefined,
+        number:            addr.number     ?? undefined,
+        neighbourhood:     addr.neighbourhood ?? undefined,
+        city:              addr.city       ?? undefined,
+        state:             addr.state      ?? undefined,
+        zipcode:           addr.zipcode    ?? undefined,
+        items:             opItems,
+      }
+
+      // Monta os fornecedores (answers)
+      const answers: OPQuotationAnswer[] = (b.suppliers ?? []).map((s: any) => ({
+        name:                 s.name,
+        email:                s.email     || undefined,
+        phone:                s.phone     || undefined,
+        notify_by_email:      !!s.email,
+        notify_by_whatsapp:   !s.email && !!s.phone,
+        own_supplier:         false,
+        supplier_foreign_id:  s.mirror_company_id ? String(s.mirror_company_id) : undefined,
+      }))
+
+      const opRes = await obraplay.quotations.createNested({
+        company:            opCompanyId,
+        requirement_date:   b.need_date    ?? undefined,
+        expires_at:         b.expiry_date  ?? undefined,
+        name:               b.requester_name  ?? undefined,
+        email:              b.requester_email ?? undefined,
+        phone:              b.requester_phone ?? undefined,
+        foreign_id:         identifier,
+        is_public:          b.is_public ?? false,
+        is_draft:           false,
+        shipping_addresses: [shippingAddress],
+        answers:            answers.length > 0 ? answers : undefined,
+      })
+
+      // Persiste o ID retornado pela ObraPlay para rastreio futuro
+      await sql`
+        UPDATE cotacoes SET obraplay_quotation_id = ${opRes.id} WHERE id = ${cotacao.id}
+      `
+      cotacao.obraplay_quotation_id = opRes.id
+    } catch (err: any) {
+      console.error("[v0] Erro ao enviar cotação para ObraPlay:", err?.message ?? err)
+      // Não falha o request — cotação já foi salva localmente
+      cotacao._op_warning = "Cotação salva localmente. Falha ao enviar ao ObraPlay: " + (err?.message ?? "erro desconhecido")
     }
   }
 

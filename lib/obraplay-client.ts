@@ -115,6 +115,59 @@ export interface OPListResponse<T> {
   previous?: string | null
 }
 
+// ─── Quotation types ─────────────────────────────────────────────────────────
+
+export interface OPQuotationItem {
+  name:                   string
+  quantity:               number
+  total_quantity_micros:  number
+  measurement_unit:       number   // ID da unidade de medida
+  type:                   "custom" | "catalog"
+  item?:                  number   // ID do item do catálogo (somente type=catalog)
+}
+
+export interface OPQuotationShippingAddress {
+  construction_name?:  string
+  street?:             string
+  number?:             string
+  neighbourhood?:      string
+  city?:               string
+  state?:              string
+  zipcode?:            string
+  items:               OPQuotationItem[]
+}
+
+export interface OPQuotationAnswer {
+  name:                 string
+  email?:               string
+  phone?:               string
+  notify_by_email?:     boolean
+  notify_by_whatsapp?:  boolean
+  own_supplier?:        boolean
+  supplier_foreign_id?: string
+}
+
+export interface OPQuotationNestedPayload {
+  company:              number        // ID ObraPlay da empresa construtora
+  requirement_date?:    string        // ISO 8601
+  expires_at?:          string        // ISO 8601
+  name?:                string        // nome do solicitante
+  email?:               string
+  phone?:               string
+  foreign_id?:          string        // ID interno (identifier)
+  is_public?:           boolean
+  is_draft?:            boolean
+  shipping_addresses:   OPQuotationShippingAddress[]
+  answers?:             OPQuotationAnswer[]
+}
+
+export interface OPQuotationCreated {
+  id:          number
+  foreign_id?: string
+  status?:     string
+  [key: string]: any
+}
+
 // ─── Companies ───────────────────────────────────────────────────────────────
 
 export const obraplay = {
@@ -149,6 +202,15 @@ export const obraplay = {
 
     async memberships(id: number): Promise<OPListResponse<OPMember>> {
       return request<OPListResponse<OPMember>>(`/api/companies/${id}/memberships/`)
+    },
+  },
+
+  quotations: {
+    async createNested(payload: OPQuotationNestedPayload): Promise<OPQuotationCreated> {
+      return request<OPQuotationCreated>("/api/quotations/nested/", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      })
     },
   },
 }
