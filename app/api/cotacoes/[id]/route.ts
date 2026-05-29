@@ -213,7 +213,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
               ls.mirror_company_id && String(a.supplier_foreign_id) === String(ls.mirror_company_id)
             ) ?? opAnswers[i]
             if (opAns?.id) {
-              await sql`UPDATE cotacao_fornecedores SET op_answer_id = ${opAns.id} WHERE id = ${ls.id}`
+              await sql`UPDATE cotacao_fornecedores SET op_answer_id = ${opAns.id}, op_answer_key = ${opAns.key ?? null} WHERE id = ${ls.id}`
             }
           }
         }

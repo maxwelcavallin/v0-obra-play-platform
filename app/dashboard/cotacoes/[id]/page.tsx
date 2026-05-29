@@ -421,11 +421,11 @@ export default function CotacaoDetalhePage() {
                 </div>
 
                 {/* Botão copiar link — visível quando há op_answer_id */}
-                {s.op_answer_id && cotacao.obraplay_quotation_key ? (
+                {s.op_answer_id && s.op_answer_key ? (
                   <button
                     type="button"
                     onClick={() => {
-                      const link = `https://app-staging.obraplay.com/resposta-cotacoes/${s.op_answer_id}?chave=${cotacao.obraplay_quotation_key}`
+                      const link = `https://app-staging.obraplay.com/resposta-cotacoes/${s.op_answer_id}?chave=${s.op_answer_key}`
                       navigator.clipboard.writeText(link)
                       toast.success("Link copiado!")
                     }}
