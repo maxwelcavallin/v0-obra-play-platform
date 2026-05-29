@@ -164,6 +164,23 @@ export default function CotacaoDetalhePage() {
     }
   }
 
+  function fallbackCopy(text: string) {
+    try {
+      const ta = document.createElement("textarea")
+      ta.value = text
+      ta.style.position = "fixed"
+      ta.style.opacity = "0"
+      document.body.appendChild(ta)
+      ta.focus()
+      ta.select()
+      document.execCommand("copy")
+      document.body.removeChild(ta)
+      toast.success("Link copiado!")
+    } catch {
+      toast.error("Não foi possível copiar. Copie manualmente.")
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center">
@@ -426,8 +443,13 @@ export default function CotacaoDetalhePage() {
                     type="button"
                     onClick={() => {
                       const link = `https://app-staging.obraplay.com/resposta-cotacoes/${s.op_answer_id}?chave=${s.op_answer_key}`
-                      navigator.clipboard.writeText(link)
-                      toast.success("Link copiado!")
+                      if (navigator.clipboard?.writeText) {
+                        navigator.clipboard.writeText(link).then(() => toast.success("Link copiado!")).catch(() => {
+                          fallbackCopy(link)
+                        })
+                      } else {
+                        fallbackCopy(link)
+                      }
                     }}
                     className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#E3F2FD] bg-[#F8FBFF] text-[#1565C0] text-[11px] font-semibold hover:bg-[#E3F2FD] transition-colors">
                     <Copy size={11} />
