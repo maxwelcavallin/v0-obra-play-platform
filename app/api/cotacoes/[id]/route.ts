@@ -23,13 +23,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!row) return NextResponse.json({ error: "Não encontrado" }, { status: 404 })
 
   const items = await sql`SELECT * FROM cotacao_itens WHERE cotacao_id = ${id} ORDER BY created_at`
-  const suppliers = await sql`
-    SELECT cf.*, cr.op_answer_id
-    FROM cotacao_fornecedores cf
-    LEFT JOIN cotacao_respostas cr ON cr.cotacao_fornecedor_id = cf.id
-    WHERE cf.cotacao_id = ${id}
-    ORDER BY cf.is_recommended DESC, cf.created_at
-  `
+  const suppliers = await sql`SELECT * FROM cotacao_fornecedores WHERE cotacao_id = ${id} ORDER BY is_recommended DESC, created_at`
 
   return NextResponse.json({ ...row, items, suppliers })
 }
@@ -207,6 +201,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
       await sql`UPDATE cotacoes SET obraplay_quotation_id = ${opRes.id} WHERE id = ${id}`
       updated.obraplay_quotation_id = opRes.id
+
+      // Salva op_answer_id em cada fornecedor local casando por supplier_foreign_id ou posição
+      try {
+        const opAnswers: any[] = opRes.answers ?? []
+        if (opAnswers.length > 0) {
+          const localSuppliers = await sql`SELECT id, mirror_company_id FROM cotacao_fornecedores WHERE cotacao_id = ${id} ORDER BY created_at`
+          for (let i = 0; i < localSuppliers.length; i++) {
+            const ls = localSuppliers[i]
+            const opAns = opAnswers.find((a: any) =>
+              ls.mirror_company_id && String(a.supplier_foreign_id) === String(ls.mirror_company_id)
+            ) ?? opAnswers[i]
+            if (opAns?.id) {
+              await sql`UPDATE cotacao_fornecedores SET op_answer_id = ${opAns.id} WHERE id = ${ls.id}`
+            }
+          }
+        }
+      } catch { /* não crítico */ }
 
     } catch (err: any) {
       opWarning = "Editado localmente. Falha ao reenviar ao ObraPlay: " + (err?.message ?? "erro")

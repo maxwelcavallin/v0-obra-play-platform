@@ -272,6 +272,24 @@ export async function POST(req: NextRequest) {
     cotacao.obraplay_quotation_code = opCode
     cotacao.obraplay_quotation_key  = opKey
 
+    // Salva op_answer_id em cada fornecedor local, casando por supplier_foreign_id ou posição
+    try {
+      const opAnswers: any[] = opRes.answers ?? []
+      if (opAnswers.length > 0) {
+        const localSuppliers = await sql`SELECT id, mirror_company_id FROM cotacao_fornecedores WHERE cotacao_id = ${cotacao.id} ORDER BY created_at`
+        for (let i = 0; i < localSuppliers.length; i++) {
+          const ls = localSuppliers[i]
+          // Casa por supplier_foreign_id (mirror_company_id) ou por posição
+          const opAns = opAnswers.find((a: any) =>
+            ls.mirror_company_id && String(a.supplier_foreign_id) === String(ls.mirror_company_id)
+          ) ?? opAnswers[i]
+          if (opAns?.id) {
+            await sql`UPDATE cotacao_fornecedores SET op_answer_id = ${opAns.id} WHERE id = ${ls.id}`
+          }
+        }
+      }
+    } catch { /* não crítico */ }
+
     // Tenta salvar op_item_id nos itens locais casando por nome com os itens retornados pelo ObraPlay
     // O ObraPlay retorna os itens dentro de shipping_addresses[0].items
     try {
