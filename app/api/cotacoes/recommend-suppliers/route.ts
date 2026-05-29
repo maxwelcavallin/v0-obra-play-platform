@@ -68,7 +68,9 @@ export async function POST(req: NextRequest) {
       whatsapp,
       logo,
       rating,
-      registration_type,
+      verified_cnpj,
+      has_confirmed_address,
+      has_confirmed_shipping,
       category_names,
       avg_finalized_answers_duration,
       finalized_answers_count,
@@ -112,6 +114,12 @@ export async function POST(req: NextRequest) {
     .map(id => {
       const s = supplierMap.get(id) as any
       if (!s) return null
+      // Calcula registration_type a partir dos booleanos (não existe como coluna)
+      const regType = (s.verified_cnpj && s.has_confirmed_address && s.has_confirmed_shipping)
+        ? "certified"
+        : s.verified_cnpj
+          ? "validated"
+          : "basic"
       return {
         id:                          s.company_id,
         company_name:                s.full_name || s.short_name,
@@ -120,7 +128,7 @@ export async function POST(req: NextRequest) {
         whatsapp:                    s.whatsapp ?? null,
         logo_url:                    s.logo ?? null,
         rating:                      s.rating ?? null,
-        registration_type:           s.registration_type ?? null,
+        registration_type:           regType,
         category_names:              s.category_names ?? [],
         city_name:                   s.city ?? null,
         state_abbr:                  s.state ?? null,
