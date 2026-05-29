@@ -289,32 +289,10 @@ export default function MapaCotacaoPage() {
     }
   }
 
-  if (loading) return (
-    <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center">
-      <Loader2 size={28} className="animate-spin text-[#1565C0]" />
-    </div>
-  )
-
-  if (!mapa) return (
-    <div className="min-h-screen bg-[#F5F5F5] flex flex-col items-center justify-center gap-3 text-[#9E9E9E]">
-      <AlertCircle size={36} strokeWidth={1.2} />
-      <p className="text-sm">Mapa não encontrado.</p>
-    </div>
-  )
-
-  // Fornecedores que responderam com ao menos um item disponível (excluídos os recusados da tabela de compra)
-  const answeredSuppliers = mapa.suppliers.filter(s => s.answered && !s.is_refused)
-  // Fornecedores que recusaram (para exibir separado)
-  const refusedSuppliers = mapa.suppliers.filter(s => s.is_refused)
-  const selectedSupplierList = mapa.suppliers.filter(s => selectedSuppliers.has(s.supplier_id))
-  const hasCompraSelection = ordensPorFornecedor.length > 0
-
-  // Economia total da seleção atual (Melhor Compra):
-  // Compara o total selecionado contra o cenário mais caro (pior preço por item + maior frete)
+  // Economia total da seleção atual (Melhor Compra) — deve ficar antes dos early returns
   const compraSavings = useMemo(() => {
     if (!mapa || ordensPorFornecedor.length === 0) return null
     const totalSelecionado = ordensPorFornecedor.reduce((s, o) => s + o.total, 0)
-    // Pior cenário: maior preço unitário * qtd de cada item + maior frete por fornecedor
     const worstItems = mapa.items.reduce((acc, item) => {
       const itemId = item.id ?? item.cotacao_item_id
       const worst = maxPrices[itemId]
@@ -329,14 +307,35 @@ export default function MapaCotacaoPage() {
     }
   }, [mapa, ordensPorFornecedor, maxPrices, maxFreight])
 
-  // Economia total no modo Melhor Fornecedor (fornecedor selecionado vs. mais caro)
+  // Economia total no modo Melhor Fornecedor — deve ficar antes dos early returns
   const fornecedorSavings = useMemo(() => {
-    if (selectedSupplierList.length === 0) return null
-    const totalSelecionado = selectedSupplierList.reduce((s, sup) => s + sup.total, 0)
-    const pct = savingPct(totalSelecionado, maxTotal * selectedSupplierList.length)
-    const valor = maxTotal * selectedSupplierList.length - totalSelecionado
+    if (!mapa) return null
+    const list = mapa.suppliers.filter(s => selectedSuppliers.has(s.supplier_id))
+    if (list.length === 0) return null
+    const totalSelecionado = list.reduce((s, sup) => s + sup.total, 0)
+    const pct = savingPct(totalSelecionado, maxTotal * list.length)
+    const valor = maxTotal * list.length - totalSelecionado
     return pct != null && pct > 0 ? { pct, valor } : null
-  }, [selectedSupplierList, maxTotal])
+  }, [mapa, selectedSuppliers, maxTotal])
+
+  if (loading) return (
+    <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center">
+      <Loader2 size={28} className="animate-spin text-[#1565C0]" />
+    </div>
+  )
+
+  if (!mapa) return (
+    <div className="min-h-screen bg-[#F5F5F5] flex flex-col items-center justify-center gap-3 text-[#9E9E9E]">
+      <AlertCircle size={36} strokeWidth={1.2} />
+      <p className="text-sm">Mapa não encontrado.</p>
+    </div>
+  )
+
+  // Derivações simples (sem hooks) — seguro após os early returns
+  const answeredSuppliers = mapa.suppliers.filter(s => s.answered && !s.is_refused)
+  const refusedSuppliers = mapa.suppliers.filter(s => s.is_refused)
+  const selectedSupplierList = mapa.suppliers.filter(s => selectedSuppliers.has(s.supplier_id))
+  const hasCompraSelection = ordensPorFornecedor.length > 0
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] pb-32" style={{ maxWidth: 640, margin: "0 auto" }}>
