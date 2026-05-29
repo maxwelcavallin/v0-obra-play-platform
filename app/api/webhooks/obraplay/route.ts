@@ -24,14 +24,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Payload inválido" }, { status: 400 })
   }
 
-  // O webhook pode envolver o objeto em { event, data } ou enviar direto.
-  // Suporta ambos os formatos.
-  const answer = payload?.data ?? payload
+  // Formato envelope do ObraPlay:
+  // { hook: { event }, data: { model, pk, fields: { quotation, supplier_foreign_id, ... } } }
+  // O pk é o id do quotation_answer; os campos ficam em data.fields.
+  let opAnswerId: number | undefined
+  let opQuotationId: number | undefined
+  let answer: any
 
-  const opAnswerId: number | undefined = answer?.id
-  const opQuotationId: number | undefined = answer?.quotation ?? payload?.quotation_id ?? payload?.quotation
+  if (payload?.data?.pk && payload?.data?.fields) {
+    // Formato envelope (formato real do ObraPlay)
+    opAnswerId   = payload.data.pk
+    answer       = { id: opAnswerId, ...payload.data.fields }
+    opQuotationId = answer.quotation
+  } else {
+    // Formato direto (fallback / testes)
+    answer        = payload?.data ?? payload
+    opAnswerId    = answer?.id
+    opQuotationId = answer?.quotation ?? answer?.quotation_id
+  }
+
+  console.log("[webhook] event:", payload?.hook?.event, "opAnswerId:", opAnswerId, "opQuotationId:", opQuotationId)
 
   if (!opAnswerId || !opQuotationId) {
+    console.log("[webhook] payload recebido:", JSON.stringify(payload))
     return NextResponse.json({ error: "Campos obrigatórios ausentes: id, quotation" }, { status: 422 })
   }
 
