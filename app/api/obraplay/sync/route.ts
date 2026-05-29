@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import { obraplay, type OPCompany, type OPMember } from "@/lib/obraplay-client"
+import { put } from "@vercel/blob"
 
 // GET — Status da sincronização
 export async function GET() {
@@ -54,6 +55,9 @@ export async function POST() {
           // Garantia extra: nunca persiste empresa sem has_confirmed_configuration
           if (!company.has_confirmed_configuration) continue
 
+          // Espelha logo no Vercel Blob para evitar quebra de imagem por CORS/expiração
+          const logoUrl = await mirrorLogo(company.logo ?? null, company.id)
+
           // shipping_locations pode vir como array de IDs na resposta do client.
           // O payload bruto (detail) contém os objetos completos — usamos ele.
           const rawShipping = ((detail as any).shipping_locations ?? []) as (number | OPShippingLocation)[]
@@ -92,7 +96,7 @@ export async function POST() {
               ${company.city ?? null},
               ${company.state ?? null},
               ${company.zip_code ?? null},
-              ${company.logo ?? null},
+              ${logoUrl},
               ${company.rating ?? 0},
               ${company.total_reviews ?? 0},
               ${(metrics as any).avg_response_time_minutes ?? company.avg_response_time_minutes ?? null},
@@ -129,7 +133,7 @@ export async function POST() {
               city                          = EXCLUDED.city,
               state                         = EXCLUDED.state,
               zipcode                       = EXCLUDED.zipcode,
-              logo                          = EXCLUDED.logo,
+              logo                          = EXCLUDED.logo, -- URL do Vercel Blob (espelhada)
               rating                        = EXCLUDED.rating,
               total_reviews                 = EXCLUDED.total_reviews,
               avg_response_time_minutes     = EXCLUDED.avg_response_time_minutes,
@@ -221,6 +225,29 @@ export async function POST() {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Faz download da logo externa e salva no Vercel Blob (público).
+ * Retorna a URL local do Blob, ou a URL original como fallback se falhar.
+ */
+async function mirrorLogo(originalUrl: string | null | undefined, companyId: number): Promise<string | null> {
+  if (!originalUrl) return null
+  try {
+    const res = await fetch(originalUrl, { signal: AbortSignal.timeout(8000) })
+    if (!res.ok) return originalUrl
+    const contentType = res.headers.get("content-type") ?? "image/jpeg"
+    const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg"
+    const buffer = await res.arrayBuffer()
+    const blob = await put(`logos/suppliers/${companyId}.${ext}`, buffer, {
+      access: "public",
+      contentType,
+      addRandomSuffix: false,
+    })
+    return blob.url
+  } catch {
+    return originalUrl // fallback: mantém URL original se o mirror falhar
+  }
+}
 
 function resolveIds(items: (number | { id: number })[]): number[] {
   return items.map(i => (typeof i === "object" ? i.id : i))

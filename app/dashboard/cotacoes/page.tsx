@@ -39,7 +39,7 @@ const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> =
 
 const TABS = [
   { label: "Todas",       value: "Todas" },
-  { label: "Novas",       value: "Nova" },
+  { label: "Enviadas",     value: "Nova" },
   { label: "Respondidas", value: "Respondida" },
   { label: "Canceladas",  value: "Cancelada" },
   { label: "Rascunhos",   value: "Rascunho" },
