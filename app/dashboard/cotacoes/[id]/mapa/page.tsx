@@ -116,7 +116,7 @@ export default function MapaCotacaoPage() {
       .finally(() => setLoading(false))
   }, [id])
 
-  // Menor preço unitário por item
+  // Menor e maior preço unitário por item (para calcular economia)
   const minPrices = useMemo(() => {
     if (!mapa) return {}
     const map: Record<string, number> = {}
@@ -130,6 +130,40 @@ export default function MapaCotacaoPage() {
     })
     return map
   }, [mapa])
+
+  const maxPrices = useMemo(() => {
+    if (!mapa) return {}
+    const map: Record<string, number> = {}
+    mapa.items.forEach(item => {
+      const itemId = item.id ?? item.cotacao_item_id
+      const prices = mapa.suppliers
+        .flatMap(s => s.answered_items)
+        .filter(ai => ai.cotacao_item_id === itemId && ai.available && ai.unit_price != null)
+        .map(ai => ai.unit_price as number)
+      if (prices.length > 0) map[itemId] = Math.max(...prices)
+    })
+    return map
+  }, [mapa])
+
+  // Maior e menor total por fornecedor (subtotal + frete)
+  const { minTotal, maxTotal, minFreight, maxFreight } = useMemo(() => {
+    if (!mapa) return { minTotal: 0, maxTotal: 0, minFreight: 0, maxFreight: 0 }
+    const answered = mapa.suppliers.filter(s => s.answered)
+    const totals  = answered.map(s => s.total)
+    const freights = answered.map(s => s.free_shipping || s.freight === 0 ? 0 : (s.freight ?? 0))
+    return {
+      minTotal:   Math.min(...totals),
+      maxTotal:   Math.max(...totals),
+      minFreight: Math.min(...freights),
+      maxFreight: Math.max(...freights),
+    }
+  }, [mapa])
+
+  // Helper: percentual de economia (quanto este valor é menor que o referencial máximo)
+  function savingPct(value: number, max: number): number | null {
+    if (max <= 0 || value >= max) return null
+    return Math.round((1 - value / max) * 100)
+  }
 
   // Fornecedor com melhor oferta completa
   const bestSupplierId = useMemo(() => {
@@ -473,6 +507,7 @@ export default function MapaCotacaoPage() {
                         }
 
                         const isBest = ai.unit_price != null && minPrices[itemId] === ai.unit_price
+                        const pct = ai.unit_price != null ? savingPct(ai.unit_price, maxPrices[itemId]) : null
                         return (
                           <td key={s.supplier_id}
                             onClick={() => selectItemSupplier(itemId, s.supplier_id)}
@@ -493,6 +528,12 @@ export default function MapaCotacaoPage() {
                               </span>
                               {/* Preço total */}
                               <span className="text-[10px] text-[#9E9E9E]">total {fmtBRL(ai.total_price)}</span>
+                              {/* Badge economia */}
+                              {pct != null && pct > 0 && (
+                                <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-[#E8F5E9] text-[#2E7D32]">
+                                  -{pct}%
+                                </span>
+                              )}
                             </div>
                           </td>
                         )
@@ -512,14 +553,23 @@ export default function MapaCotacaoPage() {
                   <td colSpan={3} className="px-3 py-2 text-xs font-bold text-[#9E9E9E] sticky left-0 bg-[#FAFAFA] z-10 flex items-center gap-1">
                     <Truck size={11} /> Frete
                   </td>
-                  {answeredSuppliers.map(s => (
-                    <td key={s.supplier_id} className="px-3 py-2 text-center text-xs">
-                      {s.free_shipping || s.freight === 0
-                        ? <span className="text-[#4CAF50] font-semibold">Grátis</span>
-                        : s.freight == null ? <span className="text-[#BDBDBD]">—</span>
-                        : <span className="text-[#616161]">{fmtBRL(s.freight)}</span>}
-                    </td>
-                  ))}
+                  {answeredSuppliers.map(s => {
+                    const frVal = s.free_shipping || s.freight === 0 ? 0 : (s.freight ?? null)
+                    const frPct = frVal != null ? savingPct(frVal, maxFreight) : null
+                    return (
+                      <td key={s.supplier_id} className="px-3 py-2 text-center text-xs">
+                        <div className="flex flex-col items-center gap-0.5">
+                          {frVal === 0
+                            ? <span className="text-[#4CAF50] font-semibold">Grátis</span>
+                            : frVal == null ? <span className="text-[#BDBDBD]">—</span>
+                            : <span className="text-[#616161]">{fmtBRL(frVal)}</span>}
+                          {frPct != null && frPct > 0 && (
+                            <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-[#E8F5E9] text-[#2E7D32]">-{frPct}%</span>
+                          )}
+                        </div>
+                      </td>
+                    )
+                  })}
                 </tr>
                 <tr className="bg-[#FAFAFA] border-t border-[#E0E0E0]">
                   <td colSpan={3} className="px-3 py-2.5 text-xs font-bold text-[#212121] sticky left-0 bg-[#FAFAFA] z-10">TOTAL</td>
@@ -579,27 +629,43 @@ export default function MapaCotacaoPage() {
                     <div className="text-right">
                       <p className="text-lg font-bold text-[#1565C0]">{fmtBRL(s.total)}</p>
                       <p className="text-[11px] text-[#9E9E9E]">{availableCount}/{mapa.items.length} itens</p>
+                      {/* Economia total vs. fornecedor mais caro */}
+                      {(() => {
+                        const pct = savingPct(s.total, maxTotal)
+                        return pct != null && pct > 0 ? (
+                          <span className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#E8F5E9] text-[#2E7D32] mt-0.5">
+                            -{pct}% mais barato
+                          </span>
+                        ) : null
+                      })()}
                     </div>
                   </div>
 
-                  {/* Itens com preço unitário e total */}
+                  {/* Itens com preço unitário, total e economia */}
                   <div className="flex flex-col gap-1.5 mb-3">
-                    {s.answered_items.map(ai => (
-                      <div key={ai.cotacao_item_id} className="flex justify-between items-start text-xs text-[#616161]">
-                        <span className="truncate mr-2 flex-1">{ai.name}</span>
-                        {!ai.available
-                          ? <span className="text-[#F44336] font-medium flex-shrink-0 text-[10px]">Indisponível</span>
-                          : ai.unit_price != null
-                            ? (
-                              <div className="flex flex-col items-end flex-shrink-0">
-                                <span className="font-bold text-[#212121]">{fmtBRL(ai.unit_price)}<span className="font-normal text-[#9E9E9E]">/{ai.unit}</span></span>
-                                <span className="text-[10px] text-[#9E9E9E]">total {fmtBRL(ai.total_price)}</span>
-                              </div>
-                            )
-                            : <span className="text-[#BDBDBD] flex-shrink-0">—</span>
-                        }
-                      </div>
-                    ))}
+                    {s.answered_items.map(ai => {
+                      const itemId = ai.cotacao_item_id
+                      const pct = ai.unit_price != null ? savingPct(ai.unit_price, maxPrices[itemId]) : null
+                      return (
+                        <div key={itemId} className="flex justify-between items-start text-xs text-[#616161]">
+                          <span className="truncate mr-2 flex-1">{ai.name}</span>
+                          {!ai.available
+                            ? <span className="text-[#F44336] font-medium flex-shrink-0 text-[10px]">Indisponível</span>
+                            : ai.unit_price != null
+                              ? (
+                                <div className="flex flex-col items-end flex-shrink-0">
+                                  <span className="font-bold text-[#212121]">{fmtBRL(ai.unit_price)}<span className="font-normal text-[#9E9E9E]">/{ai.unit}</span></span>
+                                  <span className="text-[10px] text-[#9E9E9E]">total {fmtBRL(ai.total_price)}</span>
+                                  {pct != null && pct > 0 && (
+                                    <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-[#E8F5E9] text-[#2E7D32] mt-0.5">-{pct}%</span>
+                                  )}
+                                </div>
+                              )
+                              : <span className="text-[#BDBDBD] flex-shrink-0">—</span>
+                          }
+                        </div>
+                      )
+                    })}
                   </div>
 
                   {/* Totais e condições */}
@@ -609,9 +675,22 @@ export default function MapaCotacaoPage() {
                     </div>
                     <div className="flex justify-between text-xs text-[#757575]">
                       <span>Frete</span>
-                      <span className={s.free_shipping || s.freight === 0 ? "text-[#4CAF50] font-semibold" : ""}>
-                        {s.free_shipping || s.freight === 0 ? "Grátis" : s.freight == null ? "—" : fmtBRL(s.freight)}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {(() => {
+                          const frVal = s.free_shipping || s.freight === 0 ? 0 : (s.freight ?? null)
+                          const frPct = frVal != null ? savingPct(frVal, maxFreight) : null
+                          return (
+                            <>
+                              <span className={s.free_shipping || s.freight === 0 ? "text-[#4CAF50] font-semibold" : ""}>
+                                {s.free_shipping || s.freight === 0 ? "Grátis" : s.freight == null ? "—" : fmtBRL(s.freight)}
+                              </span>
+                              {frPct != null && frPct > 0 && (
+                                <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-[#E8F5E9] text-[#2E7D32]">-{frPct}%</span>
+                              )}
+                            </>
+                          )
+                        })()}
+                      </div>
                     </div>
                     {s.payment_method && (
                       <div className="flex justify-between text-xs text-[#757575]">
