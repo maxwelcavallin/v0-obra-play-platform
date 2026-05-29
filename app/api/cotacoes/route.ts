@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
     // Reutiliza o rascunho já existente — apenas atualiza campos e troca status
     const [updated] = await sql`
       UPDATE cotacoes SET
-        status          = 'Nova',
+        status          = 'Enviada',
         draft_payload   = NULL,
         need_date       = ${b.need_date ?? null},
         expiry_date     = ${b.expiry_date ?? null},
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
         general_notes, address_type, is_public,
         requester_name, requester_email, requester_phone, created_by)
       VALUES (
-        ${b.company_id}, ${b.obra_id ?? null}, ${identifier!}, 'Nova',
+        ${b.company_id}, ${b.obra_id ?? null}, ${identifier!}, 'Enviada',
         ${b.need_date ?? null}, ${b.expiry_date ?? null},
         ${b.general_notes ?? null}, ${b.address_type ?? "entrega"}, ${b.is_public ?? false},
         ${b.requester_name ?? null}, ${b.requester_email ?? null}, ${b.requester_phone ?? null},
@@ -265,7 +265,7 @@ export async function POST(req: NextRequest) {
       SET obraplay_quotation_id   = ${opRes.id},
           obraplay_quotation_code = ${opCode},
           obraplay_quotation_key  = ${opKey},
-          status = 'Nova'
+          status = 'Enviada'
       WHERE id = ${cotacao.id}
     `
     cotacao.obraplay_quotation_id   = opRes.id
