@@ -102,6 +102,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       mirror_company_id: sup.mirror_company_id,
       op_answer_id:      meta?.op_answer_id ?? sup.op_answer_id ?? null,
       answered:          hasAnswer,
+      is_refused:        hasAnswer && linhas.every((r: any) => r.is_refused),
       payment_method:    meta?.payment_method    ?? null,
       installments:      meta?.installments      ?? null,
       installments_obs:  meta?.installments_obs  ?? null,

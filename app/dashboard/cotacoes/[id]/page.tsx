@@ -408,11 +408,15 @@ export default function CotacaoDetalhePage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <p className="text-sm font-semibold text-[#212121] truncate">{s.supplier_name}</p>
-                    {s.has_response ? (
+                    {s.is_refused ? (
+                      <span className="text-[10px] bg-[#FEECEC] text-[#C62828] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">
+                        Recusado
+                      </span>
+                    ) : s.has_response ? (
                       <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">
                         Respondido
                       </span>
-                    ) : s.op_answer_id ? (
+                    ) : s.mirror_company_id ? (
                       <span className="text-[10px] bg-[#FFF3E0] text-[#E65100] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">
                         Aguardando
                       </span>

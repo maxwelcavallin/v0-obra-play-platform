@@ -117,6 +117,9 @@ export async function POST(req: NextRequest) {
     // 5. DELETE + INSERT das linhas desnormalizadas para este op_answer_id
     await sql`DELETE FROM cotacao_respostas WHERE cotacao_id = ${cotacaoId} AND op_answer_id = ${opAnswerId}`
 
+    // Recusa = fornecedor respondeu mas TODOS os itens vieram com available=false
+    const isRefused = answeredItems.length > 0 && answeredItems.every((ai: any) => !toBool(ai.available))
+
     if (answeredItems.length > 0) {
       // Uma linha por item respondido
       for (let idx = 0; idx < answeredItems.length; idx++) {
@@ -154,7 +157,7 @@ export async function POST(req: NextRequest) {
             unit_price_micros,    quantity_answered,      total_quantity_micros,
             discount,             total_discount_micros,
             freight,              total_freight_micros,   free_shipping,          freight_answered,
-            op_address_id,        raw_payload
+            op_address_id,        is_refused,             raw_payload
           ) VALUES (
             ${cotacaoId},
             ${fornecedor?.id ?? null},
@@ -199,6 +202,7 @@ export async function POST(req: NextRequest) {
             ${toBool(frete?.free_shipping)},
             ${toBool(frete?.answered)},
             ${toInt(frete?.shipping_address ?? frete?.id)},
+            ${isRefused},
             ${JSON.stringify(payload)}
           )
         `
@@ -220,7 +224,7 @@ export async function POST(req: NextRequest) {
             arrival_estimate,     valid_until,            observations,           answered_at,
             answered,             available,
             freight,              total_freight_micros,   free_shipping,          freight_answered,
-            op_address_id,        raw_payload
+            op_address_id,        is_refused,             raw_payload
           ) VALUES (
             ${cotacaoId},
             ${fornecedor?.id ?? null},
@@ -260,6 +264,7 @@ export async function POST(req: NextRequest) {
             ${toBool(freteUnico?.free_shipping)},
             ${toBool(freteUnico?.answered)},
             ${toInt(freteUnico?.shipping_address ?? freteUnico?.id)},
+            false,
             ${JSON.stringify(payload)}
           )
         `
@@ -274,14 +279,14 @@ export async function POST(req: NextRequest) {
     if (cotacao.status !== "Cancelada") {
       const [{ total_op, total_resp }] = await sql`
         SELECT
-          -- total de fornecedores vinculados ao ObraPlay (têm op_answer_id)
+          -- total de fornecedores vinculados ao ObraPlay (têm mirror_company_id ou op_answer_id)
           COUNT(*)::int                                                        AS total_op,
-          -- total de fornecedores que já têm ao menos uma linha em cotacao_respostas
+          -- total de fornecedores que já têm ao menos uma linha em cotacao_respostas (inclui recusados)
           COUNT(DISTINCT cr.cotacao_fornecedor_id)::int                        AS total_resp
         FROM cotacao_fornecedores cf
         LEFT JOIN cotacao_respostas cr ON cr.cotacao_fornecedor_id = cf.id
         WHERE cf.cotacao_id = ${cotacaoId}
-          AND cf.op_answer_id IS NOT NULL
+          AND cf.mirror_company_id IS NOT NULL
       `
       const novoStatus = total_resp >= total_op ? "Respondida" : "Parcialmente respondida"
       await sql`UPDATE cotacoes SET status = ${novoStatus}, updated_at = now() WHERE id = ${cotacaoId}`
