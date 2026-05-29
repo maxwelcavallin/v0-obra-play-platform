@@ -309,6 +309,35 @@ export default function MapaCotacaoPage() {
   const selectedSupplierList = mapa.suppliers.filter(s => selectedSuppliers.has(s.supplier_id))
   const hasCompraSelection = ordensPorFornecedor.length > 0
 
+  // Economia total da seleção atual (Melhor Compra):
+  // Compara o total selecionado contra o cenário mais caro (pior preço por item + maior frete)
+  const compraSavings = useMemo(() => {
+    if (!mapa || ordensPorFornecedor.length === 0) return null
+    const totalSelecionado = ordensPorFornecedor.reduce((s, o) => s + o.total, 0)
+    // Pior cenário: maior preço unitário * qtd de cada item + maior frete por fornecedor
+    const worstItems = mapa.items.reduce((acc, item) => {
+      const itemId = item.id ?? item.cotacao_item_id
+      const worst = maxPrices[itemId]
+      return acc + (worst != null ? worst * item.quantity : 0)
+    }, 0)
+    const worstFreight = maxFreight * ordensPorFornecedor.length
+    const worstTotal = worstItems + worstFreight
+    if (worstTotal <= 0 || totalSelecionado >= worstTotal) return null
+    return {
+      pct: Math.round((1 - totalSelecionado / worstTotal) * 100),
+      valor: worstTotal - totalSelecionado,
+    }
+  }, [mapa, ordensPorFornecedor, maxPrices, maxFreight])
+
+  // Economia total no modo Melhor Fornecedor (fornecedor selecionado vs. mais caro)
+  const fornecedorSavings = useMemo(() => {
+    if (selectedSupplierList.length === 0) return null
+    const totalSelecionado = selectedSupplierList.reduce((s, sup) => s + sup.total, 0)
+    const pct = savingPct(totalSelecionado, maxTotal * selectedSupplierList.length)
+    const valor = maxTotal * selectedSupplierList.length - totalSelecionado
+    return pct != null && pct > 0 ? { pct, valor } : null
+  }, [selectedSupplierList, maxTotal])
+
   return (
     <div className="min-h-screen bg-[#F5F5F5] pb-32" style={{ maxWidth: 640, margin: "0 auto" }}>
 
@@ -458,16 +487,28 @@ export default function MapaCotacaoPage() {
 
       {/* ── MODO MELHOR COMPRA ── */}
       {mode === "compra" && answeredSuppliers.length > 0 && (
-        <div className="mt-4 overflow-x-auto px-4">
+        <div className="mt-4">
+          {/* Banner: seleção atual + economia total */}
           {hasCompraSelection && (
-            <div className="mb-3 bg-[#E3F2FD] border border-[#BBDEFB] rounded-xl px-3 py-2 flex items-center gap-2">
-              <Check size={13} className="text-[#1565C0] flex-shrink-0" />
-              <p className="text-xs text-[#1565C0] font-medium">
-                {Object.keys(itemSelection).length} {Object.keys(itemSelection).length === 1 ? "item selecionado" : "itens selecionados"} de {ordensPorFornecedor.length} {ordensPorFornecedor.length === 1 ? "fornecedor" : "fornecedores"}
-              </p>
+            <div className="mx-4 mb-3 flex flex-col gap-1.5">
+              <div className="bg-[#E3F2FD] border border-[#BBDEFB] rounded-xl px-3 py-2 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Check size={13} className="text-[#1565C0] flex-shrink-0" />
+                  <p className="text-xs text-[#1565C0] font-medium">
+                    {Object.keys(itemSelection).length} {Object.keys(itemSelection).length === 1 ? "item" : "itens"} de {ordensPorFornecedor.length} {ordensPorFornecedor.length === 1 ? "fornecedor" : "fornecedores"}
+                  </p>
+                </div>
+                {compraSavings != null && (
+                  <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-[#E8F5E9] text-[#2E7D32] flex-shrink-0">
+                    -{compraSavings.pct}% economia ({fmtBRL(compraSavings.valor)})
+                  </span>
+                )}
+              </div>
             </div>
           )}
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ minWidth: 380 }}>
+          {/* Scroll lateral na tabela */}
+          <div className="px-4 overflow-x-auto">
+          <div className="bg-white rounded-2xl shadow-sm" style={{ minWidth: 360 + answeredSuppliers.length * 140 }}>
             <table className="w-full text-xs border-collapse" style={{ minWidth: 380 + answeredSuppliers.length * 120 }}>
               <thead>
                 <tr className="bg-[#F5F5F5]">
@@ -554,8 +595,8 @@ export default function MapaCotacaoPage() {
                   ))}
                 </tr>
                 <tr className="bg-[#FAFAFA]">
-                  <td colSpan={3} className="px-3 py-2 text-xs font-bold text-[#9E9E9E] sticky left-0 bg-[#FAFAFA] z-10 flex items-center gap-1">
-                    <Truck size={11} /> Frete
+                  <td colSpan={3} className="px-3 py-2 text-xs font-bold text-[#9E9E9E] sticky left-0 bg-[#FAFAFA] z-10">
+                    <span className="inline-flex items-center gap-1"><Truck size={11} /> Frete</span>
                   </td>
                   {answeredSuppliers.map(s => {
                     const frVal = s.free_shipping || s.freight === 0 ? 0 : (s.freight ?? null)
@@ -600,6 +641,7 @@ export default function MapaCotacaoPage() {
               </tfoot>
             </table>
           </div>
+          </div>{/* fim overflow-x-auto */}
         </div>
       )}
 
@@ -782,9 +824,16 @@ export default function MapaCotacaoPage() {
             disabled={generating}
             className="w-full py-3.5 rounded-2xl bg-[#1565C0] text-white font-bold text-sm shadow-2xl flex items-center justify-center gap-2 hover:bg-[#0D47A1] disabled:opacity-60 transition-colors">
             {generating ? <Loader2 size={16} className="animate-spin" /> : <ShoppingCart size={16} />}
-            {generating
-              ? "Gerando..."
-              : `Gerar ${ordensPorFornecedor.length === 1 ? "ordem de compra" : `${ordensPorFornecedor.length} ordens de compra`} (${Object.keys(itemSelection).length} itens)`}
+            <span>
+              {generating
+                ? "Gerando..."
+                : `Gerar ${ordensPorFornecedor.length === 1 ? "OC" : `${ordensPorFornecedor.length} OCs`} · ${Object.keys(itemSelection).length} itens`}
+            </span>
+            {!generating && compraSavings != null && (
+              <span className="ml-1 bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                -{compraSavings.pct}%
+              </span>
+            )}
           </button>
         </div>
       )}
@@ -799,9 +848,16 @@ export default function MapaCotacaoPage() {
             disabled={generating}
             className="w-full py-3.5 rounded-2xl bg-[#1565C0] text-white font-bold text-sm shadow-2xl flex items-center justify-center gap-2 hover:bg-[#0D47A1] disabled:opacity-60 transition-colors">
             {generating ? <Loader2 size={16} className="animate-spin" /> : <ShoppingCart size={16} />}
-            {generating
-              ? "Gerando..."
-              : `Gerar ${selectedSuppliers.size === 1 ? "ordem de compra" : `${selectedSuppliers.size} ordens de compra`}`}
+            <span>
+              {generating
+                ? "Gerando..."
+                : `Gerar ${selectedSuppliers.size === 1 ? "OC" : `${selectedSuppliers.size} OCs`} · ${fmtBRL(selectedSupplierList.reduce((s, sup) => s + sup.total, 0))}`}
+            </span>
+            {!generating && fornecedorSavings != null && (
+              <span className="ml-1 bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                -{fornecedorSavings.pct}%
+              </span>
+            )}
           </button>
         </div>
       )}
