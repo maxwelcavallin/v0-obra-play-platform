@@ -50,6 +50,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Campos obrigatórios ausentes: id, quotation" }, { status: 422 })
   }
 
+  try {
+
   // Busca a cotação local pelo obraplay_quotation_id
   const [cotacao] = await sql`
     SELECT id, status FROM cotacoes
@@ -79,6 +81,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Helpers de conversão segura de tipos
+  const toInt  = (v: any) => (v != null && !isNaN(parseInt(v))) ? parseInt(v) : null
+  const toStr  = (v: any) => (v != null) ? String(v) : null
+  const toBool = (v: any) => (v === true || v === "true" || v === 1) ? true : (v === false || v === "false" || v === 0) ? false : null
+  const toTs   = (v: any) => (v != null && v !== "") ? v : null
+
   // Upsert na tabela cotacao_respostas
   const [resposta] = await sql`
     INSERT INTO cotacao_respostas (
@@ -90,14 +98,14 @@ export async function POST(req: NextRequest) {
       ${cotacaoId},
       ${fornecedorId},
       ${opAnswerId},
-      ${answer.supplier_foreign_id ?? null},
-      ${answer.payment_method ?? null},
-      ${answer.installments ?? null},
-      ${answer.installments_observations ?? null},
-      ${answer.arrival_estimate ?? null},
-      ${answer.valid_until ?? null},
-      ${answer.observations ?? null},
-      ${answer.answered_at ?? null},
+      ${toStr(answer.supplier_foreign_id)},
+      ${toInt(answer.payment_method)},
+      ${toStr(answer.installments)},
+      ${toStr(answer.installments_observations)},
+      ${toTs(answer.arrival_estimate)},
+      ${toTs(answer.valid_until)},
+      ${toStr(answer.observations)},
+      ${toTs(answer.answered_at)},
       ${JSON.stringify(payload)}
     )
     ON CONFLICT (cotacao_id, op_answer_id) DO UPDATE SET
@@ -115,17 +123,15 @@ export async function POST(req: NextRequest) {
 
   const respostaId: string = resposta.id
 
-  // Salva itens respondidos
+  // Salva itens respondidos — DELETE + INSERT para evitar problema de ON CONFLICT sem unique em (resposta_id, op_item_id)
   if (Array.isArray(answer.answered_items)) {
+    await sql`DELETE FROM cotacao_resposta_itens WHERE resposta_id = ${respostaId}`
     for (const ai of answer.answered_items) {
-      // Tenta casar o item da cotação pelo op_item_id que foi enviado ao criar (cotacao_itens.op_item_id)
       const [localItem] = await sql`
         SELECT id FROM cotacao_itens
-        WHERE cotacao_id = ${cotacaoId}
-          AND op_item_id = ${ai.id}
+        WHERE cotacao_id = ${cotacaoId} AND op_item_id = ${ai.id}
         LIMIT 1
       `
-
       await sql`
         INSERT INTO cotacao_resposta_itens (
           resposta_id, cotacao_item_id, op_item_id,
@@ -135,22 +141,22 @@ export async function POST(req: NextRequest) {
         ) VALUES (
           ${respostaId},
           ${localItem?.id ?? null},
-          ${ai.id},
-          ${ai.answered ?? false},
-          ${ai.available ?? false},
-          ${ai.unit_price_micros ?? null},
+          ${toInt(ai.id)},
+          ${toBool(ai.answered) ?? false},
+          ${toBool(ai.available) ?? false},
+          ${toInt(ai.unit_price_micros)},
           ${ai.quantity ?? null},
-          ${ai.total_quantity_micros ?? null},
+          ${toInt(ai.total_quantity_micros)},
           ${ai.discount ?? 0},
-          ${ai.total_discount_micros ?? null}
+          ${toInt(ai.total_discount_micros)}
         )
-        ON CONFLICT DO NOTHING
       `
     }
   }
 
-  // Salva fretes
+  // Salva fretes — DELETE + INSERT pelo mesmo motivo
   if (Array.isArray(answer.answered_shipping_addresses)) {
+    await sql`DELETE FROM cotacao_resposta_fretes WHERE resposta_id = ${respostaId}`
     for (const addr of answer.answered_shipping_addresses) {
       await sql`
         INSERT INTO cotacao_resposta_fretes (
@@ -158,13 +164,12 @@ export async function POST(req: NextRequest) {
           total_freight_micros, free_shipping, answered
         ) VALUES (
           ${respostaId},
-          ${addr.id},
+          ${toInt(addr.id)},
           ${addr.freight ?? null},
-          ${addr.total_freight_micros ?? null},
-          ${addr.free_shipping ?? false},
-          ${addr.answered ?? false}
+          ${toInt(addr.total_freight_micros)},
+          ${toBool(addr.free_shipping) ?? false},
+          ${toBool(addr.answered) ?? false}
         )
-        ON CONFLICT DO NOTHING
       `
     }
   }
@@ -179,4 +184,8 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ ok: true, resposta_id: respostaId })
+} catch (err: any) {
+  console.error("[webhook] Erro interno:", err?.message ?? err)
+  console.error("[webhook] Stack:", err?.stack)
+  return NextResponse.json({ error: "Erro interno", detail: err?.message }, { status: 500 })
 }
