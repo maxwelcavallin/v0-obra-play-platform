@@ -253,10 +253,19 @@ export async function POST(req: NextRequest) {
 
     console.log("[webhook] respostas inseridas com sucesso")
 
-    // 6. Atualiza status da cotação para "Respondida"
-    if (cotacao.status !== "Respondida" && cotacao.status !== "Cancelada") {
-      await sql`UPDATE cotacoes SET status = 'Respondida', updated_at = now() WHERE id = ${cotacaoId}`
-      console.log("[webhook] cotacao atualizada para Respondida")
+    // 6. Atualiza status da cotação: "Respondida" se todos responderam, senão "Parcialmente respondida"
+    if (cotacao.status !== "Cancelada") {
+      const [{ total_forn, total_resp }] = await sql`
+        SELECT
+          COUNT(*)::int                                        AS total_forn,
+          COUNT(DISTINCT cr.cotacao_fornecedor_id)::int        AS total_resp
+        FROM cotacao_fornecedores cf
+        LEFT JOIN cotacao_respostas cr ON cr.cotacao_fornecedor_id = cf.id
+        WHERE cf.cotacao_id = ${cotacaoId}
+      `
+      const novoStatus = total_resp >= total_forn ? "Respondida" : "Parcialmente respondida"
+      await sql`UPDATE cotacoes SET status = ${novoStatus}, updated_at = now() WHERE id = ${cotacaoId}`
+      console.log("[webhook] cotacao atualizada para", novoStatus, `(${total_resp}/${total_forn})`)
     }
 
     return NextResponse.json({ ok: true, op_answer_id: opAnswerId, itens_inseridos: answeredItems.length || itens.length })

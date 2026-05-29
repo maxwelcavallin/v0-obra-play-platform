@@ -40,13 +40,16 @@ interface SupplierMap {
   mirror_company_id?: number
   obraplay_answer_id?: number | null
   answered: boolean
-  payment_method?: number | null
+  payment_method?: string | null
+  installments?: string | null
+  installments_obs?: string | null
   arrival_estimate?: string | null
   valid_until?: string | null
   observations?: string | null
   answered_items: AnsweredItem[]
   subtotal: number
   freight: number | null
+  free_shipping: boolean
   total: number
 }
 
@@ -72,8 +75,19 @@ function fmtDate(d?: string | null) {
   return new Date(d).toLocaleDateString("pt-BR")
 }
 
-const PAYMENT_LABELS: Record<number, string> = {
-  1: "À vista", 2: "Boleto 30d", 3: "Boleto 60d", 4: "Cartão", 5: "Pix", 6: "Outro"
+const PAYMENT_LABELS: Record<string, string> = {
+  // strings retornadas pelo ObraPlay
+  "cash":           "À vista",
+  "bankslip":       "Boleto",
+  "credit_card":    "Cartão de crédito",
+  "debit_card":     "Cartão de débito",
+  "pix":            "Pix",
+  "check":          "Cheque",
+  "bank_transfer":  "Transferência",
+  "other":          "Outro",
+  // legado numérico (fallback)
+  "1": "À vista", "2": "Boleto 30d", "3": "Boleto 60d",
+  "4": "Cartão",  "5": "Pix",        "6": "Outro",
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -317,12 +331,15 @@ export default function MapaCotacaoPage() {
                     <td className="px-2 py-2.5 text-center text-[#757575]">{item.quantity}</td>
                     {answeredSuppliers.map(s => {
                       const ai = s.answered_items.find(a => a.cotacao_item_id === item.cotacao_item_id)
-                      const isBest = ai?.unit_price != null && minPrices[item.cotacao_item_id] === ai.unit_price
-                      if (!ai || !ai.available || ai.unit_price == null) {
-                        return (
-                          <td key={s.supplier_id} className="px-3 py-2.5 text-center text-[#BDBDBD]">—</td>
-                        )
+                      // Fornecedor não respondeu este item ainda
+                      if (!ai) {
+                        return <td key={s.supplier_id} className="px-3 py-2.5 text-center text-[#BDBDBD] text-[10px]">—</td>
                       }
+                      // Item marcado como indisponível
+                      if (!ai.available) {
+                        return <td key={s.supplier_id} className="px-3 py-2.5 text-center"><span className="text-[10px] text-[#F44336] font-medium">Indisponível</span></td>
+                      }
+                      const isBest = ai.unit_price != null && minPrices[item.cotacao_item_id] === ai.unit_price
                       return (
                         <td key={s.supplier_id} className="px-3 py-2.5 text-center"
                           style={isBest ? { background: "#E8F5E9" } : {}}>
@@ -350,7 +367,10 @@ export default function MapaCotacaoPage() {
                   </td>
                   {answeredSuppliers.map(s => (
                     <td key={s.supplier_id} className="px-3 py-2 text-center text-xs text-[#616161]">
-                      {s.freight == null ? "—" : s.freight === 0 ? "Grátis" : fmtBRL(s.freight)}
+                      {s.free_shipping ? <span className="text-[#4CAF50] font-semibold">Grátis</span>
+                        : s.freight == null ? "—"
+                        : s.freight === 0 ? <span className="text-[#4CAF50] font-semibold">Grátis</span>
+                        : fmtBRL(s.freight)}
                     </td>
                   ))}
                 </tr>
@@ -364,7 +384,7 @@ export default function MapaCotacaoPage() {
                   <td colSpan={3} className="px-3 py-1.5 text-xs text-[#9E9E9E] sticky left-0 bg-[#FAFAFA] z-10">Forma pgto.</td>
                   {answeredSuppliers.map(s => (
                     <td key={s.supplier_id} className="px-3 py-1.5 text-center text-[10px] text-[#757575]">
-                      {s.payment_method ? PAYMENT_LABELS[s.payment_method] ?? "—" : "—"}
+                      {s.payment_method ? (PAYMENT_LABELS[String(s.payment_method)] ?? s.payment_method) : "—"}
                     </td>
                   ))}
                 </tr>
@@ -419,9 +439,11 @@ export default function MapaCotacaoPage() {
                     {s.answered_items.map(ai => (
                       <div key={ai.cotacao_item_id} className="flex justify-between text-xs text-[#616161]">
                         <span className="truncate mr-2">{ai.name}</span>
-                        {ai.available && ai.unit_price != null
-                          ? <span className="font-medium text-[#212121] flex-shrink-0">{fmtBRL(ai.total_price)}</span>
-                          : <span className="text-[#BDBDBD] flex-shrink-0">—</span>
+                        {!ai.available
+                          ? <span className="text-[#F44336] font-medium flex-shrink-0 text-[10px]">Indisponível</span>
+                          : ai.unit_price != null
+                            ? <span className="font-medium text-[#212121] flex-shrink-0">{fmtBRL(ai.total_price)}</span>
+                            : <span className="text-[#BDBDBD] flex-shrink-0">—</span>
                         }
                       </div>
                     ))}
@@ -433,11 +455,24 @@ export default function MapaCotacaoPage() {
                     </div>
                     <div className="flex justify-between text-xs text-[#757575]">
                       <span>Frete</span>
-                      <span>{s.freight == null ? "—" : s.freight === 0 ? "Grátis" : fmtBRL(s.freight)}</span>
+                      <span className={s.free_shipping || s.freight === 0 ? "text-[#4CAF50] font-semibold" : ""}>
+                        {s.free_shipping || s.freight === 0 ? "Grátis" : s.freight == null ? "—" : fmtBRL(s.freight)}
+                      </span>
                     </div>
                     {s.payment_method && (
                       <div className="flex justify-between text-xs text-[#757575]">
-                        <span>Pagamento</span><span>{PAYMENT_LABELS[s.payment_method] ?? "—"}</span>
+                        <span>Pagamento</span>
+                        <span>{PAYMENT_LABELS[String(s.payment_method)] ?? s.payment_method}</span>
+                      </div>
+                    )}
+                    {s.installments && (
+                      <div className="flex justify-between text-xs text-[#757575]">
+                        <span>Parcelas</span><span>{s.installments}</span>
+                      </div>
+                    )}
+                    {s.arrival_estimate && (
+                      <div className="flex justify-between text-xs text-[#757575]">
+                        <span>Prazo entrega</span><span>{fmtDate(s.arrival_estimate)}</span>
                       </div>
                     )}
                   </div>

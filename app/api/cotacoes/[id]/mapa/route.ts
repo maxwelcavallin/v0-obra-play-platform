@@ -111,6 +111,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       answered_items:    answeredItems,
       subtotal,
       freight,
+      free_shipping:     freteLinha?.free_shipping ?? false,
       total,
     }
   })

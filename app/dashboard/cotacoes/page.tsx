@@ -29,8 +29,9 @@ interface Cotacao {
 }
 
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  "Enviada":          { label: "Enviada",           color: "#1565C0", bg: "#E3F2FD" },
-  "Respondida":       { label: "Respondida",       color: "#4CAF50", bg: "#E8F5E9" },
+  "Enviada":                  { label: "Enviada",                  color: "#1565C0", bg: "#E3F2FD" },
+  "Parcialmente respondida":  { label: "Parcialmente respondida",  color: "#FF9800", bg: "#FFF3E0" },
+  "Respondida":               { label: "Respondida",               color: "#4CAF50", bg: "#E8F5E9" },
   "Pendente revisão": { label: "Pendente revisão", color: "#FF9800", bg: "#FFF3E0" },
   "Convertida":       { label: "Convertida",       color: "#9C27B0", bg: "#F3E5F5" },
   "Cancelada":        { label: "Cancelada",        color: "#F44336", bg: "#FFEBEE" },
@@ -39,8 +40,9 @@ const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> =
 
 const TABS = [
   { label: "Todas",       value: "Todas" },
-  { label: "Enviadas",     value: "Enviada" },
-  { label: "Respondidas", value: "Respondida" },
+  { label: "Enviadas",               value: "Enviada" },
+  { label: "Parc. respondidas",      value: "Parcialmente respondida" },
+  { label: "Respondidas",            value: "Respondida" },
   { label: "Canceladas",  value: "Cancelada" },
   { label: "Rascunhos",   value: "Rascunho" },
 ]
