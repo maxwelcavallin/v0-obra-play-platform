@@ -382,8 +382,8 @@ export default function CotacaoDetalhePage() {
 
           <div className="flex flex-col gap-2 mt-1">
             {suppliersToShow.map(s => (
-              <div key={s.id} className="flex items-center gap-3 py-2 border-b border-[#F5F5F5] last:border-0">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+              <div key={s.id} className="flex items-start gap-3 py-2.5 border-b border-[#F5F5F5] last:border-0">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5"
                   style={{ backgroundColor: getColor(s.supplier_name) }}>
                   {getInitials(s.supplier_name)}
                 </div>
@@ -418,25 +418,26 @@ export default function CotacaoDetalhePage() {
                       </span>
                     )}
                   </div>
-
-                  {/* Link de resposta individual — usa op_answer_id do fornecedor */}
-                  {s.op_answer_id && cotacao.obraplay_quotation_key && (() => {
-                    const link = `https://app.obraplay.com/resposta-cotacoes/${s.op_answer_id}?chave=${cotacao.obraplay_quotation_key}`
-                    return (
-                      <div className="flex items-center gap-2 mt-1.5 bg-[#F8FBFF] border border-[#E3F2FD] rounded-lg px-2.5 py-1.5">
-                        <Globe size={11} className="text-[#1565C0] flex-shrink-0" />
-                        <p className="flex-1 text-[11px] text-[#616161] font-mono truncate">{link}</p>
-                        <button
-                          type="button"
-                          onClick={() => { navigator.clipboard.writeText(link); toast.success("Link copiado!") }}
-                          className="flex-shrink-0 flex items-center gap-1 text-[11px] font-semibold text-[#1565C0] hover:text-[#0D47A1] transition-colors">
-                          <Copy size={11} />
-                          Copiar
-                        </button>
-                      </div>
-                    )
-                  })()}
                 </div>
+
+                {/* Botão copiar link — visível quando há op_answer_id */}
+                {s.op_answer_id && cotacao.obraplay_quotation_key ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const link = `https://app-staging.obraplay.com/resposta-cotacoes/${s.op_answer_id}?chave=${cotacao.obraplay_quotation_key}`
+                      navigator.clipboard.writeText(link)
+                      toast.success("Link copiado!")
+                    }}
+                    className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#E3F2FD] bg-[#F8FBFF] text-[#1565C0] text-[11px] font-semibold hover:bg-[#E3F2FD] transition-colors">
+                    <Copy size={11} />
+                    Copiar link
+                  </button>
+                ) : cotacao.obraplay_quotation_id ? (
+                  <span className="flex-shrink-0 text-[11px] text-[#BDBDBD] font-medium px-1">
+                    Aguardando resposta
+                  </span>
+                ) : null}
               </div>
             ))}
           </div>
