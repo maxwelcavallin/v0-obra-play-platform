@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
         ${fornecedorId},
         ${opAnswerId},
         ${toStr(answer.supplier_foreign_id)},
-        ${toInt(answer.payment_method)},
+        ${toStr(answer.payment_method)},
         ${toStr(answer.installments)},
         ${toStr(answer.installments_observations)},
         ${toTs(answer.arrival_estimate)},
