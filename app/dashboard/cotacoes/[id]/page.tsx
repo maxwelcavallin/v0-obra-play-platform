@@ -433,10 +433,6 @@ export default function CotacaoDetalhePage() {
                     <Copy size={11} />
                     Copiar link
                   </button>
-                ) : cotacao.obraplay_quotation_id ? (
-                  <span className="flex-shrink-0 text-[11px] text-[#BDBDBD] font-medium px-1">
-                    Aguardando resposta
-                  </span>
                 ) : null}
               </div>
             ))}
