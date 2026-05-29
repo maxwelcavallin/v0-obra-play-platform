@@ -32,7 +32,9 @@ interface CotacaoFornecedor {
 interface Cotacao {
   id: string
   identifier: string
+  obraplay_quotation_id?: number
   obraplay_quotation_code?: string
+  obraplay_quotation_key?: string
   status: string
   need_date?: string
   expiry_date?: string
@@ -307,9 +309,35 @@ export default function CotacaoDetalhePage() {
           {cotacao.is_public && (
             <div className="flex items-center gap-2 mt-2 bg-[#E3F2FD] rounded-xl px-3 py-2">
               <Globe size={13} className="text-[#1565C0]" />
-              <p className="text-xs text-[#1565C0] font-semibold">Cotação pública ��� visível a todos os fornecedores</p>
+              <p className="text-xs text-[#1565C0] font-semibold">Cotação pública — visível a todos os fornecedores</p>
             </div>
           )}
+
+          {/* Link de resposta do ObraPlay */}
+          {cotacao.obraplay_quotation_id && cotacao.obraplay_quotation_key && (() => {
+            const link = `https://app.obraplay.com/resposta-cotacoes/${cotacao.obraplay_quotation_id}?chave=${cotacao.obraplay_quotation_key}`
+            return (
+              <div className="mt-3 rounded-xl border border-[#E3F2FD] bg-[#F8FBFF] px-3 py-3">
+                <p className="text-[11px] font-semibold text-[#1565C0] mb-1.5 flex items-center gap-1.5">
+                  <Globe size={11} />
+                  Link de resposta (ObraPlay)
+                </p>
+                <div className="flex items-center gap-2 bg-white rounded-lg border border-[#E0E0E0] px-3 py-2">
+                  <p className="flex-1 text-[11px] text-[#424242] font-mono truncate">{link}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(link)
+                      toast.success("Link copiado!")
+                    }}
+                    className="flex-shrink-0 flex items-center gap-1 text-[11px] font-semibold text-[#1565C0] hover:text-[#0D47A1] transition-colors">
+                    <Copy size={12} />
+                    Copiar
+                  </button>
+                </div>
+              </div>
+            )
+          })()}
         </Section>
 
         {/* Banner de rascunho */}

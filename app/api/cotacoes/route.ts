@@ -259,13 +259,18 @@ export async function POST(req: NextRequest) {
   try {
     const opRes = await obraplay.quotations.createNested(opPayload)
     const opCode = opRes.code ?? null
+    const opKey  = opRes.key ?? opRes.hash ?? opRes.token ?? null
     await sql`
       UPDATE cotacoes
-      SET obraplay_quotation_id = ${opRes.id}, obraplay_quotation_code = ${opCode}, status = 'Nova'
+      SET obraplay_quotation_id   = ${opRes.id},
+          obraplay_quotation_code = ${opCode},
+          obraplay_quotation_key  = ${opKey},
+          status = 'Nova'
       WHERE id = ${cotacao.id}
     `
-    cotacao.obraplay_quotation_id = opRes.id
+    cotacao.obraplay_quotation_id   = opRes.id
     cotacao.obraplay_quotation_code = opCode
+    cotacao.obraplay_quotation_key  = opKey
 
     // Tenta salvar op_item_id nos itens locais casando por nome com os itens retornados pelo ObraPlay
     // O ObraPlay retorna os itens dentro de shipping_addresses[0].items
