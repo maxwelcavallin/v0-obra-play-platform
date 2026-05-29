@@ -473,8 +473,8 @@ export default function CotacaoDetalhePage() {
           )}
         </Section>
 
-        {/* Botão Visualizar mapa — somente para cotações respondidas */}
-        {cotacao.status === "Respondida" && (
+        {/* Botão Visualizar mapa — disponível para cotações respondidas ou parcialmente respondidas */}
+        {(cotacao.status === "Respondida" || cotacao.status === "Parcialmente respondida") && (
           <button
             onClick={() => router.push(`/dashboard/cotacoes/${id}/mapa`)}
             className="w-full py-3.5 rounded-2xl bg-[#1565C0] text-white font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#0D47A1] transition-colors shadow-sm">
