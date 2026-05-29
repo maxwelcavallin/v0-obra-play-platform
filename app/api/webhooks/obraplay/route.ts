@@ -3,28 +3,17 @@ import { sql } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
-// O ObraPlay envia o payload como POST com um header de autenticação.
-// Configure OBRAPLAY_WEBHOOK_SECRET com o token que o ObraPlay usa no header
-// "Authorization: Token <secret>" ou "X-Webhook-Secret: <secret>".
-function validateSecret(req: NextRequest): boolean {
-  const secret = process.env.OBRAPLAY_WEBHOOK_SECRET
-  if (!secret) return true // sem configuração: aceita tudo (apenas dev)
-
-  const authHeader = req.headers.get("authorization") ?? ""
-  const secretHeader = req.headers.get("x-webhook-secret") ?? ""
-
-  if (authHeader.startsWith("Token ")) {
-    return authHeader.slice(6).trim() === secret
-  }
-  if (secretHeader) {
-    return secretHeader.trim() === secret
-  }
-  return false
+// Autenticação via query param: POST /api/webhooks/obraplay?key=<OBRAPLAY_INTEGRATION_KEY>
+function validateKey(req: NextRequest): boolean {
+  const expected = process.env.OBRAPLAY_INTEGRATION_KEY
+  if (!expected) return true // sem configuração: aceita tudo (apenas dev)
+  const provided = req.nextUrl.searchParams.get("key") ?? ""
+  return provided === expected
 }
 
 export async function POST(req: NextRequest) {
-  // Valida autenticação
-  if (!validateSecret(req)) {
+  // Valida chave de integração via ?key=
+  if (!validateKey(req)) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
   }
 
