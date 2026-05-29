@@ -129,16 +129,21 @@ export async function POST(req: NextRequest) {
     const respostaId: string = resposta.id
     console.log("[webhook] resposta upsertada:", respostaId)
 
-    // Salva itens respondidos — DELETE + INSERT (sem unique constraint em (resposta_id, op_item_id))
-    if (Array.isArray(answer.answered_items)) {
-      console.log("[webhook] salvando", answer.answered_items.length, "itens...")
+    // Salva itens respondidos — DELETE + INSERT
+    // O ObraPlay pode enviar os itens em "answered_items" ou "items"
+    // Cada item usa "item" (int) como ID do item da cotação, não "id"
+    const answeredItems: any[] = answer.answered_items ?? answer.items ?? []
+    if (answeredItems.length > 0) {
+      console.log("[webhook] salvando", answeredItems.length, "itens... primeiro item:", JSON.stringify(answeredItems[0]))
       await sql`DELETE FROM cotacao_resposta_itens WHERE resposta_id = ${respostaId}`
-      for (const ai of answer.answered_items) {
-        const [localItem] = await sql`
+      for (const ai of answeredItems) {
+        // O ID do item vem no campo "item" (foreign key) ou "id" como fallback
+        const opItemId = toInt(ai.item ?? ai.id ?? null)
+        const [localItem] = opItemId ? await sql`
           SELECT id FROM cotacao_itens
-          WHERE cotacao_id = ${cotacaoId} AND op_item_id = ${ai.id}
+          WHERE cotacao_id = ${cotacaoId} AND op_item_id = ${opItemId}
           LIMIT 1
-        `
+        ` : [null]
         await sql`
           INSERT INTO cotacao_resposta_itens (
             resposta_id, cotacao_item_id, op_item_id,
@@ -148,7 +153,7 @@ export async function POST(req: NextRequest) {
           ) VALUES (
             ${respostaId},
             ${localItem?.id ?? null},
-            ${toInt(ai.id)},
+            ${opItemId},
             ${toBool(ai.answered)},
             ${toBool(ai.available)},
             ${toInt(ai.unit_price_micros)},
@@ -163,17 +168,21 @@ export async function POST(req: NextRequest) {
     }
 
     // Salva fretes — DELETE + INSERT
-    if (Array.isArray(answer.answered_shipping_addresses)) {
-      console.log("[webhook] salvando", answer.answered_shipping_addresses.length, "fretes...")
+    // O ObraPlay pode enviar em "answered_shipping_addresses" ou "shipping_addresses"
+    const answeredFretes: any[] = answer.answered_shipping_addresses ?? answer.shipping_addresses ?? []
+    if (answeredFretes.length > 0) {
+      console.log("[webhook] salvando", answeredFretes.length, "fretes... primeiro frete:", JSON.stringify(answeredFretes[0]))
       await sql`DELETE FROM cotacao_resposta_fretes WHERE resposta_id = ${respostaId}`
-      for (const addr of answer.answered_shipping_addresses) {
+      for (const addr of answeredFretes) {
+        // O ID do endereço pode estar em "shipping_address" (FK) ou "id"
+        const addrId = toInt(addr.shipping_address ?? addr.id ?? null)
         await sql`
           INSERT INTO cotacao_resposta_fretes (
             resposta_id, op_address_id, freight,
             total_freight_micros, free_shipping, answered
           ) VALUES (
             ${respostaId},
-            ${toInt(addr.id)},
+            ${addrId},
             ${addr.freight ?? null},
             ${toInt(addr.total_freight_micros)},
             ${toBool(addr.free_shipping)},
