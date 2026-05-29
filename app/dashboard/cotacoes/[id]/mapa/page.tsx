@@ -647,6 +647,7 @@ export default function MapaCotacaoPage() {
 
       {/* ── MODO MELHOR FORNECEDOR ── */}
       {mode === "fornecedor" && answeredSuppliers.length > 0 && (
+        <>
         <div className="px-4 mt-4 flex flex-col gap-3">
           {bestSupplierId === null && (
             <div className="bg-[#FFF3E0] border border-[#FFE0B2] rounded-xl p-4 flex items-center gap-3">
@@ -814,6 +815,7 @@ export default function MapaCotacaoPage() {
             ))}
           </div>
         )}
+        </>
       )}
 
       {/* Botão flutuante — Melhor Compra */}

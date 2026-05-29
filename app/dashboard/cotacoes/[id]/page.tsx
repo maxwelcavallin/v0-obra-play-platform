@@ -26,6 +26,10 @@ interface CotacaoFornecedor {
   supplier_phone?: string
   is_recommended: boolean
   mirror_company_id?: number
+  op_answer_id?: number | null
+  op_answer_key?: string | null
+  has_response?: boolean
+  is_refused?: boolean
   created_at: string
 }
 
