@@ -6,36 +6,31 @@ export const dynamic = "force-dynamic"
 // Autenticação via query param: POST /api/webhooks/obraplay?key=<OBRAPLAY_INTEGRATION_KEY>
 function validateKey(req: NextRequest): boolean {
   const expected = process.env.OBRAPLAY_INTEGRATION_KEY
-  if (!expected) return true // sem configuração: aceita tudo (apenas dev)
+  if (!expected) return true
   const provided = req.nextUrl.searchParams.get("key") ?? ""
   return provided === expected
 }
 
-// Helpers de conversão segura de tipos
-const toInt  = (v: any) => (v != null && !isNaN(parseInt(v))) ? parseInt(v) : null
-const toStr  = (v: any) => (v != null) ? String(v) : null
+const toInt  = (v: any): number | null => (v != null && !isNaN(parseInt(v))) ? parseInt(v) : null
+const toStr  = (v: any): string | null => (v != null) ? String(v) : null
 const toBool = (v: any, fallback = false): boolean =>
   v === true || v === "true" || v === 1 ? true : v === false || v === "false" || v === 0 ? false : fallback
-const toTs   = (v: any) => (v != null && v !== "") ? v : null
+const toTs   = (v: any): string | null => (v != null && v !== "") ? String(v) : null
+const toDec  = (v: any): string | null => (v != null && !isNaN(parseFloat(v))) ? String(v) : null
 
 export async function POST(req: NextRequest) {
-  // 1. Valida chave de integração
   if (!validateKey(req)) {
-    console.log("[webhook] chave inválida")
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
   }
 
-  // 2. Parse do payload
   let payload: any
   try {
     payload = await req.json()
-  } catch (e) {
-    console.error("[webhook] Payload JSON inválido:", e)
+  } catch {
     return NextResponse.json({ error: "Payload inválido" }, { status: 400 })
   }
 
-  // 3. Extrai opAnswerId e opQuotationId do envelope do ObraPlay
-  // Formato: { hook: { event }, data: { model, pk, fields: { quotation, ... } } }
+  // Extrai do envelope ObraPlay: { hook, data: { model, pk, fields } }
   let opAnswerId: number | undefined
   let opQuotationId: number | undefined
   let answer: any
@@ -53,156 +48,218 @@ export async function POST(req: NextRequest) {
   console.log("[webhook] event:", payload?.hook?.event, "| opAnswerId:", opAnswerId, "| opQuotationId:", opQuotationId)
 
   if (!opAnswerId || !opQuotationId) {
-    console.log("[webhook] campos ausentes — payload completo:", JSON.stringify(payload))
-    return NextResponse.json({ error: "Campos obrigatórios ausentes: id, quotation" }, { status: 422 })
+    console.log("[webhook] campos ausentes — payload:", JSON.stringify(payload))
+    return NextResponse.json({ error: "Campos obrigatórios ausentes" }, { status: 422 })
   }
 
-  // 4. Processamento principal
   try {
-    // Busca a cotação local pelo obraplay_quotation_id
-    console.log("[webhook] buscando cotacao com obraplay_quotation_id =", opQuotationId)
+    // 1. Busca cotação local pelo obraplay_quotation_id
     const [cotacao] = await sql`
-      SELECT id, status FROM cotacoes
+      SELECT id, status, identifier, need_date, expiry_date,
+             general_notes, address_type, is_public,
+             requester_name, requester_email, requester_phone
+      FROM cotacoes
       WHERE obraplay_quotation_id = ${opQuotationId}
       LIMIT 1
     `
-
     if (!cotacao) {
       console.log("[webhook] cotação ObraPlay", opQuotationId, "não encontrada localmente")
       return NextResponse.json({ ok: true, warning: "cotação não encontrada localmente" })
     }
-
     const cotacaoId: string = cotacao.id
-    console.log("[webhook] cotacao encontrada:", cotacaoId, "| status atual:", cotacao.status)
+    console.log("[webhook] cotacao:", cotacaoId, "| status:", cotacao.status)
 
-    // Tenta casar o fornecedor pelo mirror_company_id = supplier_foreign_id
-    let fornecedorId: string | null = null
+    // 2. Busca fornecedor local pelo mirror_company_id = supplier_foreign_id
+    let fornecedor: any = null
     if (answer.supplier_foreign_id) {
       const mirrorId = toInt(answer.supplier_foreign_id)
       if (mirrorId) {
-        const [forn] = await sql`
-          SELECT id FROM cotacao_fornecedores
-          WHERE cotacao_id = ${cotacaoId}
-            AND mirror_company_id = ${mirrorId}
+        const [f] = await sql`
+          SELECT id, supplier_name, supplier_city, supplier_email,
+                 supplier_phone, mirror_company_id
+          FROM cotacao_fornecedores
+          WHERE cotacao_id = ${cotacaoId} AND mirror_company_id = ${mirrorId}
           LIMIT 1
         `
-        fornecedorId = forn?.id ?? null
-        console.log("[webhook] fornecedor mirror_company_id =", mirrorId, "| fornecedorId:", fornecedorId)
+        fornecedor = f ?? null
       }
     }
+    console.log("[webhook] fornecedor:", fornecedor?.id ?? "não casado")
 
-    // Upsert na tabela cotacao_respostas
-    console.log("[webhook] upserting cotacao_respostas...")
-    const [resposta] = await sql`
-      INSERT INTO cotacao_respostas (
-        cotacao_id, cotacao_fornecedor_id, op_answer_id,
-        supplier_foreign_id, payment_method, installments,
-        installments_obs, arrival_estimate, valid_until,
-        observations, answered_at, raw_payload
-      ) VALUES (
-        ${cotacaoId},
-        ${fornecedorId},
-        ${opAnswerId},
-        ${toStr(answer.supplier_foreign_id)},
-        ${toStr(answer.payment_method)},
-        ${toStr(answer.installments)},
-        ${toStr(answer.installments_observations)},
-        ${toTs(answer.arrival_estimate)},
-        ${toTs(answer.valid_until)},
-        ${toStr(answer.observations)},
-        ${toTs(answer.answered_at)},
-        ${JSON.stringify(payload)}
-      )
-      ON CONFLICT (cotacao_id, op_answer_id) DO UPDATE SET
-        payment_method   = EXCLUDED.payment_method,
-        installments     = EXCLUDED.installments,
-        installments_obs = EXCLUDED.installments_obs,
-        arrival_estimate = EXCLUDED.arrival_estimate,
-        valid_until      = EXCLUDED.valid_until,
-        observations     = EXCLUDED.observations,
-        answered_at      = EXCLUDED.answered_at,
-        raw_payload      = EXCLUDED.raw_payload,
-        updated_at       = now()
-      RETURNING id
+    // 3. Busca todos os itens originais da cotação
+    const itens = await sql`
+      SELECT id, insumo_id, name, unit, quantity, op_item_id
+      FROM cotacao_itens
+      WHERE cotacao_id = ${cotacaoId}
+      ORDER BY created_at
     `
 
-    const respostaId: string = resposta.id
-    console.log("[webhook] resposta upsertada:", respostaId)
-
-    // Salva itens respondidos — DELETE + INSERT
-    // O ObraPlay pode enviar os itens em "answered_items" ou "items"
-    // Cada item usa "item" (int) como ID do item da cotação, não "id"
+    // 4. Processa itens respondidos
+    // O ObraPlay usa "item" como FK do item, os campos vêm dentro de data.fields.answered_items
     const answeredItems: any[] = answer.answered_items ?? answer.items ?? []
+    console.log("[webhook] itens respondidos:", answeredItems.length, "| itens locais:", itens.length)
     if (answeredItems.length > 0) {
-      console.log("[webhook] salvando", answeredItems.length, "itens... primeiro item:", JSON.stringify(answeredItems[0]))
-      await sql`DELETE FROM cotacao_resposta_itens WHERE resposta_id = ${respostaId}`
+      console.log("[webhook] primeiro item respondido:", JSON.stringify(answeredItems[0]))
+    }
+
+    // Frete — pode ser único (campo direto) ou em array
+    const answeredFretes: any[] = answer.answered_shipping_addresses ?? answer.shipping_addresses ?? []
+    const freteUnico = answeredFretes[0] ?? null
+
+    // 5. DELETE + INSERT das linhas desnormalizadas para este op_answer_id
+    await sql`DELETE FROM cotacao_respostas WHERE cotacao_id = ${cotacaoId} AND op_answer_id = ${opAnswerId}`
+
+    if (answeredItems.length > 0) {
+      // Uma linha por item respondido
       for (const ai of answeredItems) {
-        // O ID do item vem no campo "item" (foreign key) ou "id" como fallback
+        // Casa item pelo campo "item" (FK do ObraPlay) ou por posição
         const opItemId = toInt(ai.item ?? ai.id ?? null)
-        const [localItem] = opItemId ? await sql`
-          SELECT id FROM cotacao_itens
-          WHERE cotacao_id = ${cotacaoId} AND op_item_id = ${opItemId}
-          LIMIT 1
-        ` : [null]
+        const localItem = opItemId
+          ? itens.find((i: any) => i.op_item_id === opItemId) ?? null
+          : null
+
+        // Frete: casa pelo campo shipping_address do frete correspondente ou usa o único disponível
+        const frete = answeredFretes.find((f: any) =>
+          toInt(f.shipping_address ?? f.id) === toInt(ai.shipping_address ?? null)
+        ) ?? freteUnico
+
         await sql`
-          INSERT INTO cotacao_resposta_itens (
-            resposta_id, cotacao_item_id, op_item_id,
-            answered, available, unit_price_micros,
-            quantity, total_quantity_micros,
-            discount, total_discount_micros
+          INSERT INTO cotacao_respostas (
+            cotacao_id,           cotacao_fornecedor_id,  cotacao_item_id,
+            op_answer_id,         op_item_id,
+            cotacao_identifier,   cotacao_need_date,      cotacao_expiry_date,
+            cotacao_general_notes, cotacao_address_type,  cotacao_is_public,
+            cotacao_requester_name, cotacao_requester_email, cotacao_requester_phone,
+            item_name,            item_unit,              item_quantity,          item_insumo_id,
+            supplier_name,        supplier_city,          supplier_email,
+            supplier_phone,       supplier_foreign_id,    mirror_company_id,
+            payment_method,       installments,           installments_obs,
+            arrival_estimate,     valid_until,            observations,           answered_at,
+            answered,             available,
+            unit_price_micros,    quantity_answered,      total_quantity_micros,
+            discount,             total_discount_micros,
+            freight,              total_freight_micros,   free_shipping,          freight_answered,
+            op_address_id,        raw_payload
           ) VALUES (
-            ${respostaId},
+            ${cotacaoId},
+            ${fornecedor?.id ?? null},
             ${localItem?.id ?? null},
+            ${opAnswerId},
             ${opItemId},
+            ${cotacao.identifier},
+            ${cotacao.need_date ?? null},
+            ${cotacao.expiry_date ?? null},
+            ${cotacao.general_notes ?? null},
+            ${cotacao.address_type ?? null},
+            ${cotacao.is_public ?? false},
+            ${cotacao.requester_name ?? null},
+            ${cotacao.requester_email ?? null},
+            ${cotacao.requester_phone ?? null},
+            ${localItem?.name ?? toStr(ai.item_name) ?? 'Item'},
+            ${localItem?.unit ?? toStr(ai.unit) ?? ''},
+            ${toDec(localItem?.quantity ?? ai.quantity) ?? '0'},
+            ${localItem?.insumo_id ?? null},
+            ${fornecedor?.supplier_name ?? toStr(answer.supplier_name) ?? null},
+            ${fornecedor?.supplier_city ?? null},
+            ${fornecedor?.supplier_email ?? null},
+            ${fornecedor?.supplier_phone ?? null},
+            ${toStr(answer.supplier_foreign_id)},
+            ${toInt(answer.supplier_foreign_id)},
+            ${toStr(answer.payment_method)},
+            ${toStr(answer.installments)},
+            ${toStr(answer.installments_observations ?? answer.installments_obs)},
+            ${toTs(answer.arrival_estimate)},
+            ${toTs(answer.valid_until)},
+            ${toStr(answer.observations)},
+            ${toTs(answer.answered_at)},
             ${toBool(ai.answered)},
             ${toBool(ai.available)},
             ${toInt(ai.unit_price_micros)},
-            ${ai.quantity ?? null},
+            ${toDec(ai.quantity)},
             ${toInt(ai.total_quantity_micros)},
-            ${ai.discount ?? 0},
-            ${toInt(ai.total_discount_micros)}
+            ${toDec(ai.discount) ?? '0'},
+            ${toInt(ai.total_discount_micros)},
+            ${toDec(frete?.freight)},
+            ${toInt(frete?.total_freight_micros)},
+            ${toBool(frete?.free_shipping)},
+            ${toBool(frete?.answered)},
+            ${toInt(frete?.shipping_address ?? frete?.id)},
+            ${JSON.stringify(payload)}
           )
         `
       }
-      console.log("[webhook] itens salvos")
-    }
-
-    // Salva fretes — DELETE + INSERT
-    // O ObraPlay pode enviar em "answered_shipping_addresses" ou "shipping_addresses"
-    const answeredFretes: any[] = answer.answered_shipping_addresses ?? answer.shipping_addresses ?? []
-    if (answeredFretes.length > 0) {
-      console.log("[webhook] salvando", answeredFretes.length, "fretes... primeiro frete:", JSON.stringify(answeredFretes[0]))
-      await sql`DELETE FROM cotacao_resposta_fretes WHERE resposta_id = ${respostaId}`
-      for (const addr of answeredFretes) {
-        // O ID do endereço pode estar em "shipping_address" (FK) ou "id"
-        const addrId = toInt(addr.shipping_address ?? addr.id ?? null)
+    } else {
+      // Sem itens respondidos — insere uma linha por item original com preços nulos
+      for (const localItem of itens) {
         await sql`
-          INSERT INTO cotacao_resposta_fretes (
-            resposta_id, op_address_id, freight,
-            total_freight_micros, free_shipping, answered
+          INSERT INTO cotacao_respostas (
+            cotacao_id,           cotacao_fornecedor_id,  cotacao_item_id,
+            op_answer_id,         op_item_id,
+            cotacao_identifier,   cotacao_need_date,      cotacao_expiry_date,
+            cotacao_general_notes, cotacao_address_type,  cotacao_is_public,
+            cotacao_requester_name, cotacao_requester_email, cotacao_requester_phone,
+            item_name,            item_unit,              item_quantity,          item_insumo_id,
+            supplier_name,        supplier_city,          supplier_email,
+            supplier_phone,       supplier_foreign_id,    mirror_company_id,
+            payment_method,       installments,           installments_obs,
+            arrival_estimate,     valid_until,            observations,           answered_at,
+            answered,             available,
+            freight,              total_freight_micros,   free_shipping,          freight_answered,
+            op_address_id,        raw_payload
           ) VALUES (
-            ${respostaId},
-            ${addrId},
-            ${addr.freight ?? null},
-            ${toInt(addr.total_freight_micros)},
-            ${toBool(addr.free_shipping)},
-            ${toBool(addr.answered)}
+            ${cotacaoId},
+            ${fornecedor?.id ?? null},
+            ${localItem.id},
+            ${opAnswerId},
+            ${localItem.op_item_id ?? null},
+            ${cotacao.identifier},
+            ${cotacao.need_date ?? null},
+            ${cotacao.expiry_date ?? null},
+            ${cotacao.general_notes ?? null},
+            ${cotacao.address_type ?? null},
+            ${cotacao.is_public ?? false},
+            ${cotacao.requester_name ?? null},
+            ${cotacao.requester_email ?? null},
+            ${cotacao.requester_phone ?? null},
+            ${localItem.name},
+            ${localItem.unit},
+            ${String(localItem.quantity)},
+            ${localItem.insumo_id ?? null},
+            ${fornecedor?.supplier_name ?? null},
+            ${fornecedor?.supplier_city ?? null},
+            ${fornecedor?.supplier_email ?? null},
+            ${fornecedor?.supplier_phone ?? null},
+            ${toStr(answer.supplier_foreign_id)},
+            ${toInt(answer.supplier_foreign_id)},
+            ${toStr(answer.payment_method)},
+            ${toStr(answer.installments)},
+            ${toStr(answer.installments_observations ?? answer.installments_obs)},
+            ${toTs(answer.arrival_estimate)},
+            ${toTs(answer.valid_until)},
+            ${toStr(answer.observations)},
+            ${toTs(answer.answered_at)},
+            false,
+            false,
+            ${toDec(freteUnico?.freight)},
+            ${toInt(freteUnico?.total_freight_micros)},
+            ${toBool(freteUnico?.free_shipping)},
+            ${toBool(freteUnico?.answered)},
+            ${toInt(freteUnico?.shipping_address ?? freteUnico?.id)},
+            ${JSON.stringify(payload)}
           )
         `
       }
-      console.log("[webhook] fretes salvos")
     }
 
-    // Atualiza status da cotação para "Respondida"
+    console.log("[webhook] respostas inseridas com sucesso")
+
+    // 6. Atualiza status da cotação para "Respondida"
     if (cotacao.status !== "Respondida" && cotacao.status !== "Cancelada") {
-      await sql`
-        UPDATE cotacoes SET status = 'Respondida', updated_at = now()
-        WHERE id = ${cotacaoId}
-      `
+      await sql`UPDATE cotacoes SET status = 'Respondida', updated_at = now() WHERE id = ${cotacaoId}`
       console.log("[webhook] cotacao atualizada para Respondida")
     }
 
-    return NextResponse.json({ ok: true, resposta_id: respostaId })
+    return NextResponse.json({ ok: true, op_answer_id: opAnswerId, itens_inseridos: answeredItems.length || itens.length })
 
   } catch (err: any) {
     console.error("[webhook] ERRO:", err?.message ?? err)

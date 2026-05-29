@@ -17,108 +17,98 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   `
   if (!cotacao) return NextResponse.json({ error: "Não encontrada" }, { status: 404 })
 
-  // Itens da cotação
+  // Itens originais da cotação
   const items = await sql`
-    SELECT id, name, unit, quantity, op_item_id
+    SELECT id, name, unit, quantity, op_item_id, insumo_id
     FROM cotacao_itens
     WHERE cotacao_id = ${id}
     ORDER BY created_at
   `
 
-  // Fornecedores
+  // Fornecedores convidados
   const suppliers = await sql`
-    SELECT * FROM cotacao_fornecedores
+    SELECT id, supplier_name, supplier_city, supplier_email, supplier_phone,
+           is_recommended, mirror_company_id, op_answer_id, op_answer_key
+    FROM cotacao_fornecedores
     WHERE cotacao_id = ${id}
     ORDER BY is_recommended DESC, created_at
   `
 
-  // Respostas salvas localmente (do webhook)
+  // Todas as linhas da tabela desnormalizada para esta cotação
   const respostas = await sql`
     SELECT * FROM cotacao_respostas
     WHERE cotacao_id = ${id}
-    ORDER BY answered_at ASC
+    ORDER BY answered_at ASC NULLS LAST
   `
 
-  // Itens respondidos de todas as respostas
-  const respostaIds = respostas.map((r: any) => r.id)
-  const allAnsweredItems = respostaIds.length > 0
-    ? await sql`
-        SELECT * FROM cotacao_resposta_itens
-        WHERE resposta_id = ANY(${respostaIds}::uuid[])
-      `
-    : []
-
-  // Fretes de todas as respostas
-  const allFretes = respostaIds.length > 0
-    ? await sql`
-        SELECT * FROM cotacao_resposta_fretes
-        WHERE resposta_id = ANY(${respostaIds}::uuid[])
-      `
-    : []
-
-  // Monta o mapa: para cada fornecedor, cruzamos com a resposta salva no banco
+  // Monta o mapa: um bloco por fornecedor
   const supplierMap = suppliers.map((sup: any) => {
-    // Casa pelo cotacao_fornecedor_id ou pelo mirror_company_id via supplier_foreign_id
-    const resposta = respostas.find((r: any) =>
+    // Linhas desta resposta: casa por cotacao_fornecedor_id ou por mirror_company_id
+    const linhas = respostas.filter((r: any) =>
       r.cotacao_fornecedor_id === sup.id ||
-      (sup.mirror_company_id && r.supplier_foreign_id === String(sup.mirror_company_id))
+      (sup.mirror_company_id != null && toInt(r.mirror_company_id) === sup.mirror_company_id) ||
+      (sup.op_answer_id       != null && r.op_answer_id === sup.op_answer_id)
     )
 
+    const hasAnswer = linhas.length > 0
+    const meta = linhas[0] ?? null // condições gerais (iguais em todas as linhas do mesmo answer)
+
+    // Itens respondidos: uma linha por item, casando com os itens originais
     const answeredItems = items.map((item: any) => {
-      let ai: any = null
+      const linha = linhas.find((r: any) =>
+        r.cotacao_item_id === item.id ||
+        (item.op_item_id != null && r.op_item_id === item.op_item_id)
+      ) ?? null
 
-      if (resposta) {
-        // Casa por cotacao_item_id (se op_item_id foi salvo) ou por op_item_id diretamente
-        ai = allAnsweredItems.find((a: any) =>
-          a.resposta_id === resposta.id &&
-          (a.cotacao_item_id === item.id || (item.op_item_id && a.op_item_id === item.op_item_id))
-        ) ?? null
-      }
-
-      const unitPrice  = ai?.unit_price_micros  != null ? ai.unit_price_micros  / 1_000_000 : null
-      const qty        = ai?.total_quantity_micros != null ? ai.total_quantity_micros / 1_000_000 : Number(item.quantity)
-      const totalPrice = unitPrice != null ? unitPrice * qty : null
+      const unitPriceMicros   = toInt(linha?.unit_price_micros)
+      const unitPrice         = unitPriceMicros != null ? unitPriceMicros / 1_000_000 : null
+      const quantityAnswered  = linha?.quantity_answered != null ? Number(linha.quantity_answered) : Number(item.quantity)
+      const totalPrice        = unitPrice != null ? unitPrice * quantityAnswered : null
+      const discountVal       = linha?.discount != null ? Number(linha.discount) : 0
+      const totalAfterDiscount = totalPrice != null ? totalPrice - discountVal : null
 
       return {
-        cotacao_item_id: item.id,
-        op_item_id:      item.op_item_id ?? null,
-        name:            item.name,
-        unit:            item.unit,
-        quantity:        Number(item.quantity),
-        answered:        ai?.answered  ?? false,
-        available:       ai?.available ?? false,
-        unit_price:      unitPrice,
-        total_price:     totalPrice,
-        discount:        ai?.discount ?? 0,
+        cotacao_item_id:    item.id,
+        op_item_id:         item.op_item_id ?? null,
+        insumo_id:          item.insumo_id ?? null,
+        name:               item.name,
+        unit:               item.unit,
+        quantity:           Number(item.quantity),
+        answered:           linha?.answered  ?? false,
+        available:          linha?.available ?? false,
+        unit_price:         unitPrice,
+        unit_price_micros:  unitPriceMicros,
+        quantity_answered:  quantityAnswered,
+        total_price:        totalAfterDiscount ?? totalPrice,
+        discount:           discountVal,
+        total_discount_micros: toInt(linha?.total_discount_micros),
       }
     })
 
     const subtotal = answeredItems.reduce((s: number, i: any) => s + (i.total_price ?? 0), 0)
 
-    const frete = resposta
-      ? allFretes.find((f: any) => f.resposta_id === resposta.id)
-      : null
-    const freight = frete?.free_shipping ? 0 : (frete?.freight ?? null)
-    const total   = freight != null ? subtotal + freight : subtotal
+    const freteLinha = linhas.find((r: any) => r.freight != null || r.free_shipping) ?? null
+    const freight    = freteLinha?.free_shipping ? 0 : (freteLinha?.freight != null ? Number(freteLinha.freight) : null)
+    const total      = freight != null ? subtotal + freight : subtotal
 
     return {
-      supplier_id:        sup.id,
-      supplier_name:      sup.supplier_name,
-      supplier_city:      sup.supplier_city,
-      supplier_email:     sup.supplier_email,
-      supplier_phone:     sup.supplier_phone,
-      is_recommended:     sup.is_recommended,
-      mirror_company_id:  sup.mirror_company_id,
-      op_answer_id:       resposta?.op_answer_id ?? null,
-      answered:           !!resposta,
-      payment_method:     resposta?.payment_method    ?? null,
-      installments:       resposta?.installments      ?? null,
-      installments_obs:   resposta?.installments_obs  ?? null,
-      arrival_estimate:   resposta?.arrival_estimate  ?? null,
-      valid_until:        resposta?.valid_until        ?? null,
-      observations:       resposta?.observations      ?? null,
-      answered_at:        resposta?.answered_at       ?? null,
-      answered_items:     answeredItems,
+      supplier_id:       sup.id,
+      supplier_name:     sup.supplier_name,
+      supplier_city:     sup.supplier_city,
+      supplier_email:    sup.supplier_email,
+      supplier_phone:    sup.supplier_phone,
+      is_recommended:    sup.is_recommended,
+      mirror_company_id: sup.mirror_company_id,
+      op_answer_id:      meta?.op_answer_id ?? sup.op_answer_id ?? null,
+      answered:          hasAnswer,
+      payment_method:    meta?.payment_method    ?? null,
+      installments:      meta?.installments      ?? null,
+      installments_obs:  meta?.installments_obs  ?? null,
+      arrival_estimate:  meta?.arrival_estimate  ?? null,
+      valid_until:       meta?.valid_until        ?? null,
+      observations:      meta?.observations      ?? null,
+      answered_at:       meta?.answered_at       ?? null,
+      answered_items:    answeredItems,
       subtotal,
       freight,
       total,
@@ -126,18 +116,23 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   })
 
   return NextResponse.json({
-    cotacao_id:              id,
-    identifier:              cotacao.identifier,
-    obraplay_quotation_id:   cotacao.obraplay_quotation_id,
-    obra_name:               cotacao.obra_name,
-    status:                  cotacao.status,
+    cotacao_id:            id,
+    identifier:            cotacao.identifier,
+    obraplay_quotation_id: cotacao.obraplay_quotation_id,
+    obra_name:             cotacao.obra_name,
+    status:                cotacao.status,
     items: items.map((i: any) => ({
-      id:        i.id,
-      name:      i.name,
-      unit:      i.unit,
-      quantity:  Number(i.quantity),
+      id:         i.id,
+      name:       i.name,
+      unit:       i.unit,
+      quantity:   Number(i.quantity),
       op_item_id: i.op_item_id ?? null,
+      insumo_id:  i.insumo_id ?? null,
     })),
     suppliers: supplierMap,
   })
+}
+
+function toInt(v: any): number | null {
+  return (v != null && !isNaN(parseInt(v))) ? parseInt(v) : null
 }
