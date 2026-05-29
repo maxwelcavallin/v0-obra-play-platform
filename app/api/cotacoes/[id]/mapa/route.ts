@@ -56,12 +56,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     // Itens respondidos: uma linha por item, casando com os itens originais
     const answeredItems = items.map((item: any) => {
       const linha = linhas.find((r: any) =>
-        r.cotacao_item_id === item.id ||
-        (item.op_item_id != null && r.op_item_id === item.op_item_id)
+        String(r.cotacao_item_id) === String(item.id) ||
+        (item.op_item_id != null && toInt(r.op_item_id) === toInt(item.op_item_id))
       ) ?? null
 
-      const unitPriceMicros   = toInt(linha?.unit_price_micros)
-      const unitPrice         = unitPriceMicros != null ? unitPriceMicros / 1_000_000 : null
+      const isAvailable       = linha?.available ?? false
+      const unitPriceMicros   = linha != null ? Number(linha.unit_price_micros) : null
+      const unitPrice         = (isAvailable && unitPriceMicros != null) ? unitPriceMicros / 1_000_000 : null
       const quantityAnswered  = linha?.quantity_answered != null ? Number(linha.quantity_answered) : Number(item.quantity)
       const totalPrice        = unitPrice != null ? unitPrice * quantityAnswered : null
       const discountVal       = linha?.discount != null ? Number(linha.discount) : 0

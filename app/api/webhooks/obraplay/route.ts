@@ -95,15 +95,23 @@ export async function POST(req: NextRequest) {
     `
 
     // 4. Processa itens respondidos
-    // O ObraPlay usa "item" como FK do item, os campos vêm dentro de data.fields.answered_items
-    const answeredItems: any[] = answer.answered_items ?? answer.items ?? []
+    // O ObraPlay envia arrays de envelopes: [{ pk, model, fields: { item, answered, available, unit_price_micros, ... } }]
+    // Desempacota para obter os fields diretos
+    const rawItems: any[] = answer.answered_items ?? answer.items ?? []
+    const answeredItems = rawItems.map((ai: any) =>
+      ai?.fields ? ai.fields : ai  // desempacota envelope { pk, model, fields }
+    )
+
+    const rawFretes: any[] = answer.answered_shipping_addresses ?? answer.shipping_addresses ?? []
+    const answeredFretes = rawFretes.map((f: any) =>
+      f?.fields ? f.fields : f
+    )
+
     console.log("[webhook] itens respondidos:", answeredItems.length, "| itens locais:", itens.length)
     if (answeredItems.length > 0) {
-      console.log("[webhook] primeiro item respondido:", JSON.stringify(answeredItems[0]))
+      console.log("[webhook] primeiro item (desempacotado):", JSON.stringify(answeredItems[0]))
     }
 
-    // Frete — pode ser único (campo direto) ou em array
-    const answeredFretes: any[] = answer.answered_shipping_addresses ?? answer.shipping_addresses ?? []
     const freteUnico = answeredFretes[0] ?? null
 
     // 5. DELETE + INSERT das linhas desnormalizadas para este op_answer_id
@@ -111,12 +119,19 @@ export async function POST(req: NextRequest) {
 
     if (answeredItems.length > 0) {
       // Uma linha por item respondido
-      for (const ai of answeredItems) {
-        // Casa item pelo campo "item" (FK do ObraPlay) ou por posição
+      for (let idx = 0; idx < answeredItems.length; idx++) {
+        const ai = answeredItems[idx]
+        // Casa item pelo op_item_id salvo no banco, ou por posição (índice) como fallback
         const opItemId = toInt(ai.item ?? ai.id ?? null)
-        const localItem = opItemId
-          ? itens.find((i: any) => i.op_item_id === opItemId) ?? null
-          : null
+        const localItem = (
+          opItemId ? itens.find((i: any) => i.op_item_id === opItemId) : null
+        ) ?? itens[idx] ?? null
+
+        // Persiste op_item_id no item local para futuros casamentos por ID
+        if (localItem && opItemId && !localItem.op_item_id) {
+          await sql`UPDATE cotacao_itens SET op_item_id = ${opItemId} WHERE id = ${localItem.id}`
+          localItem.op_item_id = opItemId
+        }
 
         // Frete: casa pelo campo shipping_address do frete correspondente ou usa o único disponível
         const frete = answeredFretes.find((f: any) =>
@@ -155,7 +170,7 @@ export async function POST(req: NextRequest) {
             ${cotacao.requester_name ?? null},
             ${cotacao.requester_email ?? null},
             ${cotacao.requester_phone ?? null},
-            ${localItem?.name ?? toStr(ai.item_name) ?? 'Item'},
+            ${localItem?.name ?? toStr(ai.name ?? ai.item_name) ?? 'Item sem nome'},
             ${localItem?.unit ?? toStr(ai.unit) ?? ''},
             ${toDec(localItem?.quantity ?? ai.quantity) ?? '0'},
             ${localItem?.insumo_id ?? null},
