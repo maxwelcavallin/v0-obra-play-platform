@@ -268,19 +268,24 @@ export async function POST(req: NextRequest) {
 
     console.log("[webhook] respostas inseridas com sucesso")
 
-    // 6. Atualiza status da cotação: "Respondida" se todos responderam, senão "Parcialmente respondida"
+    // 6. Atualiza status:
+    //    "Respondida"               = TODOS os fornecedores ObraPlay responderam
+    //    "Parcialmente respondida"  = ao menos UM respondeu, mas não todos
     if (cotacao.status !== "Cancelada") {
-      const [{ total_forn, total_resp }] = await sql`
+      const [{ total_op, total_resp }] = await sql`
         SELECT
-          COUNT(*)::int                                        AS total_forn,
-          COUNT(DISTINCT cr.cotacao_fornecedor_id)::int        AS total_resp
+          -- total de fornecedores vinculados ao ObraPlay (têm op_answer_id)
+          COUNT(*)::int                                                        AS total_op,
+          -- total de fornecedores que já têm ao menos uma linha em cotacao_respostas
+          COUNT(DISTINCT cr.cotacao_fornecedor_id)::int                        AS total_resp
         FROM cotacao_fornecedores cf
         LEFT JOIN cotacao_respostas cr ON cr.cotacao_fornecedor_id = cf.id
         WHERE cf.cotacao_id = ${cotacaoId}
+          AND cf.op_answer_id IS NOT NULL
       `
-      const novoStatus = total_resp >= total_forn ? "Respondida" : "Parcialmente respondida"
+      const novoStatus = total_resp >= total_op ? "Respondida" : "Parcialmente respondida"
       await sql`UPDATE cotacoes SET status = ${novoStatus}, updated_at = now() WHERE id = ${cotacaoId}`
-      console.log("[webhook] cotacao atualizada para", novoStatus, `(${total_resp}/${total_forn})`)
+      console.log("[webhook] cotacao atualizada para", novoStatus, `(${total_resp}/${total_op} fornecedores ObraPlay)`)
     }
 
     return NextResponse.json({ ok: true, op_answer_id: opAnswerId, itens_inseridos: answeredItems.length || itens.length })
