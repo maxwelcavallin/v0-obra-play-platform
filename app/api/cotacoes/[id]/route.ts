@@ -23,7 +23,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!row) return NextResponse.json({ error: "Não encontrado" }, { status: 404 })
 
   const items = await sql`SELECT * FROM cotacao_itens WHERE cotacao_id = ${id} ORDER BY created_at`
-  const suppliers = await sql`SELECT * FROM cotacao_fornecedores WHERE cotacao_id = ${id} ORDER BY is_recommended DESC, created_at`
+  const suppliers = await sql`
+    SELECT cf.*,
+      CASE WHEN COUNT(cr.id) > 0 THEN true ELSE false END AS has_response
+    FROM cotacao_fornecedores cf
+    LEFT JOIN cotacao_respostas cr ON cr.cotacao_fornecedor_id = cf.id
+    WHERE cf.cotacao_id = ${id}
+    GROUP BY cf.id
+    ORDER BY cf.is_recommended DESC, cf.created_at
+  `
 
   return NextResponse.json({ ...row, items, suppliers })
 }

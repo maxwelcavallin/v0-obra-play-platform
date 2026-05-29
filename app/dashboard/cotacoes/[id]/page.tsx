@@ -408,16 +408,15 @@ export default function CotacaoDetalhePage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <p className="text-sm font-semibold text-[#212121] truncate">{s.supplier_name}</p>
-                    {s.is_recommended && (
-                      <span className="text-[10px] bg-[#1565C0] text-white px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">
-                        Certificado
+                    {s.has_response ? (
+                      <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">
+                        Respondido
                       </span>
-                    )}
-                    {s.mirror_company_id && !s.is_recommended && (
-                      <span className="text-[10px] bg-[#E3F2FD] text-[#1565C0] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">
-                        ObraPlay
+                    ) : s.op_answer_id ? (
+                      <span className="text-[10px] bg-[#FFF3E0] text-[#E65100] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">
+                        Aguardando
                       </span>
-                    )}
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                     {s.supplier_city && (
