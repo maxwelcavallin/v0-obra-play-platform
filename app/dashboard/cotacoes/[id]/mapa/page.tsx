@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import {
   ArrowLeft, Share2, Loader2, AlertCircle, ShoppingCart,
-  Check, TrendingDown, Package, Truck, X
+  Check, TrendingDown, Truck, X
 } from "lucide-react"
 import { authFetch } from "@/lib/auth-fetch"
 import { useAuth } from "@/lib/auth-context"
@@ -13,7 +13,8 @@ import { toast } from "sonner"
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface MapaItem {
-  cotacao_item_id: string
+  id: string
+  cotacao_item_id?: string
   name: string
   unit: string
   quantity: number
@@ -28,6 +29,8 @@ interface AnsweredItem {
   available: boolean
   unit_price: number | null
   total_price: number | null
+  quantity_answered: number
+  discount: number
 }
 
 interface SupplierMap {
@@ -76,7 +79,6 @@ function fmtDate(d?: string | null) {
 }
 
 const PAYMENT_LABELS: Record<string, string> = {
-  // strings retornadas pelo ObraPlay
   "cash":           "À vista",
   "bankslip":       "Boleto",
   "credit_card":    "Cartão de crédito",
@@ -85,7 +87,6 @@ const PAYMENT_LABELS: Record<string, string> = {
   "check":          "Cheque",
   "bank_transfer":  "Transferência",
   "other":          "Outro",
-  // legado numérico (fallback)
   "1": "À vista", "2": "Boleto 30d", "3": "Boleto 60d",
   "4": "Cartão",  "5": "Pix",        "6": "Outro",
 }
@@ -100,7 +101,10 @@ export default function MapaCotacaoPage() {
   const [mapa, setMapa] = useState<MapaData | null>(null)
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<"compra" | "fornecedor">("compra")
-  const [selected, setSelected] = useState<Set<string>>(new Set()) // supplier_id[]
+  // Melhor Compra: seleção por item -> { [cotacao_item_id]: supplier_id }
+  const [itemSelection, setItemSelection] = useState<Record<string, string>>({})
+  // Melhor Fornecedor: seleção de fornecedor inteiro
+  const [selectedSuppliers, setSelectedSuppliers] = useState<Set<string>>(new Set())
   const [generating, setGenerating] = useState(false)
   const [showModal, setShowModal] = useState(false)
 
@@ -112,42 +116,109 @@ export default function MapaCotacaoPage() {
       .finally(() => setLoading(false))
   }, [id])
 
-  // Menor preço por item (entre os que responderam)
+  // Menor preço unitário por item
   const minPrices = useMemo(() => {
     if (!mapa) return {}
     const map: Record<string, number> = {}
     mapa.items.forEach(item => {
+      const itemId = item.id ?? item.cotacao_item_id
       const prices = mapa.suppliers
         .flatMap(s => s.answered_items)
-        .filter(ai => ai.cotacao_item_id === item.cotacao_item_id && ai.unit_price != null)
+        .filter(ai => ai.cotacao_item_id === itemId && ai.available && ai.unit_price != null)
         .map(ai => ai.unit_price as number)
-      if (prices.length > 0) map[item.cotacao_item_id] = Math.min(...prices)
+      if (prices.length > 0) map[itemId] = Math.min(...prices)
     })
     return map
   }, [mapa])
 
-  // Fornecedor com melhor oferta completa (modo Melhor Fornecedor)
+  // Fornecedor com melhor oferta completa
   const bestSupplierId = useMemo(() => {
     if (!mapa) return null
     const answered = mapa.suppliers.filter(s => s.answered)
     const full = answered.filter(s =>
-      mapa.items.every(item =>
-        s.answered_items.find(ai => ai.cotacao_item_id === item.cotacao_item_id && ai.available && ai.unit_price != null)
-      )
+      mapa.items.every(item => {
+        const itemId = item.id ?? item.cotacao_item_id
+        return s.answered_items.find(ai => ai.cotacao_item_id === itemId && ai.available && ai.unit_price != null)
+      })
     )
     if (full.length === 0) return null
     return full.reduce((best, s) => s.total < best.total ? s : best, full[0]).supplier_id
   }, [mapa])
 
+  // Ordens agrupadas por fornecedor (modo Melhor Compra)
+  const ordensPorFornecedor = useMemo(() => {
+    if (!mapa) return []
+    const grouped: Record<string, { supplier: SupplierMap; items: AnsweredItem[] }> = {}
+    Object.entries(itemSelection).forEach(([itemId, supplierId]) => {
+      const supplier = mapa.suppliers.find(s => s.supplier_id === supplierId)
+      if (!supplier) return
+      const ai = supplier.answered_items.find(a => a.cotacao_item_id === itemId)
+      if (!ai || !ai.available) return
+      if (!grouped[supplierId]) grouped[supplierId] = { supplier, items: [] }
+      grouped[supplierId].items.push(ai)
+    })
+    return Object.values(grouped).map(({ supplier, items }) => {
+      const subtotal = items.reduce((s, i) => s + (i.total_price ?? 0), 0)
+      const freight = supplier.free_shipping ? 0 : (supplier.freight ?? null)
+      const total = freight != null ? subtotal + freight : subtotal
+      return { supplier, items, subtotal, freight, total }
+    })
+  }, [mapa, itemSelection])
+
+  function selectItemSupplier(itemId: string, supplierId: string) {
+    setItemSelection(prev => {
+      if (prev[itemId] === supplierId) {
+        const n = { ...prev }
+        delete n[itemId]
+        return n
+      }
+      return { ...prev, [itemId]: supplierId }
+    })
+  }
+
   function toggleSupplier(sid: string) {
-    setSelected(prev => {
+    setSelectedSuppliers(prev => {
       const n = new Set(prev)
       n.has(sid) ? n.delete(sid) : n.add(sid)
       return n
     })
   }
 
-  async function handleGenerate(supplierIds: string[]) {
+  async function handleGenerateCompra() {
+    if (!mapa || !activeCompany?.id || ordensPorFornecedor.length === 0) return
+    setGenerating(true)
+    try {
+      for (const { supplier, items, subtotal, freight, total } of ordensPorFornecedor) {
+        await authFetch("/api/ordens-compra", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            company_id: activeCompany.id,
+            cotacao_id: mapa.cotacao_id,
+            supplier_name: supplier.supplier_name,
+            supplier_email: supplier.supplier_email ?? null,
+            supplier_phone: supplier.supplier_phone ?? null,
+            items,
+            subtotal,
+            freight: freight ?? 0,
+            total,
+            payment_method: supplier.payment_method ?? null,
+            arrival_estimate: supplier.arrival_estimate ?? null,
+            obraplay_answer_id: supplier.obraplay_answer_id ?? null,
+          }),
+        })
+      }
+      toast.success(`${ordensPorFornecedor.length} ordem(ns) de compra gerada(s)!`)
+      setShowModal(false)
+      router.push(`/dashboard/ordens-compra`)
+    } catch {
+      toast.error("Erro ao gerar ordens de compra")
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  async function handleGenerateFornecedor(supplierIds: string[]) {
     if (!mapa || !activeCompany?.id) return
     setGenerating(true)
     try {
@@ -197,13 +268,68 @@ export default function MapaCotacaoPage() {
   )
 
   const answeredSuppliers = mapa.suppliers.filter(s => s.answered)
-  const selectedList = mapa.suppliers.filter(s => selected.has(s.supplier_id))
+  const selectedSupplierList = mapa.suppliers.filter(s => selectedSuppliers.has(s.supplier_id))
+  const hasCompraSelection = ordensPorFornecedor.length > 0
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] pb-32" style={{ maxWidth: 640, margin: "0 auto" }}>
 
-      {/* Modal de confirmação de OCs */}
-      {showModal && (
+      {/* Modal confirmação — Melhor Compra */}
+      {showModal && mode === "compra" && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
+          onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}>
+          <div className="bg-white w-full rounded-t-2xl" style={{ maxWidth: 640 }}>
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[#F5F5F5]">
+              <p className="font-bold text-[#212121] text-sm">Confirmar ordens de compra</p>
+              <button onClick={() => setShowModal(false)} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#F5F5F5]">
+                <X size={16} className="text-[#757575]" />
+              </button>
+            </div>
+            <div className="px-5 py-4 flex flex-col gap-3 max-h-[60vh] overflow-y-auto">
+              <p className="text-xs text-[#757575]">
+                Serão geradas <strong>{ordensPorFornecedor.length}</strong> {ordensPorFornecedor.length === 1 ? "ordem" : "ordens"} de compra:
+              </p>
+              {ordensPorFornecedor.map(({ supplier, items, subtotal, freight, total }) => (
+                <div key={supplier.supplier_id} className="bg-[#F5F5F5] rounded-xl p-4 flex flex-col gap-1.5">
+                  <p className="font-semibold text-sm text-[#212121]">{supplier.supplier_name}</p>
+                  {items.map(ai => (
+                    <div key={ai.cotacao_item_id} className="flex justify-between text-xs text-[#616161]">
+                      <span className="truncate mr-2">{ai.name} ({ai.quantity_answered} {ai.unit})</span>
+                      <span className="flex-shrink-0 font-medium text-[#212121]">{fmtBRL(ai.total_price)}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between text-xs text-[#616161] pt-1 border-t border-[#E0E0E0]">
+                    <span>Subtotal</span><span>{fmtBRL(subtotal)}</span>
+                  </div>
+                  {freight != null && (
+                    <div className="flex justify-between text-xs text-[#616161]">
+                      <span>Frete</span>
+                      <span className={freight === 0 ? "text-[#4CAF50] font-semibold" : ""}>{freight === 0 ? "Grátis" : fmtBRL(freight)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm font-bold text-[#212121] pt-1 border-t border-[#EEEEEE]">
+                    <span>Total</span><span className="text-[#1565C0]">{fmtBRL(total)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="px-5 py-4 border-t border-[#F5F5F5] flex gap-2">
+              <button onClick={() => setShowModal(false)}
+                className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-[#616161] border border-[#E0E0E0] hover:bg-[#F5F5F5] transition-colors">
+                Cancelar
+              </button>
+              <button onClick={handleGenerateCompra} disabled={generating}
+                className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white bg-[#1565C0] hover:bg-[#0D47A1] disabled:opacity-60 transition-colors flex items-center justify-center gap-2">
+                {generating ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                {generating ? "Gerando..." : "Confirmar e gerar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal confirmação — Melhor Fornecedor */}
+      {showModal && mode === "fornecedor" && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
           onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}>
           <div className="bg-white w-full rounded-t-2xl" style={{ maxWidth: 640 }}>
@@ -215,9 +341,9 @@ export default function MapaCotacaoPage() {
             </div>
             <div className="px-5 py-4 flex flex-col gap-3 max-h-[60vh] overflow-y-auto">
               <p className="text-xs text-[#757575]">
-                Serão geradas <strong>{selectedList.length}</strong> {selectedList.length === 1 ? "ordem" : "ordens"} de compra:
+                Serão geradas <strong>{selectedSupplierList.length}</strong> {selectedSupplierList.length === 1 ? "ordem" : "ordens"} de compra:
               </p>
-              {selectedList.map(s => (
+              {selectedSupplierList.map(s => (
                 <div key={s.supplier_id} className="bg-[#F5F5F5] rounded-xl p-4 flex flex-col gap-1.5">
                   <p className="font-semibold text-sm text-[#212121]">{s.supplier_name}</p>
                   <p className="text-xs text-[#9E9E9E]">{s.answered_items.filter(i => i.available).length} itens</p>
@@ -240,7 +366,7 @@ export default function MapaCotacaoPage() {
                 className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-[#616161] border border-[#E0E0E0] hover:bg-[#F5F5F5] transition-colors">
                 Cancelar
               </button>
-              <button onClick={() => handleGenerate(selectedList.map(s => s.supplier_id))} disabled={generating}
+              <button onClick={() => handleGenerateFornecedor(selectedSupplierList.map(s => s.supplier_id))} disabled={generating}
                 className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white bg-[#1565C0] hover:bg-[#0D47A1] disabled:opacity-60 transition-colors flex items-center justify-center gap-2">
                 {generating ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                 {generating ? "Gerando..." : "Confirmar e gerar"}
@@ -273,8 +399,6 @@ export default function MapaCotacaoPage() {
             <Share2 size={17} className="text-[#1565C0]" />
           </button>
         </div>
-
-        {/* Toggle modo */}
         <div className="flex gap-1 px-4 pb-3">
           <button onClick={() => setMode("compra")}
             className={`flex-1 py-2 rounded-xl text-xs font-bold transition-colors ${mode === "compra" ? "bg-[#1565C0] text-white" : "bg-[#F5F5F5] text-[#616161]"}`}>
@@ -287,7 +411,6 @@ export default function MapaCotacaoPage() {
         </div>
       </div>
 
-      {/* Aviso sem respostas */}
       {answeredSuppliers.length === 0 && (
         <div className="mx-4 mt-4 bg-[#FFF3E0] border border-[#FFE0B2] rounded-xl p-4 flex items-center gap-3">
           <AlertCircle size={18} className="text-[#FF9800] flex-shrink-0" />
@@ -298,62 +421,81 @@ export default function MapaCotacaoPage() {
       {/* ── MODO MELHOR COMPRA ── */}
       {mode === "compra" && answeredSuppliers.length > 0 && (
         <div className="mt-4 overflow-x-auto px-4">
+          {hasCompraSelection && (
+            <div className="mb-3 bg-[#E3F2FD] border border-[#BBDEFB] rounded-xl px-3 py-2 flex items-center gap-2">
+              <Check size={13} className="text-[#1565C0] flex-shrink-0" />
+              <p className="text-xs text-[#1565C0] font-medium">
+                {Object.keys(itemSelection).length} {Object.keys(itemSelection).length === 1 ? "item selecionado" : "itens selecionados"} de {ordensPorFornecedor.length} {ordensPorFornecedor.length === 1 ? "fornecedor" : "fornecedores"}
+              </p>
+            </div>
+          )}
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ minWidth: 380 }}>
-            <table className="w-full text-xs border-collapse" style={{ minWidth: 380 + answeredSuppliers.length * 110 }}>
+            <table className="w-full text-xs border-collapse" style={{ minWidth: 380 + answeredSuppliers.length * 120 }}>
               <thead>
                 <tr className="bg-[#F5F5F5]">
                   <th className="px-3 py-3 text-left font-bold text-[#9E9E9E] uppercase tracking-wider sticky left-0 bg-[#F5F5F5] z-10 w-32">Item</th>
                   <th className="px-2 py-3 text-center font-bold text-[#9E9E9E] uppercase tracking-wider w-12">Un.</th>
                   <th className="px-2 py-3 text-center font-bold text-[#9E9E9E] uppercase tracking-wider w-12">Qtd.</th>
                   {answeredSuppliers.map(s => (
-                    <th key={s.supplier_id} className="px-3 py-2 text-center min-w-[120px]">
-                      <div className="flex flex-col items-center gap-1">
-                        <label className="flex items-center gap-1.5 cursor-pointer">
-                          <div onClick={() => toggleSupplier(s.supplier_id)}
-                            className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${selected.has(s.supplier_id) ? "bg-[#1565C0] border-[#1565C0]" : "border-[#BDBDBD]"}`}>
-                            {selected.has(s.supplier_id) && <Check size={9} className="text-white" />}
-                          </div>
-                          <span className="font-bold text-[#212121] text-[11px] leading-tight text-left">{s.supplier_name}</span>
-                        </label>
+                    <th key={s.supplier_id} className="px-3 py-2 text-center min-w-[130px]">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className="font-bold text-[#212121] text-[11px] leading-tight text-center">{s.supplier_name}</span>
                         {s.supplier_city && <span className="text-[10px] text-[#9E9E9E]">{s.supplier_city}</span>}
+                        <span className="text-[9px] text-[#BDBDBD] mt-0.5">Clique para selecionar</span>
                       </div>
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {mapa.items.map((item, idx) => (
-                  <tr key={item.cotacao_item_id} className={idx % 2 === 0 ? "bg-white" : "bg-[#FAFAFA]"}>
-                    <td className="px-3 py-2.5 font-medium text-[#212121] sticky left-0 z-10 text-xs" style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#FAFAFA" }}>
-                      {item.name}
-                    </td>
-                    <td className="px-2 py-2.5 text-center text-[#757575]">{item.unit}</td>
-                    <td className="px-2 py-2.5 text-center text-[#757575]">{item.quantity}</td>
-                    {answeredSuppliers.map(s => {
-                      const ai = s.answered_items.find(a => a.cotacao_item_id === item.cotacao_item_id)
-                      // Fornecedor não respondeu este item ainda
-                      if (!ai) {
-                        return <td key={s.supplier_id} className="px-3 py-2.5 text-center text-[#BDBDBD] text-[10px]">—</td>
-                      }
-                      // Item marcado como indisponível
-                      if (!ai.available) {
-                        return <td key={s.supplier_id} className="px-3 py-2.5 text-center"><span className="text-[10px] text-[#F44336] font-medium">Indisponível</span></td>
-                      }
-                      const isBest = ai.unit_price != null && minPrices[item.cotacao_item_id] === ai.unit_price
-                      return (
-                        <td key={s.supplier_id} className="px-3 py-2.5 text-center"
-                          style={isBest ? { background: "#E8F5E9" } : {}}>
-                          <div className={`flex flex-col items-center ${isBest ? "text-[#2E7D32] font-bold" : "text-[#212121]"}`}>
-                            <span>{fmtBRL(ai.unit_price)}</span>
-                            <span className="text-[10px] font-bold opacity-80">{fmtBRL(ai.total_price)}</span>
-                          </div>
-                        </td>
-                      )
-                    })}
-                  </tr>
-                ))}
+                {mapa.items.map((item, idx) => {
+                  const itemId = item.id ?? item.cotacao_item_id
+                  return (
+                    <tr key={itemId} className={idx % 2 === 0 ? "bg-white" : "bg-[#FAFAFA]"}>
+                      <td className="px-3 py-2.5 font-medium text-[#212121] sticky left-0 z-10 text-xs leading-snug" style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#FAFAFA" }}>
+                        {item.name}
+                      </td>
+                      <td className="px-2 py-2.5 text-center text-[#757575]">{item.unit}</td>
+                      <td className="px-2 py-2.5 text-center text-[#757575]">{item.quantity}</td>
+                      {answeredSuppliers.map(s => {
+                        const ai = s.answered_items.find(a => a.cotacao_item_id === itemId)
+                        const isSelected = itemSelection[itemId] === s.supplier_id
+
+                        if (!ai) {
+                          return <td key={s.supplier_id} className="px-3 py-2.5 text-center text-[#BDBDBD] text-[10px]">—</td>
+                        }
+                        if (!ai.available) {
+                          return (
+                            <td key={s.supplier_id} className="px-3 py-2.5 text-center">
+                              <span className="text-[10px] text-[#F44336] font-medium">Indisponível</span>
+                            </td>
+                          )
+                        }
+
+                        const isBest = ai.unit_price != null && minPrices[itemId] === ai.unit_price
+                        return (
+                          <td key={s.supplier_id}
+                            onClick={() => selectItemSupplier(itemId, s.supplier_id)}
+                            className="px-3 py-2 text-center cursor-pointer transition-all"
+                            style={{
+                              background: isSelected ? "#DBEAFE" : isBest ? "#E8F5E9" : undefined,
+                              outline: isSelected ? "2px solid #1565C0" : undefined,
+                              outlineOffset: "-2px",
+                            }}>
+                            <div className={`flex flex-col items-center gap-0.5 ${isSelected ? "text-[#1565C0]" : isBest ? "text-[#2E7D32]" : "text-[#212121]"}`}>
+                              {isSelected && <Check size={10} className="text-[#1565C0]" />}
+                              {/* Preço unitário */}
+                              <span className="font-bold text-[12px]">{fmtBRL(ai.unit_price)}</span>
+                              {/* Preço total */}
+                              <span className="text-[10px] opacity-70">total {fmtBRL(ai.total_price)}</span>
+                            </div>
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  )
+                })}
               </tbody>
-              {/* Rodapé por fornecedor */}
               <tfoot>
                 <tr className="border-t-2 border-[#EEEEEE] bg-[#FAFAFA]">
                   <td colSpan={3} className="px-3 py-2 text-xs font-bold text-[#9E9E9E] sticky left-0 bg-[#FAFAFA] z-10">Subtotal</td>
@@ -366,11 +508,11 @@ export default function MapaCotacaoPage() {
                     <Truck size={11} /> Frete
                   </td>
                   {answeredSuppliers.map(s => (
-                    <td key={s.supplier_id} className="px-3 py-2 text-center text-xs text-[#616161]">
-                      {s.free_shipping ? <span className="text-[#4CAF50] font-semibold">Grátis</span>
-                        : s.freight == null ? "—"
-                        : s.freight === 0 ? <span className="text-[#4CAF50] font-semibold">Grátis</span>
-                        : fmtBRL(s.freight)}
+                    <td key={s.supplier_id} className="px-3 py-2 text-center text-xs">
+                      {s.free_shipping || s.freight === 0
+                        ? <span className="text-[#4CAF50] font-semibold">Grátis</span>
+                        : s.freight == null ? <span className="text-[#BDBDBD]">—</span>
+                        : <span className="text-[#616161]">{fmtBRL(s.freight)}</span>}
                     </td>
                   ))}
                 </tr>
@@ -434,21 +576,28 @@ export default function MapaCotacaoPage() {
                       <p className="text-[11px] text-[#9E9E9E]">{availableCount}/{mapa.items.length} itens</p>
                     </div>
                   </div>
-                  {/* Itens resumidos */}
-                  <div className="flex flex-col gap-1 mb-3">
+
+                  {/* Itens com preço unitário e total */}
+                  <div className="flex flex-col gap-1.5 mb-3">
                     {s.answered_items.map(ai => (
-                      <div key={ai.cotacao_item_id} className="flex justify-between text-xs text-[#616161]">
-                        <span className="truncate mr-2">{ai.name}</span>
+                      <div key={ai.cotacao_item_id} className="flex justify-between items-start text-xs text-[#616161]">
+                        <span className="truncate mr-2 flex-1">{ai.name}</span>
                         {!ai.available
                           ? <span className="text-[#F44336] font-medium flex-shrink-0 text-[10px]">Indisponível</span>
                           : ai.unit_price != null
-                            ? <span className="font-medium text-[#212121] flex-shrink-0">{fmtBRL(ai.total_price)}</span>
+                            ? (
+                              <div className="flex flex-col items-end flex-shrink-0">
+                                <span className="font-bold text-[#212121]">{fmtBRL(ai.unit_price)}<span className="font-normal text-[#9E9E9E]">/{ai.unit}</span></span>
+                                <span className="text-[10px] text-[#9E9E9E]">total {fmtBRL(ai.total_price)}</span>
+                              </div>
+                            )
                             : <span className="text-[#BDBDBD] flex-shrink-0">—</span>
                         }
                       </div>
                     ))}
                   </div>
-                  {/* Totais */}
+
+                  {/* Totais e condições */}
                   <div className="border-t border-[#F5F5F5] pt-2 flex flex-col gap-1">
                     <div className="flex justify-between text-xs text-[#757575]">
                       <span>Subtotal</span><span>{fmtBRL(s.subtotal)}</span>
@@ -476,13 +625,13 @@ export default function MapaCotacaoPage() {
                       </div>
                     )}
                   </div>
-                  {/* Checkbox de seleção */}
+
                   <button type="button" onClick={() => toggleSupplier(s.supplier_id)}
-                    className={`mt-3 w-full py-2 rounded-xl border-2 text-xs font-bold flex items-center justify-center gap-2 transition-colors ${selected.has(s.supplier_id) ? "border-[#1565C0] bg-[#E3F2FD] text-[#1565C0]" : "border-[#E0E0E0] text-[#616161] hover:border-[#1565C0]"}`}>
-                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selected.has(s.supplier_id) ? "bg-[#1565C0] border-[#1565C0]" : "border-[#BDBDBD]"}`}>
-                      {selected.has(s.supplier_id) && <Check size={9} className="text-white" />}
+                    className={`mt-3 w-full py-2 rounded-xl border-2 text-xs font-bold flex items-center justify-center gap-2 transition-colors ${selectedSuppliers.has(s.supplier_id) ? "border-[#1565C0] bg-[#E3F2FD] text-[#1565C0]" : "border-[#E0E0E0] text-[#616161] hover:border-[#1565C0]"}`}>
+                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedSuppliers.has(s.supplier_id) ? "bg-[#1565C0] border-[#1565C0]" : "border-[#BDBDBD]"}`}>
+                      {selectedSuppliers.has(s.supplier_id) && <Check size={9} className="text-white" />}
                     </div>
-                    {selected.has(s.supplier_id) ? "Selecionado" : "Selecionar"}
+                    {selectedSuppliers.has(s.supplier_id) ? "Selecionado" : "Selecionar para OC"}
                   </button>
                 </div>
               </div>
@@ -491,18 +640,34 @@ export default function MapaCotacaoPage() {
         </div>
       )}
 
-      {/* Botão flutuante de geração de OC */}
-      {selected.size > 0 && (
+      {/* Botão flutuante — Melhor Compra */}
+      {mode === "compra" && hasCompraSelection && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 px-4 w-full" style={{ maxWidth: 640 }}>
           <button
-            onClick={() => selected.size === 1 ? handleGenerate([...selected]) : setShowModal(true)}
+            onClick={() => setShowModal(true)}
             disabled={generating}
             className="w-full py-3.5 rounded-2xl bg-[#1565C0] text-white font-bold text-sm shadow-2xl flex items-center justify-center gap-2 hover:bg-[#0D47A1] disabled:opacity-60 transition-colors">
+            {generating ? <Loader2 size={16} className="animate-spin" /> : <ShoppingCart size={16} />}
             {generating
-              ? <Loader2 size={16} className="animate-spin" />
-              : <ShoppingCart size={16} />
-            }
-            {generating ? "Gerando..." : `Gerar ${selected.size === 1 ? "ordem de compra" : `${selected.size} ordens de compra`}`}
+              ? "Gerando..."
+              : `Gerar ${ordensPorFornecedor.length === 1 ? "ordem de compra" : `${ordensPorFornecedor.length} ordens de compra`} (${Object.keys(itemSelection).length} itens)`}
+          </button>
+        </div>
+      )}
+
+      {/* Botão flutuante — Melhor Fornecedor */}
+      {mode === "fornecedor" && selectedSuppliers.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 px-4 w-full" style={{ maxWidth: 640 }}>
+          <button
+            onClick={() => selectedSuppliers.size === 1
+              ? handleGenerateFornecedor([...selectedSuppliers])
+              : setShowModal(true)}
+            disabled={generating}
+            className="w-full py-3.5 rounded-2xl bg-[#1565C0] text-white font-bold text-sm shadow-2xl flex items-center justify-center gap-2 hover:bg-[#0D47A1] disabled:opacity-60 transition-colors">
+            {generating ? <Loader2 size={16} className="animate-spin" /> : <ShoppingCart size={16} />}
+            {generating
+              ? "Gerando..."
+              : `Gerar ${selectedSuppliers.size === 1 ? "ordem de compra" : `${selectedSuppliers.size} ordens de compra`}`}
           </button>
         </div>
       )}
