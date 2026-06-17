@@ -66,6 +66,7 @@ const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> =
   "Enviada":                  { label: "Enviada",                  color: "#1565C0", bg: "#E3F2FD" },
   "Parcialmente respondida":  { label: "Parcialmente respondida",  color: "#FF9800", bg: "#FFF3E0" },
   "Respondida":               { label: "Respondida",               color: "#4CAF50", bg: "#E8F5E9" },
+  "Ordem de compra gerada":   { label: "OC gerada",                color: "#6D28D9", bg: "#EDE9FE" },
   "Pendente revisão": { label: "Pendente revisão", color: "#FF9800", bg: "#FFF3E0" },
   "Convertida":       { label: "Convertida",       color: "#9C27B0", bg: "#F3E5F5" },
   "Cancelada":        { label: "Cancelada",        color: "#F44336", bg: "#FFEBEE" },
@@ -480,8 +481,8 @@ export default function CotacaoDetalhePage() {
           )}
         </Section>
 
-        {/* Botão Visualizar mapa — disponível para cotações respondidas ou parcialmente respondidas */}
-        {(cotacao.status === "Respondida" || cotacao.status === "Parcialmente respondida") && (
+        {/* Botão Visualizar mapa — disponível para cotações respondidas ou com OC já gerada */}
+        {(cotacao.status === "Respondida" || cotacao.status === "Parcialmente respondida" || cotacao.status === "Ordem de compra gerada") && (
           <button
             onClick={() => router.push(`/dashboard/cotacoes/${id}/mapa`)}
             className="w-full py-3.5 rounded-2xl bg-[#1565C0] text-white font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#0D47A1] transition-colors shadow-sm">

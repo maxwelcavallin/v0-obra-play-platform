@@ -55,6 +55,14 @@ export async function POST(req: NextRequest) {
     RETURNING *
   `
 
+  // Marca a cotação como "Ordem de compra gerada" assim que a primeira OC for criada
+  await sql`
+    UPDATE cotacoes
+    SET status = 'Ordem de compra gerada', updated_at = now()
+    WHERE id = ${cotacao_id}
+      AND status NOT IN ('Cancelada', 'Rascunho', 'Ordem de compra gerada')
+  `
+
   // ─── Integração ObraPlay: cria a OC via /api/orders/nested/ ───────────────────
   let opError: string | null = null
 

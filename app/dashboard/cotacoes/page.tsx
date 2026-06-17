@@ -32,6 +32,7 @@ const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> =
   "Enviada":                  { label: "Enviada",                  color: "#1565C0", bg: "#E3F2FD" },
   "Parcialmente respondida":  { label: "Parcialmente respondida",  color: "#FF9800", bg: "#FFF3E0" },
   "Respondida":               { label: "Respondida",               color: "#4CAF50", bg: "#E8F5E9" },
+  "Ordem de compra gerada":   { label: "OC gerada",                color: "#6D28D9", bg: "#EDE9FE" },
   "Pendente revisão": { label: "Pendente revisão", color: "#FF9800", bg: "#FFF3E0" },
   "Convertida":       { label: "Convertida",       color: "#9C27B0", bg: "#F3E5F5" },
   "Cancelada":        { label: "Cancelada",        color: "#F44336", bg: "#FFEBEE" },
@@ -39,12 +40,13 @@ const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> =
 }
 
 const TABS = [
-  { label: "Todas",       value: "Todas" },
-  { label: "Enviadas",               value: "Enviada" },
-  { label: "Parc. respondidas",      value: "Parcialmente respondida" },
-  { label: "Respondidas",            value: "Respondida" },
-  { label: "Canceladas",  value: "Cancelada" },
-  { label: "Rascunhos",   value: "Rascunho" },
+  { label: "Todas",            value: "Todas" },
+  { label: "Enviadas",         value: "Enviada" },
+  { label: "Parc. respondidas", value: "Parcialmente respondida" },
+  { label: "Respondidas",      value: "Respondida" },
+  { label: "OC gerada",        value: "Ordem de compra gerada" },
+  { label: "Canceladas",       value: "Cancelada" },
+  { label: "Rascunhos",        value: "Rascunho" },
 ]
 
 function StatusChip({ status }: { status: string }) {
@@ -285,7 +287,7 @@ export default function CotacoesPage() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {c.status === "Respondida" ? (
+                      {(c.status === "Respondida" || c.status === "Ordem de compra gerada") ? (
                         <button
                           onClick={() => router.push(`/dashboard/cotacoes/${c.id}/mapa`)}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-white bg-[#1565C0] hover:bg-[#0D47A1] transition-colors">
@@ -298,7 +300,7 @@ export default function CotacoesPage() {
                           <Eye size={12} /> Ver
                         </button>
                       )}
-                      {/* Menu de três pontinhos */}
+                      {/* Menu de tr��s pontinhos */}
                       <div className="relative">
                         <button
                           onClick={e => { e.stopPropagation(); setOpenMenuId(openMenuId === c.id ? null : c.id) }}
