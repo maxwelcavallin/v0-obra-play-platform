@@ -181,6 +181,10 @@ export async function POST(req: NextRequest) {
       }],
     }
 
+    // Log temporário para diagnóstico
+    console.log("[v0] Endereço resolvido:", JSON.stringify(deliveryAddr, null, 2))
+    console.log("[v0] Payload shipping_addresses:", JSON.stringify(payload.shipping_addresses, null, 2))
+
     try {
       const created = await obraplay.orders.createNested(payload)
       opOrderId   = created?.id   ?? null
@@ -188,6 +192,7 @@ export async function POST(req: NextRequest) {
     } catch (err: any) {
       const detail = err?.message ?? String(err)
       console.error("[ordens-compra] ObraPlay erro:", detail)
+      console.error("[ordens-compra] Payload completo:", JSON.stringify(payload, null, 2))
       return NextResponse.json({
         error: "Não foi possível enviar a ordem de compra ao ObraPlay.",
         detail,
