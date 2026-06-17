@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2, Check } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/auth-fetch"
 import { toast } from "sonner"
+import { applyMoneyMask, parseBRL, formatMoneyInput } from "@/lib/money"
 
 interface Categoria { id: string; name: string; type: string; color: string | null }
 interface Cliente   { id: string; full_name: string | null; fantasy_name: string | null; type: string }
@@ -59,7 +60,7 @@ export default function NovaTransacaoPage() {
         console.log("[nova-transacao] editando:", t.id)
         setType(t.type)
         setDescription(t.description)
-        setAmount(String(t.amount))
+        setAmount(formatMoneyInput(Math.round(Number(t.amount) * 100)))
         setCategoryId(t.category_id ?? "")
         setClientId(t.client_id ?? "")
         setDueDate(t.due_date ? t.due_date.split("T")[0] : "")
@@ -80,8 +81,8 @@ export default function NovaTransacaoPage() {
   async function handleSave() {
     if (!activeCompany?.id) return
     if (!description.trim()) { toast.error("Informe a descrição"); return }
-    const amountNum = parseFloat(amount.replace(",", "."))
-    if (!amount || isNaN(amountNum) || amountNum <= 0) { toast.error("Informe um valor válido"); return }
+    const amountNum = parseBRL(amount)
+    if (!amount || amountNum <= 0) { toast.error("Informe um valor válido"); return }
 
     setSaving(true)
     try {
@@ -153,12 +154,13 @@ export default function NovaTransacaoPage() {
         <div className="bg-white rounded-2xl px-4 py-4 shadow-sm">
           <p className="text-xs text-[#9E9E9E] mb-1">Valor *</p>
           <div className="flex items-center gap-2">
-            <span className="text-[#616161] text-sm">R$</span>
+            <span className="text-[#616161] text-sm font-semibold">R$</span>
             <input
-              type="number" inputMode="decimal" step="0.01" min="0"
+              type="text"
+              inputMode="numeric"
               placeholder="0,00"
               value={amount}
-              onChange={e => setAmount(e.target.value)}
+              onChange={e => setAmount(applyMoneyMask(e.target.value))}
               className="flex-1 text-2xl font-bold text-[#212121] outline-none bg-transparent"
             />
           </div>

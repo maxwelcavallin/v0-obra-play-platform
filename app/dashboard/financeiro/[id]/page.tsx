@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import { authFetch } from "@/lib/auth-fetch"
 import { toast } from "sonner"
+import { fmtBRL } from "@/lib/money"
 
 interface Transacao {
   id: string
@@ -30,9 +31,6 @@ const RECURRENCE_LABEL: Record<string, string> = {
   unica: "Única", mensal: "Mensal", semanal: "Semanal", anual: "Anual",
 }
 
-function fmtMoeda(v: number) {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-}
 function fmtData(d: string | null) {
   if (!d) return "—"
   const [y, m, day] = d.split("T")[0].split("-")
@@ -188,7 +186,7 @@ export default function TransacaoDetalhePage() {
               : <TrendingDown size={24} className="text-[#F44336]" />}
           </div>
           <p className="text-3xl font-bold" style={{ color: transacao.type === "receita" ? "#4CAF50" : "#F44336" }}>
-            {transacao.type === "receita" ? "+" : "-"}{fmtMoeda(Number(transacao.amount))}
+            {transacao.type === "receita" ? "+" : "-"}{fmtBRL(Number(transacao.amount))}
           </p>
           <span className="px-3 py-1 rounded-full text-xs font-bold"
             style={{ backgroundColor: statusCfg.bg, color: statusCfg.color }}>

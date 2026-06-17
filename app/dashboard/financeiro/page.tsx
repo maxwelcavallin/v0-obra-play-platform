@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/auth-fetch"
+import { fmtBRL } from "@/lib/money"
 
 interface Transacao {
   id: string
@@ -29,9 +30,6 @@ const MONTH_NAMES = [
   "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
 ]
 
-function fmtMoeda(v: number) {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-}
 function fmtData(d: string | null) {
   if (!d) return "—"
   const [y, m, day] = d.split("T")[0].split("-")
@@ -134,21 +132,21 @@ export default function FinanceiroPage() {
         <div className="bg-white rounded-2xl p-4 shadow-sm col-span-2 flex gap-4">
           <div className="flex-1">
             <p className="text-[#9E9E9E] text-xs mb-1">Receitas pagas</p>
-            <p className="font-bold text-[#4CAF50] text-base">{fmtMoeda(receitas)}</p>
+            <p className="font-bold text-[#4CAF50] text-base">{fmtBRL(receitas)}</p>
           </div>
           <div className="w-px bg-[#F5F5F5]" />
           <div className="flex-1">
             <p className="text-[#9E9E9E] text-xs mb-1">Despesas pagas</p>
-            <p className="font-bold text-[#F44336] text-base">{fmtMoeda(despesas)}</p>
+            <p className="font-bold text-[#F44336] text-base">{fmtBRL(despesas)}</p>
           </div>
         </div>
         <div className="bg-white rounded-2xl p-3 shadow-sm">
           <p className="text-[#9E9E9E] text-xs mb-1">Saldo</p>
-          <p className="font-bold text-base" style={{ color: saldo >= 0 ? "#1565C0" : "#F44336" }}>{fmtMoeda(saldo)}</p>
+          <p className="font-bold text-base" style={{ color: saldo >= 0 ? "#1565C0" : "#F44336" }}>{fmtBRL(saldo)}</p>
         </div>
         <div className="bg-white rounded-2xl p-3 shadow-sm">
           <p className="text-[#9E9E9E] text-xs mb-1">A receber/pagar</p>
-          <p className="font-bold text-[#FF9800] text-base">{fmtMoeda(pendentes)}</p>
+          <p className="font-bold text-[#FF9800] text-base">{fmtBRL(pendentes)}</p>
         </div>
       </div>
 
@@ -232,7 +230,7 @@ export default function FinanceiroPage() {
               </div>
               <div className="flex flex-col items-end gap-1 flex-shrink-0">
                 <p className="font-bold text-sm" style={{ color: t.type === "receita" ? "#4CAF50" : "#F44336" }}>
-                  {t.type === "receita" ? "+" : "-"}{fmtMoeda(Number(t.amount))}
+                  {t.type === "receita" ? "+" : "-"}{fmtBRL(Number(t.amount))}
                 </p>
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                   style={{
