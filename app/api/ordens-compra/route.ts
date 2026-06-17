@@ -42,20 +42,132 @@ export async function POST(req: NextRequest) {
   const rand = Math.random().toString(36).substring(2, 8).toUpperCase()
   const identifier = `OC-${rand}`
 
+  // ─── Integração ObraPlay PRIMEIRO — não salva se a integração com ObraPlay falhar ──
+  // Só pulamos a integração quando não há obraplay_answer_id (OC manual sem cotação vinculada).
+  let opOrderId: number | null = null
+  let opOrderCode: string | null = null
+
+  if (obraplay_answer_id) {
+    const nestedItems = (Array.isArray(items) ? items : [])
+      .filter((it: any) => it?.op_answered_item_id != null)
+
+    if (nestedItems.length === 0) {
+      return NextResponse.json({
+        error: "Não foi possível enviar a ordem de compra ao ObraPlay.",
+        detail: "Os itens desta cotação não possuem ID de resposta do ObraPlay (op_answered_item_id). Isso acontece quando a cotação foi respondida pelo fornecedor antes de uma atualização da integração.",
+        support: "Entre em contato com o suporte informando o código da cotação para que possamos corrigir manualmente.",
+      }, { status: 400 })
+    }
+
+    if (obraplay_address_id == null) {
+      return NextResponse.json({
+        error: "Não foi possível enviar a ordem de compra ao ObraPlay.",
+        detail: "O endereço de entrega não possui ID de resposta do ObraPlay (op_answered_address_id).",
+        support: "Entre em contato com o suporte informando o código da cotação para que possamos corrigir manualmente.",
+      }, { status: 400 })
+    }
+
+    // Busca dados da cotação + empresa compradora
+    const [cotCtx] = await sql`
+      SELECT
+        c.requester_name, c.requester_email, c.requester_phone,
+        comp.obraplay_company_id,
+        comp.cnpj           AS company_cnpj,
+        comp.fantasy_name   AS company_name,
+        comp.email          AS company_email,
+        comp.street, comp.number, comp.neighbourhood,
+        comp.city, comp.state, comp.zipcode
+      FROM cotacoes c
+      JOIN companies comp ON comp.id = c.company_id
+      WHERE c.id = ${cotacao_id}
+    `
+
+    if (!cotCtx?.obraplay_company_id) {
+      return NextResponse.json({
+        error: "Não foi possível enviar a ordem de compra ao ObraPlay.",
+        detail: "A empresa não está vinculada ao ObraPlay (obraplay_company_id ausente).",
+        support: "Entre em contato com o suporte para vincular sua empresa ao ObraPlay antes de emitir ordens de compra.",
+      }, { status: 400 })
+    }
+
+    const [supCtx] = await sql`
+      SELECT mirror_company_id, supplier_name, supplier_email, supplier_phone
+      FROM cotacao_respostas
+      WHERE op_answer_id = ${Number(obraplay_answer_id)}
+      LIMIT 1
+    `
+
+    const payload: OPOrderNestedPayload = {
+      quotation_answer:  Number(obraplay_answer_id),
+      foreign_id:        identifier,
+      company:           cotCtx.obraplay_company_id,
+      name:              cotCtx.requester_name  ?? cotCtx.company_name ?? supplier_name,
+      email:             cotCtx.requester_email ?? null,
+      phone:             cotCtx.requester_phone ?? null,
+      supplier_company:  supCtx?.mirror_company_id ?? null,
+      supplier_name:     supplier_name,
+      supplier_email:    supplier_email ?? supCtx?.supplier_email ?? null,
+      supplier_phone:    supplier_phone ?? supCtx?.supplier_phone ?? null,
+      payment_method:    payment_method ?? null,
+      arrival_estimate:  arrival_estimate ?? null,
+      billing_data: {
+        cnpj:          cotCtx.company_cnpj  ?? null,
+        company_name:  cotCtx.company_name  ?? null,
+        name:          cotCtx.requester_name ?? cotCtx.company_name ?? null,
+        email:         cotCtx.company_email ?? cotCtx.requester_email ?? null,
+        street:        cotCtx.street        ?? null,
+        number:        cotCtx.number        ?? null,
+        neighbourhood: cotCtx.neighbourhood ?? null,
+        city:          cotCtx.city          ?? null,
+        state:         cotCtx.state         ?? null,
+        zipcode:       cotCtx.zipcode       ?? null,
+      },
+      shipping_addresses: [{
+        quotation_answered_shipping_address: Number(obraplay_address_id),
+        items: nestedItems.map((it: any) => ({
+          quotation_answered_item: Number(it.op_answered_item_id),
+          name:                   it.name,
+          measurement_unit:       it.unit ?? it.measurement_unit ?? null,
+          type:                   "I",   // "I" = insumo/livre, "C" = catálogo
+          ...(it.unit_price_micros    != null ? { unit_price_micros:     Number(it.unit_price_micros) }    : {}),
+          ...(it.total_quantity_micros != null ? { total_quantity_micros: Number(it.total_quantity_micros) } : {}),
+          ...(it.total_discount_micros != null ? { total_discount_micros: Number(it.total_discount_micros) } : {}),
+        })),
+      }],
+    }
+
+    try {
+      const created = await obraplay.orders.createNested(payload)
+      opOrderId   = created?.id   ?? null
+      opOrderCode = created?.code ?? created?.foreign_id ?? null
+    } catch (err: any) {
+      const detail = err?.message ?? String(err)
+      console.error("[ordens-compra] ObraPlay erro:", detail)
+      return NextResponse.json({
+        error: "Não foi possível enviar a ordem de compra ao ObraPlay.",
+        detail,
+        support: "Entre em contato com o suporte informando o erro acima e o código da cotação.",
+      }, { status: 400 })
+    }
+  }
+
+  // ─── Só chega aqui se a integração ObraPlay foi bem-sucedida (ou se não há answer_id) ───
   const [oc] = await sql`
     INSERT INTO ordens_compra
       (company_id, cotacao_id, identifier, supplier_name, supplier_cnpj, supplier_email,
        supplier_phone, items, subtotal, freight, total, payment_method, arrival_estimate,
-       obraplay_answer_id, status)
+       obraplay_answer_id, obraplay_order_id, obraplay_order_code, status)
     VALUES
       (${company_id}, ${cotacao_id}, ${identifier}, ${supplier_name}, ${supplier_cnpj ?? null},
        ${supplier_email ?? null}, ${supplier_phone ?? null}, ${JSON.stringify(items ?? [])},
        ${subtotal ?? 0}, ${freight ?? 0}, ${total ?? 0}, ${payment_method ?? null},
-       ${arrival_estimate ?? null}, ${obraplay_answer_id ?? null}, 'Aguardando fornecedor')
+       ${arrival_estimate ?? null}, ${obraplay_answer_id ?? null},
+       ${opOrderId}, ${opOrderCode},
+       ${obraplay_answer_id ? 'Enviada ao fornecedor' : 'Aguardando fornecedor'})
     RETURNING *
   `
 
-  // Marca a cotação como "Ordem de compra gerada" assim que a primeira OC for criada
+  // Marca a cotação como "Ordem de compra gerada"
   await sql`
     UPDATE cotacoes
     SET status = 'Ordem de compra gerada', updated_at = now()
@@ -63,119 +175,5 @@ export async function POST(req: NextRequest) {
       AND status NOT IN ('Cancelada', 'Rascunho', 'Ordem de compra gerada')
   `
 
-  // ─── Integração ObraPlay: cria a OC via /api/orders/nested/ ───────────────────
-  let opError: string | null = null
-
-  if (obraplay_answer_id) {
-    // Filtra apenas itens que têm o pk da resposta do ObraPlay
-    const nestedItems = (Array.isArray(items) ? items : [])
-      .filter((it: any) => it?.op_answered_item_id != null)
-
-    if (nestedItems.length === 0) {
-      opError = "Itens sem ID de resposta do ObraPlay (op_answered_item_id). " +
-                "A cotação pode ter sido respondida antes da atualização da integração — peça uma nova resposta ao fornecedor."
-    } else if (obraplay_address_id == null) {
-      opError = "Endereço de entrega sem ID de resposta do ObraPlay (op_answered_address_id)."
-    } else {
-      // Busca dados da cotação + empresa compradora para montar o payload completo
-      const [cotCtx] = await sql`
-        SELECT
-          c.requester_name, c.requester_email, c.requester_phone,
-          comp.obraplay_company_id,
-          comp.cnpj           AS company_cnpj,
-          comp.fantasy_name   AS company_name,
-          comp.email          AS company_email,
-          comp.street, comp.number, comp.neighbourhood,
-          comp.city, comp.state, comp.zipcode
-        FROM cotacoes c
-        JOIN companies comp ON comp.id = c.company_id
-        WHERE c.id = ${cotacao_id}
-      `
-
-      if (!cotCtx?.obraplay_company_id) {
-        opError = "Empresa compradora sem obraplay_company_id — vincule a empresa ao ObraPlay antes de emitir a OC."
-      } else {
-        // Busca dados do fornecedor via cotacao_respostas
-        const [supCtx] = await sql`
-          SELECT mirror_company_id, supplier_name, supplier_email, supplier_phone
-          FROM cotacao_respostas
-          WHERE op_answer_id = ${Number(obraplay_answer_id)}
-          LIMIT 1
-        `
-
-        const payload: OPOrderNestedPayload = {
-          quotation_answer:   Number(obraplay_answer_id),
-          foreign_id:         identifier,
-          // Empresa compradora
-          company:            cotCtx.obraplay_company_id,
-          name:               cotCtx.requester_name  ?? cotCtx.company_name ?? supplier_name,
-          email:              cotCtx.requester_email ?? null,
-          phone:              cotCtx.requester_phone ?? null,
-          // Fornecedor
-          supplier_company:   supCtx?.mirror_company_id ?? null,
-          supplier_name:      supplier_name,
-          supplier_email:     supplier_email ?? supCtx?.supplier_email ?? null,
-          supplier_phone:     supplier_phone ?? supCtx?.supplier_phone ?? null,
-          // Condições comerciais
-          payment_method:     payment_method ?? null,
-          arrival_estimate:   arrival_estimate ?? null,
-          // Dados de faturamento (billing_data)
-          billing_data: {
-            cnpj:         cotCtx.company_cnpj  ?? null,
-            company_name: cotCtx.company_name  ?? null,
-            email:        cotCtx.company_email ?? cotCtx.requester_email ?? null,
-            street:       cotCtx.street        ?? null,
-            number:       cotCtx.number        ?? null,
-            neighbourhood: cotCtx.neighbourhood ?? null,
-            city:         cotCtx.city          ?? null,
-            state:        cotCtx.state         ?? null,
-            zipcode:      cotCtx.zipcode       ?? null,
-          },
-          shipping_addresses: [
-            {
-              quotation_answered_shipping_address: Number(obraplay_address_id),
-              items: nestedItems.map((it: any) => ({
-                quotation_answered_item: Number(it.op_answered_item_id),
-                name:                   it.name,
-                measurement_unit:       it.unit ?? it.measurement_unit ?? null,
-                type:                   "custom",
-                ...(it.unit_price_micros    != null ? { unit_price_micros:     Number(it.unit_price_micros) }    : {}),
-                ...(it.total_quantity_micros != null ? { total_quantity_micros: Number(it.total_quantity_micros) } : {}),
-                ...(it.total_discount_micros != null ? { total_discount_micros: Number(it.total_discount_micros) } : {}),
-              })),
-            },
-          ],
-        }
-
-        try {
-          const created = await obraplay.orders.createNested(payload)
-          await sql`
-            UPDATE ordens_compra
-            SET obraplay_order_id   = ${created?.id ?? null},
-                obraplay_order_code = ${created?.code ?? created?.foreign_id ?? null},
-                obraplay_sync_error = NULL,
-                status              = 'Enviada ao fornecedor',
-                updated_at          = now()
-            WHERE id = ${oc.id}
-          `
-          oc.obraplay_order_id   = created?.id ?? null
-          oc.obraplay_order_code = created?.code ?? created?.foreign_id ?? null
-          oc.status              = 'Enviada ao fornecedor'
-        } catch (err: any) {
-          opError = `Falha ao criar OC no ObraPlay: ${err?.message ?? String(err)}`
-          console.error("[ordens-compra] ObraPlay erro:", opError)
-        }
-      }
-    }
-  } else {
-    opError = "OC criada apenas localmente (sem obraplay_answer_id vinculado)."
-  }
-
-  // Persiste o erro de sync (se houver) sem bloquear a resposta
-  if (opError) {
-    await sql`UPDATE ordens_compra SET obraplay_sync_error = ${opError}, updated_at = now() WHERE id = ${oc.id}`
-    oc.obraplay_sync_error = opError
-  }
-
-  return NextResponse.json(opError ? { ...oc, _op_error: opError } : oc, { status: 201 })
+  return NextResponse.json(oc, { status: 201 })
 }

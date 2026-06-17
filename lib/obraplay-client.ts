@@ -187,7 +187,7 @@ export interface OPOrderNestedItem {
   quotation_answered_item:  number   // pk da resposta do item no ObraPlay (op_answered_item_id)
   name:                     string   // nome do item — obrigatório
   measurement_unit:         string | null  // unidade de medida — obrigatória
-  type:                     "custom" | "catalog"  // tipo do item — obrigatório
+  type:                     "I" | "C"  // "I" = insumo/livre, "C" = catálogo — obrigatório
   unit_price_micros?:       number
   total_quantity_micros?:   number
   total_discount_micros?:   number
@@ -201,6 +201,7 @@ export interface OPOrderNestedShippingAddress {
 export interface OPOrderNestedBillingData {
   cnpj?:          string | null
   company_name?:  string | null
+  name?:          string | null   // nome do responsável pelo faturamento — obrigatório no ObraPlay
   email?:         string | null
   street?:        string | null
   number?:        string | null

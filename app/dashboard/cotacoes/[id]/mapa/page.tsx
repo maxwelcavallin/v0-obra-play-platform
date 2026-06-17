@@ -224,36 +224,51 @@ export default function MapaCotacaoPage() {
     })
   }
 
+  async function postOrdem(body: object): Promise<{ ok: boolean; errorMsg?: string }> {
+    const res = await authFetch("/api/ordens-compra", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) {
+      let json: any = {}
+      try { json = await res.json() } catch {}
+      const msg = [json.error, json.detail, json.support].filter(Boolean).join("\n\n")
+      return { ok: false, errorMsg: msg || "Erro ao gerar ordem de compra." }
+    }
+    return { ok: true }
+  }
+
   async function handleGenerateCompra() {
     if (!mapa || !activeCompany?.id || ordensPorFornecedor.length === 0) return
     setGenerating(true)
     try {
       for (const { supplier, items, subtotal, freight, total } of ordensPorFornecedor) {
-        await authFetch("/api/ordens-compra", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            company_id: activeCompany.id,
-            cotacao_id: mapa.cotacao_id,
-            supplier_name: supplier.supplier_name,
-            supplier_email: supplier.supplier_email ?? null,
-            supplier_phone: supplier.supplier_phone ?? null,
-            items,
-            subtotal,
-            freight: freight ?? 0,
-            total,
-            payment_method: supplier.payment_method ?? null,
-            arrival_estimate: supplier.arrival_estimate ?? null,
-            obraplay_answer_id: supplier.obraplay_answer_id ?? null,
-            obraplay_address_id: supplier.op_answered_address_id ?? null,
-          }),
+        const result = await postOrdem({
+          company_id: activeCompany.id,
+          cotacao_id: mapa.cotacao_id,
+          supplier_name: supplier.supplier_name,
+          supplier_email: supplier.supplier_email ?? null,
+          supplier_phone: supplier.supplier_phone ?? null,
+          items,
+          subtotal,
+          freight: freight ?? 0,
+          total,
+          payment_method: supplier.payment_method ?? null,
+          arrival_estimate: supplier.arrival_estimate ?? null,
+          obraplay_answer_id: supplier.obraplay_answer_id ?? null,
+          obraplay_address_id: supplier.op_answered_address_id ?? null,
         })
+        if (!result.ok) {
+          toast.error(result.errorMsg ?? "Erro ao gerar ordem de compra.", { duration: 8000 })
+          return
+        }
       }
-      toast.success(`${ordensPorFornecedor.length} ordem(ns) de compra gerada(s)!`)
+      toast.success(`${ordensPorFornecedor.length} ordem(ns) de compra gerada(s) com sucesso!`)
       setShowModal(false)
       router.push(`/dashboard/ordens-compra`)
     } catch {
-      toast.error("Erro ao gerar ordens de compra")
+      toast.error("Erro inesperado ao gerar ordens de compra. Entre em contato com o suporte.")
     } finally {
       setGenerating(false)
     }
@@ -266,31 +281,31 @@ export default function MapaCotacaoPage() {
       for (const sid of supplierIds) {
         const sup = mapa.suppliers.find(s => s.supplier_id === sid)
         if (!sup) continue
-        await authFetch("/api/ordens-compra", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            company_id: activeCompany.id,
-            cotacao_id: mapa.cotacao_id,
-            supplier_name: sup.supplier_name,
-            supplier_email: sup.supplier_email ?? null,
-            supplier_phone: sup.supplier_phone ?? null,
-            items: sup.answered_items.filter(ai => ai.available && ai.unit_price != null),
-            subtotal: sup.subtotal,
-            freight: sup.freight ?? 0,
-            total: sup.total,
-            payment_method: sup.payment_method ?? null,
-            arrival_estimate: sup.arrival_estimate ?? null,
-            obraplay_answer_id: sup.obraplay_answer_id ?? null,
-            obraplay_address_id: sup.op_answered_address_id ?? null,
-          }),
+        const result = await postOrdem({
+          company_id: activeCompany.id,
+          cotacao_id: mapa.cotacao_id,
+          supplier_name: sup.supplier_name,
+          supplier_email: sup.supplier_email ?? null,
+          supplier_phone: sup.supplier_phone ?? null,
+          items: sup.answered_items.filter(ai => ai.available && ai.unit_price != null),
+          subtotal: sup.subtotal,
+          freight: sup.freight ?? 0,
+          total: sup.total,
+          payment_method: sup.payment_method ?? null,
+          arrival_estimate: sup.arrival_estimate ?? null,
+          obraplay_answer_id: sup.obraplay_answer_id ?? null,
+          obraplay_address_id: sup.op_answered_address_id ?? null,
         })
+        if (!result.ok) {
+          toast.error(result.errorMsg ?? "Erro ao gerar ordem de compra.", { duration: 8000 })
+          return
+        }
       }
-      toast.success(`${supplierIds.length} ordem(ns) de compra gerada(s)!`)
+      toast.success(`${supplierIds.length} ordem(ns) de compra gerada(s) com sucesso!`)
       setShowModal(false)
       router.push(`/dashboard/ordens-compra`)
     } catch {
-      toast.error("Erro ao gerar ordens de compra")
+      toast.error("Erro inesperado ao gerar ordens de compra. Entre em contato com o suporte.")
     } finally {
       setGenerating(false)
     }
