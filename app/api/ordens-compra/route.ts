@@ -67,18 +67,29 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    // Busca dados da cotação + empresa compradora
+    // Busca dados da cotação + empresa + obra para montar endereços
     const [cotCtx] = await sql`
       SELECT
         c.requester_name, c.requester_email, c.requester_phone,
+        c.address_type,
         comp.obraplay_company_id,
         comp.cnpj           AS company_cnpj,
         comp.fantasy_name   AS company_name,
         comp.email          AS company_email,
-        comp.street, comp.number, comp.neighbourhood,
-        comp.city, comp.state, comp.zipcode
+        comp.street         AS company_street,
+        comp.number         AS company_number,
+        comp.neighbourhood  AS company_neighbourhood,
+        comp.city           AS company_city,
+        comp.state          AS company_state,
+        comp.zipcode        AS company_zipcode,
+        o.delivery_street, o.delivery_number, o.delivery_complement,
+        o.delivery_neighbourhood, o.delivery_city, o.delivery_state, o.delivery_zipcode,
+        o.billing_street, o.billing_number, o.billing_complement,
+        o.billing_neighbourhood, o.billing_city, o.billing_state, o.billing_zipcode,
+        o.same_billing_address
       FROM cotacoes c
       JOIN companies comp ON comp.id = c.company_id
+      LEFT JOIN obras o ON o.id = c.obra_id
       WHERE c.id = ${cotacao_id}
     `
 
@@ -97,6 +108,25 @@ export async function POST(req: NextRequest) {
       LIMIT 1
     `
 
+    // Resolve endereço de entrega: delivery da obra → billing da obra → empresa
+    const deliveryAddr = {
+      street:        cotCtx.delivery_street        ?? cotCtx.billing_street        ?? cotCtx.company_street        ?? null,
+      number:        cotCtx.delivery_number        ?? cotCtx.billing_number        ?? cotCtx.company_number        ?? null,
+      complement:    cotCtx.delivery_complement    ?? cotCtx.billing_complement    ?? null,
+      neighbourhood: cotCtx.delivery_neighbourhood ?? cotCtx.billing_neighbourhood ?? cotCtx.company_neighbourhood ?? null,
+      city:          cotCtx.delivery_city          ?? cotCtx.billing_city          ?? cotCtx.company_city          ?? null,
+      state:         cotCtx.delivery_state         ?? cotCtx.billing_state         ?? cotCtx.company_state         ?? null,
+      zipcode:       cotCtx.delivery_zipcode       ?? cotCtx.billing_zipcode       ?? cotCtx.company_zipcode       ?? null,
+    }
+
+    if (!deliveryAddr.city || !deliveryAddr.state) {
+      return NextResponse.json({
+        error: "Não foi possível enviar a ordem de compra ao ObraPlay.",
+        detail: "O endereço de entrega da obra não está preenchido (cidade e estado são obrigatórios). Acesse a obra e preencha o endereço de entrega antes de gerar a ordem de compra.",
+        support: "Acesse a obra vinculada a esta cotação, preencha o endereço de entrega e tente novamente.",
+      }, { status: 400 })
+    }
+
     const payload: OPOrderNestedPayload = {
       quotation_answer:  Number(obraplay_answer_id),
       foreign_id:        identifier,
@@ -111,19 +141,27 @@ export async function POST(req: NextRequest) {
       payment_method:    payment_method ?? null,
       arrival_estimate:  arrival_estimate ?? null,
       billing_data: {
-        cnpj:          cotCtx.company_cnpj  ?? null,
-        company_name:  cotCtx.company_name  ?? null,
-        name:          cotCtx.requester_name ?? cotCtx.company_name ?? null,
-        email:         cotCtx.company_email ?? cotCtx.requester_email ?? null,
-        street:        cotCtx.street        ?? null,
-        number:        cotCtx.number        ?? null,
-        neighbourhood: cotCtx.neighbourhood ?? null,
-        city:          cotCtx.city          ?? null,
-        state:         cotCtx.state         ?? null,
-        zipcode:       cotCtx.zipcode       ?? null,
+        cnpj:          cotCtx.company_cnpj    ?? null,
+        company_name:  cotCtx.company_name    ?? null,
+        name:          cotCtx.requester_name  ?? cotCtx.company_name ?? null,
+        email:         cotCtx.company_email   ?? cotCtx.requester_email ?? null,
+        street:        cotCtx.company_street  ?? null,
+        number:        cotCtx.company_number  ?? null,
+        neighbourhood: cotCtx.company_neighbourhood ?? null,
+        city:          cotCtx.company_city    ?? null,
+        state:         cotCtx.company_state   ?? null,
+        zipcode:       cotCtx.company_zipcode ?? null,
       },
       shipping_addresses: [{
         quotation_answered_shipping_address: Number(obraplay_address_id),
+        // Endereço físico de entrega — obrigatório pelo ObraPlay
+        street:        deliveryAddr.street,
+        number:        deliveryAddr.number,
+        complement:    deliveryAddr.complement,
+        neighbourhood: deliveryAddr.neighbourhood,
+        city:          deliveryAddr.city,
+        state:         deliveryAddr.state,
+        zipcode:       deliveryAddr.zipcode,
         items: nestedItems.map((it: any) => ({
           quotation_answered_item: Number(it.op_answered_item_id),
           name:                   it.name,

@@ -195,7 +195,15 @@ export interface OPOrderNestedItem {
 
 export interface OPOrderNestedShippingAddress {
   quotation_answered_shipping_address: number   // pk da resposta de frete (op_answered_address_id)
-  items:                               OPOrderNestedItem[]
+  // Endereço físico de entrega — obrigatório pelo ObraPlay quando não for retirada na loja
+  street?:        string | null
+  number?:        string | null
+  complement?:    string | null
+  neighbourhood?: string | null
+  city?:          string | null
+  state?:         string | null
+  zipcode?:       string | null
+  items:          OPOrderNestedItem[]
 }
 
 export interface OPOrderNestedBillingData {
