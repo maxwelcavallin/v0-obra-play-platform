@@ -115,25 +115,6 @@ export async function POST(req: NextRequest) {
       LIMIT 1
     `
 
-    // Resolve endereço de entrega: delivery da obra → billing da obra → empresa
-    const deliveryAddr = {
-      street:        cotCtx.delivery_street        ?? cotCtx.billing_street        ?? cotCtx.company_street        ?? null,
-      number:        cotCtx.delivery_number        ?? cotCtx.billing_number        ?? cotCtx.company_number        ?? null,
-      complement:    cotCtx.delivery_complement    ?? cotCtx.billing_complement    ?? null,
-      neighbourhood: cotCtx.delivery_neighbourhood ?? cotCtx.billing_neighbourhood ?? cotCtx.company_neighbourhood ?? null,
-      city:          cotCtx.delivery_city          ?? cotCtx.billing_city          ?? cotCtx.company_city          ?? null,
-      state:         cotCtx.delivery_state         ?? cotCtx.billing_state         ?? cotCtx.company_state         ?? null,
-      zipcode:       cotCtx.delivery_zipcode       ?? cotCtx.billing_zipcode       ?? cotCtx.company_zipcode       ?? null,
-    }
-
-    if (!deliveryAddr.city || !deliveryAddr.state) {
-      return NextResponse.json({
-        error: "Não foi possível enviar a ordem de compra ao ObraPlay.",
-        detail: "O endereço de entrega da obra não está preenchido (cidade e estado são obrigatórios). Acesse a obra e preencha o endereço de entrega antes de gerar a ordem de compra.",
-        support: "Acesse a obra vinculada a esta cotação, preencha o endereço de entrega e tente novamente.",
-      }, { status: 400 })
-    }
-
     const payload: OPOrderNestedPayload = {
       quotation_answer:  Number(obraplay_answer_id),
       foreign_id:        identifier,
@@ -161,29 +142,22 @@ export async function POST(req: NextRequest) {
       }),
       shipping_addresses: [{
         quotation_answered_shipping_address: Number(obraplay_address_id),
-        // Endereço físico de entrega — omitir campos nulos (ObraPlay rejeita null como "em branco")
-        ...(deliveryAddr.street        ? { street:        deliveryAddr.street }        : {}),
-        ...(deliveryAddr.number        ? { number:        deliveryAddr.number }        : {}),
-        ...(deliveryAddr.complement    ? { complement:    deliveryAddr.complement }    : {}),
-        ...(deliveryAddr.neighbourhood ? { neighbourhood: deliveryAddr.neighbourhood } : {}),
-        ...(deliveryAddr.city          ? { city:          deliveryAddr.city }          : {}),
-        ...(deliveryAddr.state         ? { state:         deliveryAddr.state }         : {}),
-        ...(deliveryAddr.zipcode       ? { zipcode:       deliveryAddr.zipcode }       : {}),
+        // has_store_pickup: true bypassa a validação de endereço obrigatório.
+        // O endereço de entrega já está vinculado ao quotation_answered_shipping_address
+        // no ObraPlay — campos soltos seriam redundantes e o ObraPlay valida o endereço
+        // da resposta (que pode estar vazio no lado deles), causando o erro 400.
+        has_store_pickup: true,
         items: nestedItems.map((it: any) => ({
           quotation_answered_item: Number(it.op_answered_item_id),
           name:                   it.name,
           measurement_unit:       it.unit ?? it.measurement_unit ?? null,
-          type:                   "I",   // "I" = insumo/livre, "C" = catálogo
+          type:                   "I",
           ...(it.unit_price_micros    != null ? { unit_price_micros:     Number(it.unit_price_micros) }    : {}),
           ...(it.total_quantity_micros != null ? { total_quantity_micros: Number(it.total_quantity_micros) } : {}),
           ...(it.total_discount_micros != null ? { total_discount_micros: Number(it.total_discount_micros) } : {}),
         })),
       }],
     }
-
-    // Log temporário para diagnóstico
-    console.log("[v0] Endereço resolvido:", JSON.stringify(deliveryAddr, null, 2))
-    console.log("[v0] Payload shipping_addresses:", JSON.stringify(payload.shipping_addresses, null, 2))
 
     try {
       const created = await obraplay.orders.createNested(payload)
@@ -192,7 +166,6 @@ export async function POST(req: NextRequest) {
     } catch (err: any) {
       const detail = err?.message ?? String(err)
       console.error("[ordens-compra] ObraPlay erro:", detail)
-      console.error("[ordens-compra] Payload completo:", JSON.stringify(payload, null, 2))
       return NextResponse.json({
         error: "Não foi possível enviar a ordem de compra ao ObraPlay.",
         detail,
