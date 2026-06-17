@@ -599,6 +599,8 @@ Authorization: Bearer TOKEN
       "supplier_phone": "+5511999999999",
       "mirror_company_id": 57,
       "op_answer_id": 12072,
+      "obraplay_answer_id": 12072,
+      "op_answered_address_id": 88431,
       "answered": true,
       "is_refused": false,
       "payment_method": "bankslip",
@@ -607,6 +609,7 @@ Authorization: Bearer TOKEN
       "answered_items": [
         {
           "cotacao_item_id": "uuid-do-item",
+          "op_answered_item_id": 90521,
           "name": "Cimento CP II - 50kg",
           "unit": "Saca",
           "quantity": 100,
@@ -614,9 +617,11 @@ Authorization: Bearer TOKEN
           "available": true,
           "unit_price": 33.50,
           "unit_price_micros": 33500000,
+          "total_quantity_micros": 100000000,
           "quantity_answered": 100,
           "total_price": 3350.00,
-          "discount": 0
+          "discount": 0,
+          "total_discount_micros": 0
         }
       ],
       "subtotal": 3350.00,
@@ -642,6 +647,21 @@ Authorization: Bearer TOKEN
 | `answered: false` | Fornecedor ainda não respondeu |
 | `answered: true, is_refused: false` | Fornecedor respondeu com preços |
 | `answered: true, is_refused: true` | Fornecedor recusou (todos os itens `available: false`) |
+
+**Campos do mapa necessários para gerar a Ordem de Compra (OC):**
+
+Ao montar a OC, a plataforma cria o pedido no ObraPlay via `/api/orders/nested/`, que exige os IDs das respostas. Esses IDs vêm do próprio mapa — **guarde-os** ao selecionar itens/fornecedores:
+
+| Campo do mapa | Onde aparece | Uso na OC |
+|---|---|---|
+| `obraplay_answer_id` (= `op_answer_id`) | por fornecedor | enviado como `obraplay_answer_id` no body da OC |
+| `op_answered_address_id` | por fornecedor | enviado como `obraplay_address_id` no body da OC |
+| `op_answered_item_id` | por item em `answered_items` | enviado em cada item da OC |
+| `unit_price_micros` | por item | enviado em cada item da OC |
+| `total_quantity_micros` | por item | enviado em cada item da OC |
+| `total_discount_micros` | por item | enviado em cada item da OC (opcional) |
+
+> **Importante:** respostas recebidas **antes** da ativação da integração de OC não possuem `op_answered_item_id` / `op_answered_address_id`. Nesses casos a OC é salva localmente, mas a sincronização com o ObraPlay falha (`_op_error`) — peça ao fornecedor para responder novamente para obter os IDs.
 
 **Status possíveis da cotação:**
 
@@ -800,7 +820,9 @@ Authorization: Bearer TOKEN
 
 ## 4. Fluxo Completo — Ordem de Compra
 
-Ordens de compra são geradas após análise do mapa de cotação. Uma OC é criada por fornecedor escolhido.
+Ordens de compra são geradas após análise do mapa de cotação. **Uma OC é criada por fornecedor** escolhido, contendo **somente os itens selecionados** daquele fornecedor.
+
+> **Integração automática:** o agente chama **apenas** `POST /api/ordens-compra`. A própria rota grava a OC localmente **e** cria o pedido no ObraPlay (`POST /api/orders/nested/`) de forma automática — o agente **não** chama o ObraPlay diretamente. É o mesmo padrão da criação de cotação.
 
 ### 4.1 Criar Ordem de Compra
 
@@ -819,16 +841,21 @@ Authorization: Bearer TOKEN
   "supplier_email": "vendas@abc.com.br",
   "supplier_phone": "+5511999999999",
   "obraplay_answer_id": 12072,
+  "obraplay_address_id": 88431,
   "payment_method": "bankslip",
   "arrival_estimate": "2026-06-15T03:00:00Z",
   "items": [
     {
       "cotacao_item_id": "uuid-do-item",
+      "op_answered_item_id": 90521,
       "name": "Cimento CP II - 50kg",
       "unit": "Saca",
       "quantity": 100,
       "unit_price": 33.50,
-      "total_price": 3350.00
+      "total_price": 3350.00,
+      "unit_price_micros": 33500000,
+      "total_quantity_micros": 100000000,
+      "total_discount_micros": 0
     }
   ],
   "subtotal": 3350.00,
@@ -837,7 +864,7 @@ Authorization: Bearer TOKEN
 }
 ```
 
-**Campos obrigatórios:**
+**Campos do body:**
 
 | Campo | Tipo | Obrigatório | Descrição |
 |---|---|---|---|
@@ -847,10 +874,11 @@ Authorization: Bearer TOKEN
 | `supplier_cnpj` | string | Não | CNPJ do fornecedor |
 | `supplier_email` | string | Não | Email do fornecedor |
 | `supplier_phone` | string | Não | Telefone do fornecedor |
-| `obraplay_answer_id` | integer | Recomendado | ID da resposta no ObraPlay (campo `op_answer_id` do mapa) |
+| `obraplay_answer_id` | integer | **Sim p/ ObraPlay** | `obraplay_answer_id`/`op_answer_id` do fornecedor no mapa. Sem ele a OC fica só local |
+| `obraplay_address_id` | integer | **Sim p/ ObraPlay** | `op_answered_address_id` do fornecedor no mapa (pk da resposta de frete) |
 | `payment_method` | string | Não | Forma de pagamento (ex: `"bankslip"`, `"pix"`, `"credit_card"`) |
 | `arrival_estimate` | string (ISO 8601) | Não | Previsão de entrega |
-| `items` | array | **Sim** | Itens da ordem |
+| `items` | array | **Sim** | Itens da ordem (somente os selecionados deste fornecedor) |
 | `subtotal` | number | **Sim** | Subtotal em reais |
 | `freight` | number | **Sim** | Frete em reais (0 para grátis) |
 | `total` | number | **Sim** | Total em reais (subtotal + freight) |
@@ -864,9 +892,13 @@ Authorization: Bearer TOKEN
 | `quantity` | number | **Sim** | Quantidade |
 | `unit_price` | number | **Sim** | Preço unitário em reais |
 | `total_price` | number | **Sim** | Preço total do item em reais |
+| `op_answered_item_id` | integer | **Sim p/ ObraPlay** | `op_answered_item_id` do item no mapa (pk da resposta do item). Sem ele o item é ignorado na sync |
+| `unit_price_micros` | integer | Recomendado | Preço unitário em micros (do mapa) |
+| `total_quantity_micros` | integer | Recomendado | Quantidade total em micros (do mapa) |
+| `total_discount_micros` | integer | Não | Desconto total em micros (do mapa) |
 | `cotacao_item_id` | uuid | Não | ID do item na cotação (para rastreabilidade) |
 
-**Resposta 201:**
+**Resposta 201 (sucesso na sincronização):**
 ```json
 {
   "id": "uuid-da-ordem",
@@ -874,24 +906,45 @@ Authorization: Bearer TOKEN
   "company_id": "uuid-da-empresa",
   "cotacao_id": "uuid-da-cotacao",
   "supplier_name": "Distribuidora de Materiais ABC",
-  "status": "Aguardando fornecedor",
+  "status": "Enviada ao fornecedor",
   "subtotal": 3350.00,
   "freight": 0,
   "total": 3350.00,
   "obraplay_answer_id": 12072,
+  "obraplay_order_id": 45012,
+  "obraplay_order_code": "OC-A3K9F2",
+  "obraplay_sync_error": null,
   "created_at": "2026-06-01T15:00:00Z"
 }
 ```
+
+**Resposta 201 (OC salva, mas falha na sincronização com o ObraPlay):**
+
+A requisição **não falha** — a OC é gravada localmente e o campo `_op_error` indica o motivo da falha de sincronização. O status permanece `Aguardando fornecedor`.
+
+```json
+{
+  "id": "uuid-da-ordem",
+  "identifier": "OC-A3K9F2",
+  "status": "Aguardando fornecedor",
+  "obraplay_order_id": null,
+  "obraplay_sync_error": "Itens sem ID de resposta do ObraPlay (op_answered_item_id)...",
+  "_op_error": "Itens sem ID de resposta do ObraPlay (op_answered_item_id)..."
+}
+```
+
+> Se `_op_error` estiver presente, verifique se os IDs (`obraplay_answer_id`, `obraplay_address_id`, `op_answered_item_id`) foram enviados corretamente a partir do mapa. Respostas antigas (anteriores à integração) não possuem esses IDs.
 
 ### Como criar uma OC por fornecedor a partir do mapa
 
 Após consultar `GET /api/cotacoes/{id}/mapa`, para cada fornecedor selecionado:
 
 1. Filtre os `answered_items` com `available: true` do fornecedor escolhido
-2. Calcule `subtotal = soma de (unit_price * quantity_answered)` para os itens selecionados
-3. Use o `freight` do fornecedor
-4. Crie uma OC com `POST /api/ordens-compra` contendo os dados do fornecedor e os itens selecionados
-5. Repita para cada fornecedor com itens selecionados (uma OC por fornecedor)
+2. Para cada item, leve adiante `op_answered_item_id`, `unit_price_micros`, `total_quantity_micros` e `total_discount_micros`
+3. Calcule `subtotal = soma de (unit_price * quantity_answered)` dos itens selecionados
+4. Use o `freight` do fornecedor; pegue `obraplay_answer_id` e `op_answered_address_id` do fornecedor
+5. Crie uma OC com `POST /api/ordens-compra` enviando os dados do fornecedor, os IDs do ObraPlay e os itens selecionados
+6. Repita para cada fornecedor com itens selecionados (uma OC por fornecedor)
 
 ---
 
@@ -936,7 +989,8 @@ Authorization: Bearer TOKEN
 
 | Status | Descrição |
 |---|---|
-| `Aguardando fornecedor` | OC criada, aguardando confirmação do fornecedor |
+| `Aguardando fornecedor` | OC criada localmente; sincronização com o ObraPlay pendente ou falha (ver `obraplay_sync_error`) |
+| `Enviada ao fornecedor` | OC criada com sucesso no ObraPlay (`obraplay_order_id` preenchido) |
 | `Confirmada` | Fornecedor confirmou o pedido |
 | `Entregue` | Material entregue na obra |
 | `Cancelada` | OC cancelada |
@@ -1019,5 +1073,9 @@ Causas comuns de `_op_error`:
 
 7. POST /api/ordens-compra  (uma chamada por fornecedor selecionado)
    → Criar OC com os itens e valores do fornecedor escolhido
-   → Usar obraplay_answer_id do mapa para rastreabilidade
+   → Enviar obraplay_answer_id + obraplay_address_id (do fornecedor) e
+     op_answered_item_id + *_micros (de cada item) — vindos do mapa
+   → A plataforma cria a OC no ObraPlay automaticamente (/api/orders/nested/)
+   → Sucesso: status "Enviada ao fornecedor" + obraplay_order_id
+   → Se vier _op_error: OC salva local; conferir os IDs do mapa
 ```
