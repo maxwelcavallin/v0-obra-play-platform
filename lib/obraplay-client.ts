@@ -185,6 +185,9 @@ export interface OPQuotationCreated {
 
 export interface OPOrderNestedItem {
   quotation_answered_item:  number   // pk da resposta do item no ObraPlay (op_answered_item_id)
+  name:                     string   // nome do item — obrigatório
+  measurement_unit:         string | null  // unidade de medida — obrigatória
+  type:                     "custom" | "catalog"  // tipo do item — obrigatório
   unit_price_micros?:       number
   total_quantity_micros?:   number
   total_discount_micros?:   number
@@ -195,10 +198,37 @@ export interface OPOrderNestedShippingAddress {
   items:                               OPOrderNestedItem[]
 }
 
+export interface OPOrderNestedBillingData {
+  cnpj?:          string | null
+  company_name?:  string | null
+  email?:         string | null
+  street?:        string | null
+  number?:        string | null
+  neighbourhood?: string | null
+  city?:          string | null
+  state?:         string | null
+  zipcode?:       string | null
+}
+
 export interface OPOrderNestedPayload {
   quotation_answer:    number   // pk da answer (op_answer_id do fornecedor)
-  observations?:       string
   foreign_id?:         string   // identifier local da OC
+  // Empresa compradora
+  company:             number   // obraplay_company_id — obrigatório
+  name:                string   // nome do solicitante — obrigatório
+  email?:              string | null
+  phone?:              string | null
+  // Fornecedor
+  supplier_company?:   number | null  // mirror_company_id do fornecedor
+  supplier_name:       string   // nome do fornecedor — obrigatório
+  supplier_email?:     string | null
+  supplier_phone?:     string | null
+  // Condições comerciais
+  payment_method?:     string | null
+  arrival_estimate?:   string | null
+  observations?:       string
+  // Faturamento
+  billing_data?:       OPOrderNestedBillingData
   shipping_addresses:  OPOrderNestedShippingAddress[]
 }
 
