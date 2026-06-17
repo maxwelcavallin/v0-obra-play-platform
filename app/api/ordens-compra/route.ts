@@ -5,6 +5,13 @@ import { obraplay, type OPOrderNestedPayload } from "@/lib/obraplay-client"
 
 export const dynamic = "force-dynamic"
 
+/** Remove campos com valor null ou "" de um objeto — o ObraPlay rejeita null como "em branco" */
+function omitNulls<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== null && v !== "")
+  ) as Partial<T>
+}
+
 export async function GET(req: NextRequest) {
   let session
   try { session = await requireSession() } catch { return NextResponse.json({ error: "Não autenticado" }, { status: 401 }) }
@@ -140,28 +147,28 @@ export async function POST(req: NextRequest) {
       supplier_phone:    supplier_phone ?? supCtx?.supplier_phone ?? null,
       payment_method:    payment_method ?? null,
       arrival_estimate:  arrival_estimate ?? null,
-      billing_data: {
-        cnpj:          cotCtx.company_cnpj    ?? null,
-        company_name:  cotCtx.company_name    ?? null,
-        name:          cotCtx.requester_name  ?? cotCtx.company_name ?? null,
-        email:         cotCtx.company_email   ?? cotCtx.requester_email ?? null,
-        street:        cotCtx.company_street  ?? null,
-        number:        cotCtx.company_number  ?? null,
-        neighbourhood: cotCtx.company_neighbourhood ?? null,
-        city:          cotCtx.company_city    ?? null,
-        state:         cotCtx.company_state   ?? null,
-        zipcode:       cotCtx.company_zipcode ?? null,
-      },
+      billing_data: omitNulls({
+        cnpj:          cotCtx.company_cnpj                             ?? null,
+        company_name:  cotCtx.company_name                             ?? null,
+        name:          cotCtx.requester_name ?? cotCtx.company_name    ?? null,
+        email:         cotCtx.company_email  ?? cotCtx.requester_email ?? null,
+        street:        cotCtx.company_street                           ?? null,
+        number:        cotCtx.company_number                           ?? null,
+        neighbourhood: cotCtx.company_neighbourhood                    ?? null,
+        city:          cotCtx.company_city                             ?? null,
+        state:         cotCtx.company_state                            ?? null,
+        zipcode:       cotCtx.company_zipcode                          ?? null,
+      }),
       shipping_addresses: [{
         quotation_answered_shipping_address: Number(obraplay_address_id),
-        // Endereço físico de entrega — obrigatório pelo ObraPlay
-        street:        deliveryAddr.street,
-        number:        deliveryAddr.number,
-        complement:    deliveryAddr.complement,
-        neighbourhood: deliveryAddr.neighbourhood,
-        city:          deliveryAddr.city,
-        state:         deliveryAddr.state,
-        zipcode:       deliveryAddr.zipcode,
+        // Endereço físico de entrega — omitir campos nulos (ObraPlay rejeita null como "em branco")
+        ...(deliveryAddr.street        ? { street:        deliveryAddr.street }        : {}),
+        ...(deliveryAddr.number        ? { number:        deliveryAddr.number }        : {}),
+        ...(deliveryAddr.complement    ? { complement:    deliveryAddr.complement }    : {}),
+        ...(deliveryAddr.neighbourhood ? { neighbourhood: deliveryAddr.neighbourhood } : {}),
+        ...(deliveryAddr.city          ? { city:          deliveryAddr.city }          : {}),
+        ...(deliveryAddr.state         ? { state:         deliveryAddr.state }         : {}),
+        ...(deliveryAddr.zipcode       ? { zipcode:       deliveryAddr.zipcode }       : {}),
         items: nestedItems.map((it: any) => ({
           quotation_answered_item: Number(it.op_answered_item_id),
           name:                   it.name,
