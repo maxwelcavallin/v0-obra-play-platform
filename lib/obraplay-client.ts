@@ -340,5 +340,12 @@ export const obraplay = {
       qs.set("page", String(params.page ?? 1))
       return request<any>(`/api/orders/?${qs}`)
     },
+
+    async cancel(opOrderId: number, cancelReason: string): Promise<any> {
+      return request<any>(`/api/orders/${opOrderId}/cancel/`, {
+        method: "POST",
+        body: JSON.stringify({ cancel_reason: cancelReason }),
+      })
+    },
   },
 }

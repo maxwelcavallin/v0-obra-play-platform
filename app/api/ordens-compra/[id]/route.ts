@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import { requireSession } from "@/lib/session"
+import { obraplay } from "@/lib/obraplay-client"
 
 export const dynamic = "force-dynamic"
 
@@ -41,4 +42,36 @@ export async function PUT(_req: NextRequest, { params }: { params: Promise<{ id:
     RETURNING *
   `
   return NextResponse.json(updated)
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try { await requireSession() } catch { return NextResponse.json({ error: "Não autenticado" }, { status: 401 }) }
+  const { id } = await params
+  const body = await req.json().catch(() => ({}))
+  const cancelReason: string = body.cancel_reason || "Cancelado pelo usuário"
+
+  const [oc] = await sql`SELECT status, obraplay_order_id FROM ordens_compra WHERE id = ${id}`
+  if (!oc) return NextResponse.json({ error: "Não encontrada" }, { status: 404 })
+
+  if (oc.status === "Cancelada") {
+    return NextResponse.json({ error: "Ordem de compra já está cancelada." }, { status: 400 })
+  }
+
+  // Cancela no ObraPlay se houver ID de integração
+  let opWarning: string | undefined
+  if (oc.obraplay_order_id) {
+    try {
+      await obraplay.orders.cancel(oc.obraplay_order_id, cancelReason)
+    } catch (err: any) {
+      opWarning = "Cancelado localmente. Falha ao cancelar no ObraPlay: " + (err?.message ?? "erro desconhecido")
+    }
+  }
+
+  const [updated] = await sql`
+    UPDATE ordens_compra
+    SET status = 'Cancelada', updated_at = now()
+    WHERE id = ${id}
+    RETURNING *
+  `
+  return NextResponse.json({ ...updated, _op_warning: opWarning })
 }

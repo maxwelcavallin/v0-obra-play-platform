@@ -4,9 +4,10 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import {
   ArrowLeft, Loader2, AlertCircle, Building2, User,
-  Phone, Mail, MapPin, Package, DollarSign, Paperclip, TrendingUp
+  Phone, Mail, MapPin, Package, DollarSign, Paperclip, TrendingUp, XCircle
 } from "lucide-react"
 import { authFetch } from "@/lib/auth-fetch"
+import { toast } from "sonner"
 
 interface OC {
   id: string
@@ -128,6 +129,9 @@ export default function OrdemCompraDetalhePage() {
   const router = useRouter()
   const [oc, setOc] = useState<OC | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancelReason, setCancelReason] = useState("")
+  const [cancelling, setCancelling] = useState(false)
 
   useEffect(() => {
     if (id === "mock") {
@@ -146,6 +150,28 @@ export default function OrdemCompraDetalhePage() {
       .finally(() => setLoading(false))
   }, [id])
 
+  async function handleCancel() {
+    if (!cancelReason.trim()) { toast.error("Informe o motivo do cancelamento."); return }
+    setCancelling(true)
+    try {
+      const res = await authFetch(`/api/ordens-compra/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cancel_reason: cancelReason }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Erro ao cancelar")
+      if (data._op_warning) toast.error(data._op_warning, { duration: 6000 })
+      else toast.success("Ordem de compra cancelada com sucesso.")
+      setShowCancelModal(false)
+      setOc(prev => prev ? { ...prev, status: "Cancelada" } : prev)
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erro ao cancelar ordem de compra")
+    } finally {
+      setCancelling(false)
+    }
+  }
+
   if (loading) return (
     <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center">
       <Loader2 size={28} className="animate-spin text-[#1565C0]" />
@@ -161,9 +187,48 @@ export default function OrdemCompraDetalhePage() {
 
   const cfg = STATUS_CFG[oc.status] ?? { label: oc.status, color: "#757575", bg: "#F5F5F5" }
   const items: any[] = Array.isArray(oc.items) ? oc.items : []
+  const canCancel = oc.status !== "Cancelada" && oc.status !== "Entregue"
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] pb-10" style={{ maxWidth: 480, margin: "0 auto" }}>
+
+      {/* Modal de cancelamento */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-6"
+          onClick={e => { if (e.target === e.currentTarget) setShowCancelModal(false) }}>
+          <div className="bg-white w-full rounded-2xl shadow-2xl overflow-hidden" style={{ maxWidth: 480 }}>
+            <div className="px-5 pt-5 pb-4 border-b border-[#F5F5F5]">
+              <h2 className="font-bold text-[#212121] text-base">Cancelar ordem de compra</h2>
+              <p className="text-xs text-[#9E9E9E] mt-1">
+                Esta ação irá cancelar a OC no ObraPlay e em nosso sistema. Informe o motivo.
+              </p>
+            </div>
+            <div className="px-5 py-4 flex flex-col gap-3">
+              <textarea
+                className="w-full border border-[#E0E0E0] rounded-xl px-3 py-2.5 text-sm text-[#212121] resize-none focus:outline-none focus:border-[#1565C0]"
+                rows={3}
+                placeholder="Ex: Negociação cancelada pelo fornecedor..."
+                value={cancelReason}
+                onChange={e => setCancelReason(e.target.value)}
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowCancelModal(false)}
+                  className="flex-1 py-3 rounded-xl border border-[#E0E0E0] text-sm text-[#616161] font-medium hover:bg-[#F5F5F5] transition-colors">
+                  Voltar
+                </button>
+                <button
+                  onClick={handleCancel}
+                  disabled={cancelling}
+                  className="flex-1 py-3 rounded-xl bg-[#F44336] text-white font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#D32F2F] transition-colors disabled:opacity-60">
+                  {cancelling ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
+                  {cancelling ? "Cancelando..." : "Confirmar cancelamento"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="bg-white border-b border-[#EEEEEE] sticky top-0 z-10">
@@ -267,6 +332,16 @@ export default function OrdemCompraDetalhePage() {
             className="w-full py-3.5 rounded-2xl bg-[#1565C0] text-white font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#0D47A1] transition-colors shadow-sm">
             <TrendingUp size={16} />
             Gerar lançamento financeiro
+          </button>
+        )}
+
+        {/* Botão cancelar */}
+        {canCancel && (
+          <button
+            onClick={() => { setCancelReason(""); setShowCancelModal(true) }}
+            className="w-full py-3.5 rounded-2xl border border-[#F44336] text-[#F44336] font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#FFEBEE] transition-colors">
+            <XCircle size={16} />
+            Cancelar ordem de compra
           </button>
         )}
       </div>
