@@ -71,6 +71,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       return {
         cotacao_item_id:    item.id,
         op_item_id:         item.op_item_id ?? null,
+        // pk da resposta deste item no ObraPlay — exigido pelo /api/orders/nested/ ao gerar a OC
+        op_answered_item_id: toInt(linha?.op_answered_item_id),
         insumo_id:          item.insumo_id ?? null,
         name:               item.name,
         unit:               item.unit,
@@ -79,6 +81,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         available:          linha?.available ?? false,
         unit_price:         unitPrice,
         unit_price_micros:  unitPriceMicros,
+        total_quantity_micros: toInt(linha?.total_quantity_micros),
         quantity_answered:  quantityAnswered,
         total_price:        totalAfterDiscount ?? totalPrice,
         discount:           discountVal,
@@ -101,6 +104,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       is_recommended:    sup.is_recommended,
       mirror_company_id: sup.mirror_company_id,
       op_answer_id:      meta?.op_answer_id ?? sup.op_answer_id ?? null,
+      obraplay_answer_id: meta?.op_answer_id ?? sup.op_answer_id ?? null,
       answered:          hasAnswer,
       is_refused:        hasAnswer && linhas.every((r: any) => r.is_refused),
       payment_method:    meta?.payment_method    ?? null,
@@ -114,6 +118,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       subtotal,
       freight,
       free_shipping:     freteLinha?.free_shipping ?? false,
+      // pk da resposta de frete no ObraPlay — exigido pelo /api/orders/nested/ ao gerar a OC
+      op_answered_address_id: toInt(freteLinha?.op_answered_address_id),
       total,
     }
   })

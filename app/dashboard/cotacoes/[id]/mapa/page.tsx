@@ -22,12 +22,16 @@ interface MapaItem {
 
 interface AnsweredItem {
   cotacao_item_id: string
+  op_answered_item_id?: number | null
   name: string
   unit: string
   quantity: number
   answered: boolean
   available: boolean
   unit_price: number | null
+  unit_price_micros?: number | null
+  total_quantity_micros?: number | null
+  total_discount_micros?: number | null
   total_price: number | null
   quantity_answered: number
   discount: number
@@ -53,6 +57,7 @@ interface SupplierMap {
   subtotal: number
   freight: number | null
   free_shipping: boolean
+  op_answered_address_id?: number | null
   total: number
   is_refused: boolean
 }
@@ -240,6 +245,7 @@ export default function MapaCotacaoPage() {
             payment_method: supplier.payment_method ?? null,
             arrival_estimate: supplier.arrival_estimate ?? null,
             obraplay_answer_id: supplier.obraplay_answer_id ?? null,
+            obraplay_address_id: supplier.op_answered_address_id ?? null,
           }),
         })
       }
@@ -276,6 +282,7 @@ export default function MapaCotacaoPage() {
             payment_method: sup.payment_method ?? null,
             arrival_estimate: sup.arrival_estimate ?? null,
             obraplay_answer_id: sup.obraplay_answer_id ?? null,
+            obraplay_address_id: sup.op_answered_address_id ?? null,
           }),
         })
       }

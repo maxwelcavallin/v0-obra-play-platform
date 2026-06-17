@@ -178,6 +178,38 @@ export interface OPQuotationCreated {
   [key: string]: any
 }
 
+// ─── Order (Ordem de Compra) types ─────────────────────────────────────────────
+// Endpoint /api/orders/nested/ — cria UMA OC por fornecedor, com os itens selecionados.
+// Cada item referencia o pk da resposta do item (quotation_answered_item) e cada
+// endereço referencia o pk da resposta de frete (quotation_answered_shipping_address).
+
+export interface OPOrderNestedItem {
+  quotation_answered_item:  number   // pk da resposta do item no ObraPlay (op_answered_item_id)
+  unit_price_micros?:       number
+  total_quantity_micros?:   number
+  total_discount_micros?:   number
+}
+
+export interface OPOrderNestedShippingAddress {
+  quotation_answered_shipping_address: number   // pk da resposta de frete (op_answered_address_id)
+  items:                               OPOrderNestedItem[]
+}
+
+export interface OPOrderNestedPayload {
+  quotation_answer:    number   // pk da answer (op_answer_id do fornecedor)
+  observations?:       string
+  foreign_id?:         string   // identifier local da OC
+  shipping_addresses:  OPOrderNestedShippingAddress[]
+}
+
+export interface OPOrderCreated {
+  id:          number
+  code?:       string
+  foreign_id?: string
+  status?:     string
+  [key: string]: any
+}
+
 // ─── Companies ───────────────────────────────────────────────────────────────
 
 export const obraplay = {
@@ -257,23 +289,25 @@ export const obraplay = {
     },
   },
 
-  purchaseOrders: {
-    async create(payload: Record<string, any>): Promise<any> {
-      return request<any>(`/api/purchase_orders/`, {
+  orders: {
+    // Cria uma Ordem de Compra no ObraPlay derivada de uma resposta de cotação (answer),
+    // contendo apenas os itens selecionados. Uma OC por fornecedor.
+    async createNested(payload: OPOrderNestedPayload): Promise<OPOrderCreated> {
+      return request<OPOrderCreated>(`/api/orders/nested/`, {
         method: "POST",
         body: JSON.stringify(payload),
       })
     },
 
     async get(id: number): Promise<any> {
-      return request<any>(`/api/purchase_orders/${id}/`)
+      return request<any>(`/api/orders/${id}/`)
     },
 
     async list(params: { company?: number; page?: number }): Promise<any> {
       const qs = new URLSearchParams()
       if (params.company) qs.set("company", String(params.company))
       qs.set("page", String(params.page ?? 1))
-      return request<any>(`/api/purchase_orders/?${qs}`)
+      return request<any>(`/api/orders/?${qs}`)
     },
   },
 }

@@ -97,14 +97,17 @@ export async function POST(req: NextRequest) {
     // 4. Processa itens respondidos
     // O ObraPlay envia arrays de envelopes: [{ pk, model, fields: { item, answered, available, unit_price_micros, ... } }]
     // Desempacota para obter os fields diretos
+    // Preserva o `pk` de cada envelope { pk, model, fields } em `_op_answered_id`.
+    // Esse pk é o `quotation_answered_item` / `quotation_answered_shipping_address`
+    // exigido pelo endpoint /api/orders/nested/ do ObraPlay ao gerar a Ordem de Compra.
     const rawItems: any[] = answer.answered_items ?? answer.items ?? []
     const answeredItems = rawItems.map((ai: any) =>
-      ai?.fields ? ai.fields : ai  // desempacota envelope { pk, model, fields }
+      ai?.fields ? { ...ai.fields, _op_answered_id: toInt(ai.pk) } : ai  // desempacota envelope { pk, model, fields }
     )
 
     const rawFretes: any[] = answer.answered_shipping_addresses ?? answer.shipping_addresses ?? []
     const answeredFretes = rawFretes.map((f: any) =>
-      f?.fields ? f.fields : f
+      f?.fields ? { ...f.fields, _op_answered_id: toInt(f.pk) } : f
     )
 
     console.log("[webhook] itens respondidos:", answeredItems.length, "| itens locais:", itens.length)
@@ -157,7 +160,8 @@ export async function POST(req: NextRequest) {
             unit_price_micros,    quantity_answered,      total_quantity_micros,
             discount,             total_discount_micros,
             freight,              total_freight_micros,   free_shipping,          freight_answered,
-            op_address_id,        is_refused,             raw_payload
+            op_address_id,        op_answered_item_id,    op_answered_address_id,
+            is_refused,           raw_payload
           ) VALUES (
             ${cotacaoId},
             ${fornecedor?.id ?? null},
@@ -202,6 +206,8 @@ export async function POST(req: NextRequest) {
             ${toBool(frete?.free_shipping)},
             ${toBool(frete?.answered)},
             ${toInt(frete?.shipping_address ?? frete?.id)},
+            ${ai._op_answered_id ?? null},
+            ${frete?._op_answered_id ?? null},
             ${isRefused},
             ${JSON.stringify(payload)}
           )
