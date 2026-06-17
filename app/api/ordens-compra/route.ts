@@ -45,6 +45,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Campos obrigatórios ausentes" }, { status: 400 })
   }
 
+  // Guard de duplicata: impede duas OCs ativas para a mesma resposta de cotação
+  if (obraplay_answer_id) {
+    const [existing] = await sql`
+      SELECT id, identifier FROM ordens_compra
+      WHERE obraplay_answer_id = ${Number(obraplay_answer_id)}
+        AND status != 'Cancelada'
+      LIMIT 1
+    `
+    if (existing) {
+      return NextResponse.json({
+        error: "Ordem de compra duplicada.",
+        detail: `Já existe uma ordem de compra ativa (${existing.identifier}) para esta resposta de cotação.`,
+        support: "Cancele a ordem existente antes de gerar uma nova, ou acesse a ordem já criada.",
+      }, { status: 409 })
+    }
+  }
+
   // Gera identificador OC-XXXXXX
   const rand = Math.random().toString(36).substring(2, 8).toUpperCase()
   const identifier = `OC-${rand}`

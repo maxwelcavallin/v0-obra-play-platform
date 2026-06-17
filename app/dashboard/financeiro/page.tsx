@@ -14,7 +14,11 @@ interface Transacao {
   type: "receita" | "despesa"
   status: "pendente" | "pago" | "cancelado"
   due_date: string | null
-  category: string | null
+  paid_at: string | null
+  category_name: string | null
+  category_color: string | null
+  client_name: string | null
+  client_fantasy: string | null
 }
 
 export default function FinanceiroPage() {
@@ -41,6 +45,11 @@ export default function FinanceiroPage() {
 
   function fmtMoeda(v: number) {
     return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+  }
+
+  function fmtData(d: string | null) {
+    if (!d) return "—"
+    return new Date(d).toLocaleDateString("pt-BR")
   }
 
   return (
@@ -113,7 +122,17 @@ export default function FinanceiroPage() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-[#212121] truncate">{t.description}</p>
-              <p className="text-xs text-[#9E9E9E]">{t.category ?? "Sem categoria"} · {t.due_date ?? "—"}</p>
+              <p className="text-xs text-[#9E9E9E] truncate">
+                {t.category_name ?? "Sem categoria"}
+                {t.client_name || t.client_fantasy
+                  ? ` · ${t.client_fantasy ?? t.client_name}`
+                  : ""}
+              </p>
+              <p className="text-xs text-[#BDBDBD]">
+                {t.status === "pago" && t.paid_at
+                  ? `Pago em ${fmtData(t.paid_at)}`
+                  : `Vence ${fmtData(t.due_date)}`}
+              </p>
             </div>
             <div className="text-right flex-shrink-0">
               <p className="font-semibold text-sm" style={{ color: t.type === "receita" ? "#4CAF50" : "#F44336" }}>

@@ -224,7 +224,7 @@ export default function MapaCotacaoPage() {
     })
   }
 
-  async function postOrdem(body: object): Promise<{ ok: boolean; errorMsg?: string }> {
+  async function postOrdem(body: object): Promise<{ ok: boolean; errorMsg?: string; isDuplicate?: boolean }> {
     const res = await authFetch("/api/ordens-compra", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -233,8 +233,9 @@ export default function MapaCotacaoPage() {
     if (!res.ok) {
       let json: any = {}
       try { json = await res.json() } catch {}
-      const msg = [json.error, json.detail, json.support].filter(Boolean).join("\n\n")
-      return { ok: false, errorMsg: msg || "Erro ao gerar ordem de compra." }
+      const isDuplicate = res.status === 409
+      const msg = [json.error, json.detail, json.support].filter(Boolean).join(" ")
+      return { ok: false, errorMsg: msg || "Erro ao gerar ordem de compra.", isDuplicate }
     }
     return { ok: true }
   }
@@ -260,7 +261,13 @@ export default function MapaCotacaoPage() {
           obraplay_address_id: supplier.op_answered_address_id ?? null,
         })
         if (!result.ok) {
-          toast.error(result.errorMsg ?? "Erro ao gerar ordem de compra.", { duration: 8000 })
+          if (result.isDuplicate) {
+            toast.error(result.errorMsg ?? "Já existe uma OC para este fornecedor.", { duration: 6000 })
+            setShowModal(false)
+            router.push(`/dashboard/ordens-compra`)
+          } else {
+            toast.error(result.errorMsg ?? "Erro ao gerar ordem de compra.", { duration: 8000 })
+          }
           return
         }
       }
@@ -297,7 +304,13 @@ export default function MapaCotacaoPage() {
           obraplay_address_id: sup.op_answered_address_id ?? null,
         })
         if (!result.ok) {
-          toast.error(result.errorMsg ?? "Erro ao gerar ordem de compra.", { duration: 8000 })
+          if (result.isDuplicate) {
+            toast.error(result.errorMsg ?? "Já existe uma OC para este fornecedor.", { duration: 6000 })
+            setShowModal(false)
+            router.push(`/dashboard/ordens-compra`)
+          } else {
+            toast.error(result.errorMsg ?? "Erro ao gerar ordem de compra.", { duration: 8000 })
+          }
           return
         }
       }

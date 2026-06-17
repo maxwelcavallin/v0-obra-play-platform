@@ -80,9 +80,6 @@ export default function OrdensCompraPage() {
 
       {!loading && ordens.length > 0 && (
         <div className="px-4 pt-4 flex flex-col gap-3">
-          {/* Mock OC destacada */}
-          <MockOCCard onClick={() => router.push("/dashboard/ordens-compra/mock")} />
-
           {ordens.map(oc => {
             const cfg = STATUS_CFG[oc.status] ?? { label: oc.status, color: "#757575", bg: "#F5F5F5" }
             return (
@@ -110,37 +107,6 @@ export default function OrdensCompraPage() {
           })}
         </div>
       )}
-
-      {/* Se ainda carregando mas já tem mock */}
-      {!loading && ordens.length === 0 && (
-        <div className="px-4 pt-4">
-          <MockOCCard onClick={() => router.push("/dashboard/ordens-compra/mock")} />
-        </div>
-      )}
     </div>
-  )
-}
-
-function MockOCCard({ onClick }: { onClick: () => void }) {
-  return (
-    <button onClick={onClick}
-      className="bg-white rounded-2xl shadow-sm p-4 text-left w-full flex items-start gap-3 hover:shadow-md transition-shadow border-2 border-dashed border-[#E3F2FD]">
-      <div className="w-9 h-9 rounded-full bg-[#E3F2FD] flex items-center justify-center flex-shrink-0">
-        <ShoppingCart size={16} className="text-[#1565C0]" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2 mb-0.5">
-          <p className="font-bold text-[#212121] text-sm font-mono">OC-ZMSDNDL</p>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 bg-[#E8F5E9] text-[#4CAF50]">Processada</span>
-        </div>
-        <p className="text-xs text-[#616161]">Fornecedor Exemplo Ltda.</p>
-        <p className="text-[11px] text-[#9E9E9E]">Nova obra Joao Pizzini</p>
-        <div className="flex items-center justify-between mt-1.5">
-          <span className="text-xs text-[#9E9E9E]">27/05/2026</span>
-          <span className="font-bold text-[#1565C0] text-sm">R$ 6.050,00</span>
-        </div>
-      </div>
-      <ChevronRight size={16} className="text-[#BDBDBD] self-center flex-shrink-0" />
-    </button>
   )
 }
