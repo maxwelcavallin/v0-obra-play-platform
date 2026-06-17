@@ -10,6 +10,8 @@
 ## Sumário
 
 1. [Autenticação](#1-autenticação)
+   - 1.1 [Método recomendado — API Key](#11-método-recomendado--api-key)
+   - 1.2 [Método alternativo — Login (sessão)](#12-método-alternativo--login-sessão-de-usuário)
 2. [Conceitos e Entidades](#2-conceitos-e-entidades)
 3. [Fluxo Completo — Cotação](#3-fluxo-completo--cotação)
    - 3.1 [Buscar ou criar uma Obra](#31-buscar-ou-criar-uma-obra)
@@ -17,8 +19,9 @@
    - 3.3 [Buscar Fornecedores do ObraPlay](#33-buscar-fornecedores-do-obraplay)
    - 3.4 [Criar a Cotação (local + ObraPlay)](#34-criar-a-cotação-local--obraplay)
    - 3.5 [Consultar respostas — Mapa de Cotação](#35-consultar-respostas--mapa-de-cotação)
-   - 3.6 [Editar uma Cotação](#36-editar-uma-cotação)
-   - 3.7 [Cancelar uma Cotação](#37-cancelar-uma-cotação)
+   - 3.6 [Listar e consultar cotações](#36-listar-e-consultar-cotações)
+   - 3.7 [Editar uma Cotação](#37-editar-uma-cotação)
+   - 3.8 [Cancelar uma Cotação](#38-cancelar-uma-cotação)
 4. [Fluxo Completo — Ordem de Compra](#4-fluxo-completo--ordem-de-compra)
    - 4.1 [Criar Ordem de Compra](#41-criar-ordem-de-compra)
    - 4.2 [Listar Ordens de Compra](#42-listar-ordens-de-compra)
@@ -30,9 +33,90 @@
 
 ## 1. Autenticação
 
-Toda requisição autenticada deve incluir o token de sessão no header HTTP.
+A plataforma suporta **dois métodos** de autenticação. Para agentes de IA e integrações automatizadas, o método **recomendado** é a **API Key dedicada**, pois ela **não expira** e é independente de senha. O login por email/senha (sessão) existe principalmente para a UI e expira em 30 dias.
 
-### 1.1 Obter token (login)
+| Método | Header | Expira? | Uso recomendado |
+|--------|--------|---------|-----------------|
+| **API Key** | `x-api-key: op_live_...` | Não (até ser revogada) | **Agentes / integrações** |
+| Sessão (login) | `Authorization: Bearer <token>` | Sim (30 dias) | UI / sessões de usuário |
+
+> **Escopo da API Key:** a chave é vinculada a um **usuário** e herda todas as empresas às quais ele tem acesso. Por isso, o `company_id` continua sendo enviado no corpo/query das requisições (o agente escolhe em qual empresa quer operar).
+
+### 1.1 Método recomendado — API Key
+
+A API Key é gerada uma única vez e deve ser guardada com segurança (a plataforma armazena apenas o hash; o valor em texto puro **não pode ser recuperado depois**).
+
+**Criar uma API Key** (autenticado por sessão de usuário — feito uma vez, normalmente pela UI ou por um operador):
+
+```
+POST /api/api-keys
+Authorization: Bearer TOKEN_DE_SESSAO   (ou cookie de sessão da UI)
+```
+
+**Body:**
+```json
+{ "name": "Agente de Compras IA" }
+```
+
+**Resposta 201:**
+```json
+{
+  "id": "uuid-da-chave",
+  "name": "Agente de Compras IA",
+  "key_prefix": "op_live_a1b2c3",
+  "created_at": "2026-01-15T12:00:00.000Z",
+  "key": "op_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}
+```
+
+> **Atenção:** o campo `key` (valor em texto puro) só é retornado **neste momento**. Copie e armazene em local seguro. Se perder, revogue e gere outra.
+
+**Enviar a API Key em todas as chamadas do agente:**
+
+```
+x-api-key: op_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+> Alternativamente, é aceito `Authorization: ApiKey op_live_...`. Use **um** dos dois.
+
+**Listar API Keys do usuário** (nunca retorna o valor em texto puro):
+
+```
+GET /api/api-keys
+```
+
+**Resposta 200:**
+```json
+{
+  "keys": [
+    {
+      "id": "uuid-da-chave",
+      "name": "Agente de Compras IA",
+      "key_prefix": "op_live_a1b2c3",
+      "last_used_at": "2026-01-20T08:30:00.000Z",
+      "revoked_at": null,
+      "created_at": "2026-01-15T12:00:00.000Z"
+    }
+  ]
+}
+```
+
+**Revogar uma API Key:**
+
+```
+DELETE /api/api-keys/{id}
+```
+
+Após revogada, qualquer requisição usando aquela chave retorna `401 Não autenticado`.
+
+> **Descobrir o `company_id`:** como a API Key não retorna a lista de empresas, use `GET /api/empresas` (autenticado pela própria API Key) para obter as empresas do usuário e seus `id` / `obraplay_company_id`.
+
+```
+GET /api/empresas
+x-api-key: op_live_...
+```
+
+### 1.2 Método alternativo — Login (sessão de usuário)
 
 ```
 POST /api/auth/login
@@ -67,24 +151,24 @@ POST /api/auth/login
 }
 ```
 
-> **Importante:** Guarde o `token` e o `companies[0].id` (company_id). Eles serão usados em todas as requisições seguintes.
+> **Importante:** Guarde o `token` e o `companies[0].id` (company_id). O token de sessão **expira em 30 dias** — para integrações de longa duração prefira a API Key.
 
-### 1.2 Enviar o token nas requisições
-
-Inclua o token no header Authorization em **todas** as chamadas autenticadas:
+Envie o token de sessão no header Authorization:
 
 ```
 Authorization: Bearer TOKEN_DE_SESSAO_AQUI
 ```
 
-O token também é aceito via cookie `op_session_token`, mas o header Authorization é o método recomendado para agentes.
+O token de sessão também é aceito via cookie `op_session_token`.
 
-### 1.3 Encerrar sessão
+**Encerrar sessão:**
 
 ```
 POST /api/auth/logout
 Authorization: Bearer TOKEN_DE_SESSAO_AQUI
 ```
+
+> **Nota sobre os exemplos:** o restante deste documento usa `Authorization: Bearer TOKEN` nos exemplos por brevidade. Se estiver usando API Key (recomendado), **substitua** esse header por `x-api-key: op_live_...` em todas as chamadas.
 
 ---
 
@@ -571,7 +655,73 @@ Authorization: Bearer TOKEN
 
 ---
 
-### 3.6 Editar uma Cotação
+### 3.6 Listar e consultar cotações
+
+**Listar cotações de uma empresa:**
+
+```
+GET /api/cotacoes?company_id=UUID_DA_EMPRESA
+Authorization: Bearer TOKEN
+```
+
+Filtros opcionais via query string: `status`, `obra_id`.
+
+**Resposta 200:** array de cotações (campos da tabela `cotacoes` + `obra_name`).
+
+**Consultar uma cotação específica (com itens e fornecedores):**
+
+```
+GET /api/cotacoes/{cotacao_id}
+Authorization: Bearer TOKEN
+```
+
+**Resposta 200:**
+```json
+{
+  "id": "uuid-da-cotacao",
+  "identifier": "COT-0001",
+  "status": "Parcialmente respondida",
+  "obraplay_quotation_id": 9469,
+  "obra_name": "Residencial Jardins",
+  "need_date": "2026-06-20",
+  "expiry_date": "2026-06-15",
+  "delivery_street": "Av. Paulista",
+  "delivery_city": "São Paulo",
+  "items": [
+    { "id": "uuid-item", "name": "Cimento CP II - 50kg", "unit": "Saca", "quantity": 150 }
+  ],
+  "suppliers": [
+    {
+      "id": "uuid-fornecedor",
+      "supplier_name": "Distribuidora ABC",
+      "mirror_company_id": 57,
+      "is_recommended": true,
+      "has_response": true,
+      "is_refused": false
+    }
+  ]
+}
+```
+
+> Os campos `has_response` e `is_refused` por fornecedor indicam se aquele fornecedor já respondeu e se a resposta foi uma **recusa** (todos os itens indisponíveis). Use-os para acompanhar o progresso sem precisar carregar o mapa completo.
+
+**Atualizar apenas o status de uma cotação:**
+
+```
+PUT /api/cotacoes/{cotacao_id}
+Authorization: Bearer TOKEN
+```
+
+**Body:**
+```json
+{ "status": "Cancelada" }
+```
+
+> O `PUT` altera **somente o status local** (não dispara ações no ObraPlay). Para cancelar de fato no ObraPlay, use o `DELETE` descrito em 3.8.
+
+---
+
+### 3.7 Editar uma Cotação
 
 Editar uma cotação enviada **cancela a cotação anterior no ObraPlay** e cria uma nova automaticamente.
 
@@ -621,7 +771,7 @@ Authorization: Bearer TOKEN
 
 ---
 
-### 3.7 Cancelar uma Cotação
+### 3.8 Cancelar uma Cotação
 
 ```
 DELETE /api/cotacoes/{cotacao_id}
@@ -832,8 +982,11 @@ Causas comuns de `_op_error`:
 ## 7. Fluxo Completo em Sequência (resumo)
 
 ```
-1. POST /api/auth/login
-   → Obter token e company_id
+0. (uma vez) POST /api/api-keys  → gerar API Key. Guardar o valor "key" com segurança.
+   Em todas as chamadas seguintes, enviar o header:  x-api-key: op_live_...
+
+1. GET /api/empresas
+   → Descobrir company_id (e obraplay_company_id) do usuário da API Key
 
 2. GET /api/obras?company_id={id}
    → Encontrar ou escolher a obra
@@ -860,6 +1013,9 @@ Causas comuns de `_op_error`:
    → Verificar se status = "Parcialmente respondida" ou "Respondida"
    → Analisar preços, disponibilidade e frete por fornecedor
    → Selecionar os melhores itens/fornecedores
+
+   (Opcional) GET /api/cotacoes/{cotacao_id}
+   → Acompanhar has_response / is_refused por fornecedor
 
 7. POST /api/ordens-compra  (uma chamada por fornecedor selecionado)
    → Criar OC com os itens e valores do fornecedor escolhido

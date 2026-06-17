@@ -1,18 +1,34 @@
 import { cookies, headers } from "next/headers"
 import { sql } from "./db"
+import { validateApiKey } from "./api-key"
 
 export const SESSION_COOKIE = "op_session_token"
 
 export async function getSession() {
-  // 1. Tenta cookie HTTP-only
+  const headerStore = await headers()
+
+  // 1. API Key dedicada (integração de agentes) — header `x-api-key`
+  //    ou `Authorization: ApiKey <chave>`. Tem prioridade e não expira.
+  const apiKeyHeader = headerStore.get("x-api-key")
+  const authHeader = headerStore.get("authorization") ?? ""
+  const apiKey =
+    apiKeyHeader ??
+    (authHeader.startsWith("ApiKey ") ? authHeader.slice(7) : null)
+
+  if (apiKey) {
+    const apiSession = await validateApiKey(apiKey)
+    if (apiSession) return apiSession
+    // chave inválida/revogada: não cai para sessão de cookie
+    return null
+  }
+
+  // 2. Sessão de usuário (UI): cookie HTTP-only
   const cookieStore = await cookies()
   let token = cookieStore.get(SESSION_COOKIE)?.value
 
-  // 2. Fallback: header Authorization: Bearer <token>
-  if (!token) {
-    const headerStore = await headers()
-    const auth = headerStore.get("authorization") ?? ""
-    if (auth.startsWith("Bearer ")) token = auth.slice(7)
+  // 3. Fallback: header Authorization: Bearer <token de sessão>
+  if (!token && authHeader.startsWith("Bearer ")) {
+    token = authHeader.slice(7)
   }
 
   if (!token) return null
