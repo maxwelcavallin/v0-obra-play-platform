@@ -11,7 +11,8 @@
 
 1. [Autenticação](#1-autenticação)
    - 1.1 [Método recomendado — API Key](#11-método-recomendado--api-key)
-   - 1.2 [Método alternativo — Login (sessão)](#12-método-alternativo--login-sessão-de-usuário)
+   - 1.2 [Agente de IA (admin global) — credenciais provisionadas](#12-agente-de-ia-admin-global--credenciais-provisionadas)
+   - 1.3 [Método alternativo — Login (sessão)](#13-método-alternativo--login-sessão-de-usuário)
 2. [Conceitos e Entidades](#2-conceitos-e-entidades)
 3. [Fluxo Completo — Cotação](#3-fluxo-completo--cotação)
    - 3.1 [Buscar ou criar uma Obra](#31-buscar-ou-criar-uma-obra)
@@ -40,7 +41,7 @@ A plataforma suporta **dois métodos** de autenticação. Para agentes de IA e i
 | **API Key** | `x-api-key: op_live_...` | Não (até ser revogada) | **Agentes / integrações** |
 | Sessão (login) | `Authorization: Bearer <token>` | Sim (30 dias) | UI / sessões de usuário |
 
-> **Escopo da API Key:** a chave é vinculada a um **usuário** e herda todas as empresas às quais ele tem acesso. Por isso, o `company_id` continua sendo enviado no corpo/query das requisições (o agente escolhe em qual empresa quer operar).
+> **Escopo da API Key:** a chave é vinculada a um **usuário** em `users`. As rotas validam apenas que a autenticação é válida e operam sobre o **`company_id` enviado** no corpo/query de cada requisição (não há checagem de vínculo `company_users`). Por isso o agente deve **validar qual usuário está conversando e enviar o `company_id` correto** desse usuário — é isso que determina em qual base os registros são criados/consultados.
 
 ### 1.1 Método recomendado — API Key
 
@@ -116,7 +117,34 @@ GET /api/empresas
 x-api-key: op_live_...
 ```
 
-### 1.2 Método alternativo — Login (sessão de usuário)
+### 1.2 Agente de IA (admin global) — credenciais provisionadas
+
+Para a integração com o **n8n**, já existe um usuário-agente dedicado de uso administrativo. Ele **não representa uma empresa específica**: valida o usuário da conversa e cria/consulta registros usando o `company_id` desse usuário.
+
+| Item | Valor |
+|------|-------|
+| Nome do usuário | `Agente IA (Integração)` |
+| Email interno | `agente-ia@obraplay.system` |
+| `user_id` | `8944a3c1-563e-47fa-838d-c0042918a76f` |
+| Nome da API Key | `Agente IA - n8n` |
+| Prefixo da chave | `op_live_t21KGJ` |
+
+> O **token em texto puro** foi entregue uma única vez ao operador no momento da criação e **não é armazenado** (a base guarda apenas o hash SHA-256). Se for perdido, revogue a chave (`DELETE /api/api-keys/{id}`) e gere outra. **Nunca** versione o token neste documento.
+
+**Configuração no n8n (nó HTTP Request):**
+
+- Authentication → **Generic Credential Type** → **Header Auth**
+- Name: `x-api-key`
+- Value: `op_live_...` (token entregue ao operador)
+- Base URL: `https://v0-obra-play-platform.vercel.app`
+
+```
+x-api-key: op_live_t21KGJ...   (token completo)
+```
+
+> Alternativamente: `Authorization: ApiKey op_live_t21KGJ...`. A chave **não expira** (só deixa de valer se revogada).
+
+### 1.3 Método alternativo — Login (sessão de usuário)
 
 ```
 POST /api/auth/login
