@@ -124,12 +124,28 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     }
   })
 
+  // Itens já cobertos por OC ativa nesta cotação
+  // Um item está "coberto" se aparece no JSONB items[] de alguma OC ativa (não cancelada)
+  const ocAtivas = await sql`
+    SELECT items FROM ordens_compra
+    WHERE cotacao_id = ${id}
+      AND status != 'Cancelada'
+  `
+  const blockedItemIds = new Set<string>()
+  for (const oc of ocAtivas) {
+    const ocItems: any[] = Array.isArray(oc.items) ? oc.items : []
+    for (const it of ocItems) {
+      if (it.cotacao_item_id) blockedItemIds.add(String(it.cotacao_item_id))
+    }
+  }
+
   return NextResponse.json({
     cotacao_id:            id,
     identifier:            cotacao.identifier,
     obraplay_quotation_id: cotacao.obraplay_quotation_id,
     obra_name:             cotacao.obra_name,
     status:                cotacao.status,
+    blocked_item_ids:      Array.from(blockedItemIds),
     items: items.map((i: any) => ({
       id:         i.id,
       name:       i.name,

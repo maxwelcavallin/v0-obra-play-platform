@@ -45,20 +45,42 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Campos obrigatórios ausentes" }, { status: 400 })
   }
 
-  // Guard de duplicata: impede duas OCs ativas para a mesma resposta de cotação
-  if (obraplay_answer_id) {
-    const [existing] = await sql`
-      SELECT id, identifier FROM ordens_compra
-      WHERE obraplay_answer_id = ${Number(obraplay_answer_id)}
+  // Guard de cobertura: verifica quais cotacao_item_ids já estão cobertos por OC ativa
+  // - Se TODOS os itens enviados já estão cobertos → 409
+  // - Se ALGUM item já está coberto → 409 parcial (impede duplicar item específico)
+  if (cotacao_id && Array.isArray(items) && items.length > 0) {
+    const ocAtivas = await sql`
+      SELECT identifier, items FROM ordens_compra
+      WHERE cotacao_id = ${cotacao_id}
         AND status != 'Cancelada'
-      LIMIT 1
     `
-    if (existing) {
-      return NextResponse.json({
-        error: "Ordem de compra duplicada.",
-        detail: `Já existe uma ordem de compra ativa (${existing.identifier}) para esta resposta de cotação.`,
-        support: "Cancele a ordem existente antes de gerar uma nova, ou acesse a ordem já criada.",
-      }, { status: 409 })
+    const coveredIds = new Set<string>()
+    for (const oc of ocAtivas) {
+      const ocItems: any[] = Array.isArray(oc.items) ? oc.items : []
+      for (const it of ocItems) {
+        if (it.cotacao_item_id) coveredIds.add(String(it.cotacao_item_id))
+      }
+    }
+
+    if (coveredIds.size > 0) {
+      const incomingIds = items
+        .map((it: any) => String(it.cotacao_item_id))
+        .filter(Boolean)
+
+      const alreadyCovered = incomingIds.filter(id => coveredIds.has(id))
+
+      if (alreadyCovered.length > 0) {
+        const allCovered = alreadyCovered.length === incomingIds.length
+        return NextResponse.json({
+          error: allCovered
+            ? "Todos os itens desta cotação já possuem ordem de compra ativa."
+            : "Um ou mais itens selecionados já possuem ordem de compra ativa.",
+          detail: allCovered
+            ? "Não é possível gerar uma nova OC pois todos os itens já estão cobertos. Cancele a OC existente para gerar uma nova."
+            : `Os itens já cobertos não podem ser incluídos novamente. Selecione apenas os itens restantes (sem OC ativa).`,
+          support: "Acesse a lista de Ordens de Compra para gerenciar as existentes.",
+        }, { status: 409 })
+      }
     }
   }
 

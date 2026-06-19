@@ -68,6 +68,7 @@ interface MapaData {
   obraplay_quotation_code?: string
   obra_name?: string
   status: string
+  blocked_item_ids: string[]   // cotacao_item_ids já cobertos por OC ativa
   items: MapaItem[]
   suppliers: SupplierMap[]
 }
@@ -205,7 +206,20 @@ export default function MapaCotacaoPage() {
     })
   }, [mapa, itemSelection])
 
+  // Itens e fornecedores bloqueados por OC ativa
+  const blockedIds = useMemo(() => new Set(mapa?.blocked_item_ids ?? []), [mapa])
+  const allItemsBlocked = useMemo(
+    () => !!mapa && mapa.items.length > 0 && mapa.items.every(i => blockedIds.has(i.id ?? i.cotacao_item_id)),
+    [mapa, blockedIds]
+  )
+  // Fornecedor completamente coberto = todos os seus itens disponíveis já têm OC ativa
+  const isSupplierFullyBlocked = (sup: SupplierMap) =>
+    sup.answered_items
+      .filter(ai => ai.available && ai.unit_price != null)
+      .every(ai => blockedIds.has(ai.cotacao_item_id))
+
   function selectItemSupplier(itemId: string, supplierId: string) {
+    if (blockedIds.has(itemId)) return          // item já coberto — não permite selecionar
     setItemSelection(prev => {
       if (prev[itemId] === supplierId) {
         const n = { ...prev }
@@ -519,6 +533,16 @@ export default function MapaCotacaoPage() {
         </div>
       )}
 
+      {allItemsBlocked && (
+        <div className="mx-4 mt-4 bg-[#E8F5E9] border border-[#C8E6C9] rounded-xl p-4 flex items-center gap-3">
+          <ShoppingCart size={18} className="text-[#2E7D32] flex-shrink-0" />
+          <div>
+            <p className="text-sm font-bold text-[#2E7D32]">Todos os itens já possuem Ordem de Compra</p>
+            <p className="text-xs text-[#388E3C] mt-0.5">Para gerar novas OCs, cancele as existentes ou aguarde novos itens na cotação.</p>
+          </div>
+        </div>
+      )}
+
       {/* ── MODO MELHOR COMPRA ── */}
       {mode === "compra" && answeredSuppliers.length > 0 && (
         <div className="mt-4">
@@ -573,6 +597,7 @@ export default function MapaCotacaoPage() {
                       {answeredSuppliers.map(s => {
                         const ai = s.answered_items.find(a => a.cotacao_item_id === itemId)
                         const isSelected = itemSelection[itemId] === s.supplier_id
+                        const isBlocked  = blockedIds.has(itemId)
 
                         if (!ai) {
                           return <td key={s.supplier_id} className="px-3 py-2.5 text-center text-[#BDBDBD] text-[10px]">—</td>
@@ -581,6 +606,19 @@ export default function MapaCotacaoPage() {
                           return (
                             <td key={s.supplier_id} className="px-3 py-2.5 text-center">
                               <span className="text-[10px] text-[#F44336] font-medium">Indisponível</span>
+                            </td>
+                          )
+                        }
+
+                        // Item bloqueado: já tem OC ativa
+                        if (isBlocked) {
+                          return (
+                            <td key={s.supplier_id} className="px-3 py-2.5 text-center bg-[#F5F5F5] opacity-60">
+                              <div className="flex flex-col items-center gap-1">
+                                <ShoppingCart size={12} className="text-[#4CAF50]" />
+                                <span className="text-[9px] font-bold text-[#4CAF50] bg-[#E8F5E9] px-1.5 py-0.5 rounded-full">OC gerada</span>
+                                <span className="text-[10px] text-[#9E9E9E]">{fmtBRL(ai.unit_price)}</span>
+                              </div>
                             </td>
                           )
                         }
@@ -690,12 +728,19 @@ export default function MapaCotacaoPage() {
             </div>
           )}
           {answeredSuppliers.map(s => {
-            const isBest = s.supplier_id === bestSupplierId
+            const isBest      = s.supplier_id === bestSupplierId
+            const isFullBlock = isSupplierFullyBlocked(s)
             const availableCount = s.answered_items.filter(ai => ai.available && ai.unit_price != null).length
             return (
               <div key={s.supplier_id}
-                className={`bg-white rounded-2xl shadow-sm overflow-hidden border-2 transition-all ${isBest ? "border-[#4CAF50]" : "border-transparent"}`}>
-                {isBest && (
+                className={`bg-white rounded-2xl shadow-sm overflow-hidden border-2 transition-all ${isFullBlock ? "border-[#4CAF50] opacity-70" : isBest ? "border-[#4CAF50]" : "border-transparent"}`}>
+                {isFullBlock && (
+                  <div className="bg-[#4CAF50] px-4 py-1.5 flex items-center gap-2">
+                    <ShoppingCart size={13} className="text-white" />
+                    <span className="text-xs font-bold text-white">Ordem de Compra já gerada</span>
+                  </div>
+                )}
+                {!isFullBlock && isBest && (
                   <div className="bg-[#4CAF50] px-4 py-1.5 flex items-center gap-2">
                     <TrendingDown size={13} className="text-white" />
                     <span className="text-xs font-bold text-white">Melhor oferta completa</span>
@@ -805,13 +850,20 @@ export default function MapaCotacaoPage() {
                     </a>
                   )}
 
-                  <button type="button" onClick={() => toggleSupplier(s.supplier_id)}
-                    className={`mt-3 w-full py-2 rounded-xl border-2 text-xs font-bold flex items-center justify-center gap-2 transition-colors ${selectedSuppliers.has(s.supplier_id) ? "border-[#1565C0] bg-[#E3F2FD] text-[#1565C0]" : "border-[#E0E0E0] text-[#616161] hover:border-[#1565C0]"}`}>
-                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedSuppliers.has(s.supplier_id) ? "bg-[#1565C0] border-[#1565C0]" : "border-[#BDBDBD]"}`}>
-                      {selectedSuppliers.has(s.supplier_id) && <Check size={9} className="text-white" />}
+                  {isFullBlock ? (
+                    <div className="mt-3 w-full py-2 rounded-xl border-2 border-[#C8E6C9] bg-[#F1F8E9] text-[#388E3C] text-xs font-bold flex items-center justify-center gap-2 cursor-not-allowed">
+                      <ShoppingCart size={13} />
+                      OC já gerada para este fornecedor
                     </div>
-                    {selectedSuppliers.has(s.supplier_id) ? "Selecionado" : "Selecionar para OC"}
-                  </button>
+                  ) : (
+                    <button type="button" onClick={() => toggleSupplier(s.supplier_id)}
+                      className={`mt-3 w-full py-2 rounded-xl border-2 text-xs font-bold flex items-center justify-center gap-2 transition-colors ${selectedSuppliers.has(s.supplier_id) ? "border-[#1565C0] bg-[#E3F2FD] text-[#1565C0]" : "border-[#E0E0E0] text-[#616161] hover:border-[#1565C0]"}`}>
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedSuppliers.has(s.supplier_id) ? "bg-[#1565C0] border-[#1565C0]" : "border-[#BDBDBD]"}`}>
+                        {selectedSuppliers.has(s.supplier_id) && <Check size={9} className="text-white" />}
+                      </div>
+                      {selectedSuppliers.has(s.supplier_id) ? "Selecionado" : "Selecionar para OC"}
+                    </button>
+                  )}
                 </div>
               </div>
             )
