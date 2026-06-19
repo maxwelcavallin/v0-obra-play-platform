@@ -48,13 +48,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         description = ${b.description},
         amount      = ${Number(b.amount)},
         type        = ${b.type},
-        category_id = ${b.category_id ?? null},
-        client_id   = ${b.client_id   ?? null},
-        due_date    = ${b.due_date    ?? null},
-        paid_at     = ${b.paid_at     ?? null},
-        status      = ${b.status      ?? "pendente"},
-        recurrence  = ${b.recurrence  ?? "unica"},
-        notes       = ${b.notes       ?? null},
+        category_id = ${b.category_id  ?? null},
+        account_id  = ${b.account_id   ?? null},
+        obra_id     = ${b.obra_id      ?? null},
+        client_id   = ${b.client_id    ?? null},
+        due_date    = ${b.due_date     ?? null},
+        paid_at     = ${b.paid_at      ?? null},
+        status      = ${b.status       ?? "pendente"},
+        recurrence  = ${b.recurrence   ?? "unica"},
+        notes       = ${b.notes        ?? null},
         updated_at  = now()
       WHERE id = ${id} AND deleted_at IS NULL
       RETURNING *

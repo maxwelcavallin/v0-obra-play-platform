@@ -38,6 +38,10 @@ export async function GET(req: NextRequest) {
       `
 
       // Gráfico últimos 6 meses
+      const sixMonthsAgo = new Date()
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+      const sixMonthsAgoStr = sixMonthsAgo.toISOString().split("T")[0]
+
       const chart = await sql`
         SELECT
           TO_CHAR(due_date, 'YYYY-MM') AS month,
@@ -46,8 +50,7 @@ export async function GET(req: NextRequest) {
         FROM transactions
         WHERE company_id = ${companyId}
           AND deleted_at IS NULL
-          AND due_date >= (CURRENT_DATE - INTERVAL '6 months')
-          AND due_date <= CURRENT_DATE + INTERVAL '1 month'
+          AND due_date >= ${sixMonthsAgoStr}::date
         GROUP BY TO_CHAR(due_date, 'YYYY-MM')
         ORDER BY month
       `
@@ -72,18 +75,23 @@ export async function GET(req: NextRequest) {
 
     // Fluxo de caixa mensal
     if (tipo === "fluxo") {
-      const months = Number(p.get("months") ?? 12)
+      const months = Math.min(Math.max(Number(p.get("months") ?? 12), 1), 24)
+      // Calcula a data de corte no JS para evitar interpolação de string em SQL
+      const cutoff = new Date()
+      cutoff.setMonth(cutoff.getMonth() - months)
+      const cutoffStr = cutoff.toISOString().split("T")[0]
+
       const rows = await sql`
         SELECT
           TO_CHAR(due_date, 'YYYY-MM') AS month,
-          COALESCE(SUM(CASE WHEN type='receita' AND status='pago' THEN amount ELSE 0 END),0) AS receitas,
-          COALESCE(SUM(CASE WHEN type='despesa' AND status='pago' THEN amount ELSE 0 END),0) AS despesas,
+          COALESCE(SUM(CASE WHEN type='receita' AND status='pago'     THEN amount ELSE 0 END),0) AS receitas,
+          COALESCE(SUM(CASE WHEN type='despesa' AND status='pago'     THEN amount ELSE 0 END),0) AS despesas,
           COALESCE(SUM(CASE WHEN type='receita' AND status='pendente' THEN amount ELSE 0 END),0) AS a_receber,
           COALESCE(SUM(CASE WHEN type='despesa' AND status='pendente' THEN amount ELSE 0 END),0) AS a_pagar
         FROM transactions
         WHERE company_id = ${companyId}
           AND deleted_at IS NULL
-          AND due_date >= (CURRENT_DATE - INTERVAL '${months} months')
+          AND due_date >= ${cutoffStr}::date
         GROUP BY TO_CHAR(due_date, 'YYYY-MM')
         ORDER BY month
       `
