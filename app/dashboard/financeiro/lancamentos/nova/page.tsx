@@ -61,7 +61,6 @@ export default function NovaLancamentoPage() {
   const [tab, setTab]         = useState<TabType>(typeQ)
   const [saving, setSaving]   = useState(false)
   const [loadingEdit, setLoadingEdit] = useState(!!editId)
-  const [savedId, setSavedId] = useState<string | null>(null)
 
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [clientes, setClientes]     = useState<Cliente[]>([])
@@ -164,13 +163,12 @@ export default function NovaLancamentoPage() {
       if (!res.ok) throw new Error(data.error ?? "Erro ao salvar")
 
       const firstId = data.id ?? data.rows?.[0]?.id
-      setSavedId(firstId)
       toast.success(editId ? "Transação atualizada!" : useInstallments ? `${installments} parcelas criadas!` : "Transação criada!")
-      // editId: redireciona para o detalhe (AnexosSection já está na tela)
-      if (editId) {
-        router.push(`/dashboard/financeiro/lancamentos/${editId}`)
+      if (useInstallments && !editId) {
+        router.push("/dashboard/financeiro/lancamentos")
+      } else {
+        router.push(`/dashboard/financeiro/lancamentos/${editId ?? firstId}`)
       }
-      // criação: fica na tela mostrando a seção de anexos (savedId ativa o painel abaixo)
     } catch (err: any) {
       console.error("[nova-lancamento] erro:", err?.message)
       toast.error(err?.message ?? "Erro ao salvar")
@@ -394,52 +392,21 @@ export default function NovaLancamentoPage() {
             className="w-full text-sm text-[#212121] outline-none bg-transparent resize-none" />
         </div>
 
-        {/* Anexos — aparece após salvar (savedId) ou em edição (editId) */}
-        {(editId || savedId) && activeCompany?.id ? (
+        {/* Anexos — disponível na edição; no detalhe após criação */}
+        {editId && activeCompany?.id && (
           <div className="bg-white rounded-2xl px-4 py-4 shadow-sm">
-            {savedId && !editId && (
-              <div className="flex items-center gap-2 mb-3 pb-3 border-b border-[#F5F5F5]">
-                <div className="w-6 h-6 rounded-full bg-[#E8F5E9] flex items-center justify-center flex-shrink-0">
-                  <Check size={13} className="text-[#4CAF50]" />
-                </div>
-                <p className="text-xs font-semibold text-[#388E3C]">
-                  {useInstallments ? `${installments} parcelas criadas.` : "Lançamento criado."}{" "}
-                  <span className="font-normal text-[#616161]">Adicione anexos agora ou acesse depois pelo detalhe.</span>
-                </p>
-              </div>
-            )}
-            <AnexosSection
-              transactionId={editId ?? savedId!}
-              companyId={activeCompany.id}
-            />
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl px-4 py-4 shadow-sm">
-            <AnexosSection
-              transactionId="__pending__"
-              companyId={activeCompany?.id ?? ""}
-              pendingMode
-            />
+            <AnexosSection transactionId={editId} companyId={activeCompany.id} />
           </div>
         )}
       </div>
 
-      {/* Botão salvar / navegar após salvo */}
+      {/* Botão salvar */}
       <div className="fixed bottom-0 left-0 right-0 px-4 pb-6 pt-3 bg-[#F5F5F5] border-t border-[#E0E0E0]">
-        {savedId && !editId ? (
-          <button
-            onClick={() => router.push(useInstallments ? "/dashboard/financeiro/lancamentos" : `/dashboard/financeiro/lancamentos/${savedId}`)}
-            className="w-full py-4 rounded-2xl bg-[#4CAF50] text-white font-bold text-base flex items-center justify-center gap-2 hover:bg-[#388E3C] transition-colors">
-            <Check size={18} />
-            {useInstallments ? "Ver lançamentos" : "Ver lançamento"}
-          </button>
-        ) : (
         <button onClick={handleSave} disabled={saving}
           className="w-full py-4 rounded-2xl bg-[#1565C0] text-white font-bold text-base flex items-center justify-center gap-2 hover:bg-[#0D47A1] transition-colors disabled:opacity-60">
           {saving ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
           {saving ? "Salvando..." : editId ? "Salvar alterações" : useInstallments ? `Criar ${installments} parcelas` : "Criar lançamento"}
         </button>
-        )}
       </div>
     </div>
   )
