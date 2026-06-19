@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Loader2, Check } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
@@ -15,7 +15,7 @@ const LABEL: Record<string, string> = {
   unica: "Única", mensal: "Mensal", semanal: "Semanal", anual: "Anual",
 }
 
-export default function NovaTransacaoPage() {
+function NovaTransacaoForm() {
   const router       = useRouter()
   const params       = useSearchParams()
   const editId       = params.get("edit") // /nova?edit=<id> para editar
@@ -267,5 +267,17 @@ function Field({ label, children, divider }: { label: string; children: React.Re
       <p className="text-xs text-[#9E9E9E] mt-3 mb-0.5">{label}</p>
       {children}
     </div>
+  )
+}
+
+export default function NovaTransacaoPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
+        <Loader2 size={28} className="animate-spin text-[#1565C0]" />
+      </div>
+    }>
+      <NovaTransacaoForm />
+    </Suspense>
   )
 }
