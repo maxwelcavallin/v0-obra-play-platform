@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft, Search, SlidersHorizontal, TrendingUp, TrendingDown,
@@ -96,14 +96,14 @@ export default function LancamentosPage() {
     }).catch(err => console.error("[lancamentos] meta fetch:", err))
   }, [activeCompany?.id])
 
-  // Saldo do período
   const totalReceitas  = transacoes.filter(t => t.type === "receita" && t.status === "pago").reduce((s,t) => s+Number(t.amount), 0)
   const totalDespesas  = transacoes.filter(t => t.type === "despesa" && t.status === "pago").reduce((s,t) => s+Number(t.amount), 0)
   const totalPendentes = transacoes.filter(t => t.status === "pendente").reduce((s,t) => s+Number(t.amount), 0)
   const saldo = totalReceitas - totalDespesas
 
-  // filtros ativos
-  const catFiltradas = catFilter ? transacoes.filter(t => t.category_name === categorias.find(c=>c.id===catFilter)?.name) : transacoes
+  const catFiltradas = catFilter
+    ? transacoes.filter(t => t.category_name === categorias.find(c=>c.id===catFilter)?.name)
+    : transacoes
   const filtered = catFiltradas
   const activeFilters = [typeFilter, statusFilter, obraFilter, accountFilter, catFilter].filter(Boolean).length
 
@@ -124,7 +124,7 @@ export default function LancamentosPage() {
             className="relative w-9 h-9 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30">
             <SlidersHorizontal size={17} className="text-white" />
             {activeFilters > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#FF9800] rounded-full text-[9px] font-bold text-white flex items-center justify-center">
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-white rounded-full text-[9px] font-bold text-[#1565C0] flex items-center justify-center">
                 {activeFilters}
               </span>
             )}
@@ -152,20 +152,18 @@ export default function LancamentosPage() {
       {showFilters && (
         <div className="bg-white border-b border-[#E0E0E0] px-4 py-3 flex flex-col gap-2">
           <div className="flex gap-2 flex-wrap">
-            {/* Tipo */}
             {(["","receita","despesa"] as const).map(t => (
               <button key={t} onClick={() => setType(t)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${typeFilter===t?"bg-[#1565C0] text-white border-[#1565C0]":"border-[#E0E0E0] text-[#616161]"}`}>
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${typeFilter===t ? "bg-[#212121] text-white border-[#212121]" : "border-[#E0E0E0] text-[#616161]"}`}>
                 {t===""?"Todos":t==="receita"?"Receitas":"Despesas"}
               </button>
             ))}
           </div>
           <div className="flex gap-2 flex-wrap">
-            {/* Status */}
             {(["","pendente","pago","cancelado"] as const).map(s => (
               <button key={s} onClick={() => setStatus(s)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${statusFilter===s?"bg-[#1565C0] text-white border-[#1565C0]":"border-[#E0E0E0] text-[#616161]"}`}>
-                {s===""?"Qualquer status":s==="pendente"?"Pendente":s==="pago"?"Pago":"Cancelado"}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${statusFilter===s ? "bg-[#212121] text-white border-[#212121]" : "border-[#E0E0E0] text-[#616161]"}`}>
+                {s===""?"Qualquer":s==="pendente"?"Pendente":s==="pago"?"Pago":"Cancelado"}
               </button>
             ))}
           </div>
@@ -188,24 +186,22 @@ export default function LancamentosPage() {
           </select>
           {activeFilters > 0 && (
             <button onClick={() => { setType(""); setStatus(""); setObra(""); setAccount(""); setCat("") }}
-              className="text-xs text-[#F44336] font-medium self-start">Limpar filtros</button>
+              className="text-xs text-[#616161] font-medium self-start underline">Limpar filtros</button>
           )}
         </div>
       )}
 
       {/* Lista extrato */}
-      <div className="flex-1 px-4 py-3 flex flex-col gap-1.5 pb-40">
+      <div className="flex-1 px-4 py-3 flex flex-col gap-1 pb-40">
         {loading && (
-          <div className="flex justify-center py-16"><Loader2 size={24} className="animate-spin text-[#1565C0]" /></div>
+          <div className="flex justify-center py-16"><Loader2 size={24} className="animate-spin text-[#BDBDBD]" /></div>
         )}
         {!loading && filtered.length === 0 && (
-          <div className="text-center py-16 flex flex-col items-center gap-3">
-            <TrendingUp size={36} className="text-[#E0E0E0]" />
+          <div className="text-center py-16">
             <p className="text-[#9E9E9E] text-sm">Nenhum lançamento encontrado</p>
           </div>
         )}
         {!loading && filtered.map((t, idx) => {
-          // Cabeçalho de data
           const prevDate = idx > 0 ? filtered[idx-1].due_date?.split("T")[0] : null
           const thisDate = t.due_date?.split("T")[0] ?? null
           const showDateHeader = thisDate !== prevDate
@@ -214,37 +210,31 @@ export default function LancamentosPage() {
           return (
             <div key={t.id}>
               {showDateHeader && thisDate && (
-                <p className="text-[10px] font-semibold text-[#9E9E9E] uppercase tracking-wider pt-2 pb-1 px-1">
+                <p className="text-[10px] font-semibold text-[#BDBDBD] uppercase tracking-wider pt-3 pb-1 px-1">
                   {fmtDate(t.due_date)}
                 </p>
               )}
               <button onClick={() => router.push(`/dashboard/financeiro/lancamentos/${t.id}`)}
                 className="w-full bg-white rounded-xl px-3 py-3 shadow-sm flex items-center gap-3 text-left hover:shadow-md transition-shadow">
-                {/* Ícone tipo */}
-                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: t.type === "receita" ? "#E8F5E9" : "#FFEBEE" }}>
-                  {t.type === "receita"
-                    ? <TrendingUp size={14} className="text-[#4CAF50]" />
-                    : <TrendingDown size={14} className="text-[#F44336]" />}
-                </div>
+
+                {/* Indicador tipo: barra lateral colorida */}
+                <div className={`w-1 self-stretch rounded-full flex-shrink-0 ${t.type === "receita" ? "bg-[#1565C0]" : "bg-[#D32F2F]"}`} />
+
                 <div className="flex-1 min-w-0">
-                  {/* Linha 1: descrição */}
                   <p className="text-sm font-medium text-[#212121] truncate">{t.description}
                     {t.installment_total && t.installment_total > 1 && (
                       <span className="ml-1 text-[10px] text-[#9E9E9E]">({t.installment_index}/{t.installment_total})</span>
                     )}
                   </p>
-                  {/* Linha 2: categoria chip + obra + conta */}
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                     {t.category_name && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                        style={{ backgroundColor: t.category_color ? `${t.category_color}20` : "#F5F5F5", color: t.category_color ?? "#9E9E9E" }}>
-                        <Tag size={8} className="inline mr-0.5" />{t.category_name}
+                      <span className="text-[10px] text-[#9E9E9E] flex items-center gap-0.5">
+                        <Tag size={8} />{t.category_name}
                       </span>
                     )}
                     {t.obra_name && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#E3F2FD] text-[#1565C0] font-medium">
-                        <Building2 size={8} className="inline mr-0.5" />{t.obra_name}
+                      <span className="text-[10px] text-[#9E9E9E] flex items-center gap-0.5">
+                        <Building2 size={8} />{t.obra_name}
                       </span>
                     )}
                     {t.account_name && (
@@ -252,20 +242,25 @@ export default function LancamentosPage() {
                     )}
                   </div>
                 </div>
+
                 {/* Valor + status */}
                 <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                  <p className="font-bold text-sm" style={{ color: t.type === "receita" ? "#4CAF50" : "#F44336" }}>
+                  <p className={`font-bold text-sm ${t.type === "receita" ? "text-[#1565C0]" : "text-[#D32F2F]"}`}>
                     {t.type === "receita" ? "+" : "-"}{fmtBRL(Number(t.amount))}
                   </p>
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                    style={{
-                      backgroundColor: t.status==="pago"?"#E8F5E9":t.status==="cancelado"?"#FFEBEE":isVencida?"#FFF3E0":"#FFF8E1",
-                      color: t.status==="pago"?"#388E3C":t.status==="cancelado"?"#D32F2F":isVencida?"#E65100":"#F57F17",
-                    }}>
+                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                    t.status === "pago"
+                      ? "bg-[#F5F5F5] text-[#616161]"
+                      : t.status === "cancelado"
+                      ? "bg-[#F5F5F5] text-[#9E9E9E] line-through"
+                      : isVencida
+                      ? "bg-[#FFEBEE] text-[#D32F2F]"
+                      : "bg-[#F5F5F5] text-[#9E9E9E]"
+                  }`}>
                     {t.status==="pago"?"Pago":t.status==="cancelado"?"Cancelado":isVencida?"Vencida":"Pendente"}
                   </span>
                 </div>
-                <GoIcon size={12} className="text-[#BDBDBD] flex-shrink-0" />
+                <GoIcon size={12} className="text-[#E0E0E0] flex-shrink-0" />
               </button>
             </div>
           )
@@ -273,36 +268,34 @@ export default function LancamentosPage() {
       </div>
 
       {/* Rodapé — saldo do período */}
-      <div className="fixed bottom-20 left-0 right-0 mx-4 bg-white rounded-2xl shadow-lg px-4 py-3 flex items-center gap-4 border border-[#E0E0E0] z-20">
+      <div className="fixed bottom-20 left-0 right-0 mx-4 bg-white rounded-2xl shadow-md px-4 py-3 flex items-center gap-4 border border-[#F0F0F0] z-20">
         <div className="flex-1 min-w-0">
           <p className="text-[10px] text-[#9E9E9E]">Receitas</p>
-          <p className="text-xs font-bold text-[#4CAF50]">+{fmtBRL(totalReceitas)}</p>
+          <p className="text-xs font-bold text-[#1565C0]">+{fmtBRL(totalReceitas)}</p>
         </div>
-        <div className="w-px h-8 bg-[#F0F0F0]" />
+        <div className="w-px h-7 bg-[#F0F0F0]" />
         <div className="flex-1 min-w-0">
           <p className="text-[10px] text-[#9E9E9E]">Despesas</p>
-          <p className="text-xs font-bold text-[#F44336]">-{fmtBRL(totalDespesas)}</p>
+          <p className="text-xs font-bold text-[#D32F2F]">-{fmtBRL(totalDespesas)}</p>
         </div>
-        <div className="w-px h-8 bg-[#F0F0F0]" />
+        <div className="w-px h-7 bg-[#F0F0F0]" />
         <div className="flex-1 min-w-0">
           <p className="text-[10px] text-[#9E9E9E]">Saldo</p>
-          <p className="text-xs font-bold" style={{ color: saldo >= 0 ? "#1565C0" : "#F44336" }}>{fmtBRL(saldo)}</p>
+          <p className="text-xs font-bold" style={{ color: saldo >= 0 ? "#1565C0" : "#D32F2F" }}>{fmtBRL(saldo)}</p>
         </div>
         {totalPendentes > 0 && (
           <>
-            <div className="w-px h-8 bg-[#F0F0F0]" />
+            <div className="w-px h-7 bg-[#F0F0F0]" />
             <div className="flex-1 min-w-0">
               <p className="text-[10px] text-[#9E9E9E]">Pendente</p>
-              <p className="text-xs font-bold text-[#FF9800]">{fmtBRL(totalPendentes)}</p>
+              <p className="text-xs font-bold text-[#9E9E9E]">{fmtBRL(totalPendentes)}</p>
             </div>
           </>
         )}
       </div>
 
       {/* FAB expandido */}
-      {fabOpen && (
-        <div className="fixed inset-0 z-40" onClick={() => setFabOpen(false)} />
-      )}
+      {fabOpen && <div className="fixed inset-0 z-40" onClick={() => setFabOpen(false)} />}
       <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
         {fabOpen && (
           <>
@@ -316,21 +309,21 @@ export default function LancamentosPage() {
             <div className="flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-150 delay-75">
               <span className="bg-[#212121] text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Despesa</span>
               <button onClick={() => { setFabOpen(false); router.push("/dashboard/financeiro/lancamentos/nova?type=despesa") }}
-                className="w-11 h-11 rounded-full bg-[#F44336] shadow-lg flex items-center justify-center hover:bg-[#D32F2F] transition-colors">
+                className="w-11 h-11 rounded-full bg-[#D32F2F] shadow-lg flex items-center justify-center hover:bg-[#B71C1C] transition-colors">
                 <TrendingDown size={18} className="text-white" />
               </button>
             </div>
             <div className="flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-150 delay-150">
               <span className="bg-[#212121] text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Receita</span>
               <button onClick={() => { setFabOpen(false); router.push("/dashboard/financeiro/lancamentos/nova?type=receita") }}
-                className="w-11 h-11 rounded-full bg-[#4CAF50] shadow-lg flex items-center justify-center hover:bg-[#388E3C] transition-colors">
+                className="w-11 h-11 rounded-full bg-[#1565C0] shadow-lg flex items-center justify-center hover:bg-[#0D47A1] transition-colors">
                 <TrendingUp size={18} className="text-white" />
               </button>
             </div>
           </>
         )}
         <button onClick={() => setFabOpen(v => !v)}
-          className={`w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all ${fabOpen ? "bg-[#616161] rotate-45" : "bg-[#1565C0]"}`}>
+          className={`w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all ${fabOpen ? "bg-[#424242] rotate-45" : "bg-[#1565C0]"}`}>
           <Plus size={24} className="text-white" />
         </button>
       </div>

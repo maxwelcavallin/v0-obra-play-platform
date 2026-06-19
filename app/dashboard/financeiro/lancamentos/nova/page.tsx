@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
-  ArrowLeft, Loader2, Check, ChevronDown, ToggleLeft, ToggleRight, CalendarDays, ShoppingCart,
+  ArrowLeft, Loader2, Check, ToggleLeft, ToggleRight, CalendarDays, ShoppingCart,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/auth-fetch"
@@ -18,7 +18,6 @@ interface Account   { id: string; name: string; color: string | null }
 
 type TabType = "receita" | "despesa" | "transferencia"
 
-// Gera preview de datas parceladas
 function previewDates(baseDate: string, n: number): string[] {
   if (!baseDate || n <= 1) return []
   const out: string[] = []
@@ -67,7 +66,6 @@ export default function NovaLancamentoPage() {
   const [obras, setObras]           = useState<Obra[]>([])
   const [accounts, setAccounts]     = useState<Account[]>([])
 
-  // Form
   const [description, setDesc]  = useState("")
   const [amount, setAmount]     = useState("")
   const [dueDate, setDueDate]   = useState(new Date().toISOString().split("T")[0])
@@ -79,7 +77,6 @@ export default function NovaLancamentoPage() {
   const [obraId, setObraId]     = useState("")
   const [notes, setNotes]       = useState("")
 
-  // Parcelamento
   const [useInstallments, setUseInstallments] = useState(false)
   const [installments, setInstallments]       = useState(2)
   const datesPreview = useInstallments && dueDate ? previewDates(dueDate, installments) : []
@@ -99,7 +96,6 @@ export default function NovaLancamentoPage() {
     }).catch(err => console.error("[nova-lancamento] meta:", err))
   }, [activeCompany?.id])
 
-  // Pré-preenche via OC (oc_id + amount + description + obra_id nos query params)
   useEffect(() => {
     if (!ocId || editId) return
     if (ocDesc)   setDesc(ocDesc)
@@ -183,8 +179,6 @@ export default function NovaLancamentoPage() {
     </div>
   )
 
-
-
   return (
     <div className="min-h-screen bg-[#F5F5F5] flex flex-col">
       {/* Header */}
@@ -193,7 +187,7 @@ export default function NovaLancamentoPage() {
           <button onClick={() => router.back()} className="text-white/80 hover:text-white">
             <ArrowLeft size={22} />
           </button>
-          <h1 className="text-white font-bold text-lg flex-1">{editId ? "Editar" : "Novo lançamento"}</h1>
+          <h1 className="text-white font-bold text-lg flex-1">{editId ? "Editar lançamento" : "Novo lançamento"}</h1>
         </div>
       </div>
 
@@ -201,41 +195,27 @@ export default function NovaLancamentoPage() {
 
         {/* Banner: lançamento originado de OC */}
         {ocId && (
-          <div className="bg-[#E3F2FD] rounded-2xl px-4 py-3 flex items-start gap-3">
-            <ShoppingCart size={16} className="text-[#1565C0] mt-0.5 flex-shrink-0" />
+          <div className="bg-[#EEF2FA] rounded-2xl px-4 py-3 flex items-start gap-3 border border-[#D0DBF0]">
+            <ShoppingCart size={15} className="text-[#1565C0] mt-0.5 flex-shrink-0" />
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold text-[#1565C0]">Lançamento via Ordem de Compra</p>
-              <p className="text-[11px] text-[#1565C0]/70 mt-0.5">
-                Dados pré-preenchidos. Confirme ou ajuste antes de salvar.
-              </p>
+              <p className="text-[11px] text-[#616161] mt-0.5">Dados pré-preenchidos. Confirme antes de salvar.</p>
               {(ocSupplierName || ocObraName) && (
-                <div className="mt-2 flex flex-col gap-0.5">
-                  {ocSupplierName && (
-                    <p className="text-[11px] text-[#1565C0] font-medium">
-                      Fornecedor: <span className="font-bold">{ocSupplierName}</span>
-                    </p>
-                  )}
-                  {ocObraName && (
-                    <p className="text-[11px] text-[#1565C0] font-medium">
-                      Obra: <span className="font-bold">{ocObraName}</span>
-                    </p>
-                  )}
+                <div className="mt-1.5 flex flex-col gap-0.5">
+                  {ocSupplierName && <p className="text-[11px] text-[#212121]">Fornecedor: <span className="font-semibold">{ocSupplierName}</span></p>}
+                  {ocObraName     && <p className="text-[11px] text-[#212121]">Obra: <span className="font-semibold">{ocObraName}</span></p>}
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Tabs: Receita | Despesa | Transferência */}
+        {/* Tabs tipo */}
         <div className="bg-white rounded-2xl p-1 flex shadow-sm">
           {(["receita", "despesa", "transferencia"] as const).map(t => (
             <button key={t} onClick={() => { setTab(t); setCatId("") }}
               className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-colors ${
-                tab === t
-                  ? t === "receita" ? "bg-[#4CAF50] text-white"
-                  : t === "despesa" ? "bg-[#F44336] text-white"
-                  : "bg-[#1565C0] text-white"
-                  : "text-[#9E9E9E]"
+                tab === t ? "bg-[#1565C0] text-white" : "text-[#9E9E9E]"
               }`}>
               {t === "receita" ? "Receita" : t === "despesa" ? "Despesa" : "Transferência"}
             </button>
@@ -274,10 +254,11 @@ export default function NovaLancamentoPage() {
                 <button key={s} onClick={() => setStatus(s)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                     status === s
-                      ? s === "pago" ? "bg-[#E8F5E9] border-[#4CAF50] text-[#388E3C]" : "bg-[#FFF8E1] border-[#FFC107] text-[#F57F17]"
+                      ? "bg-[#212121] text-white border-[#212121]"
                       : "border-[#E0E0E0] text-[#9E9E9E]"
                   }`}>
-                  {status === s && <Check size={10} />}{s === "pago" ? "Pago" : "Pendente"}
+                  {status === s && <Check size={10} />}
+                  {s === "pago" ? "Pago" : "Pendente"}
                 </button>
               ))}
             </div>
@@ -339,7 +320,7 @@ export default function NovaLancamentoPage() {
               <button onClick={() => setUseInstallments(v => !v)} className="flex-shrink-0">
                 {useInstallments
                   ? <ToggleRight size={28} className="text-[#1565C0]" />
-                  : <ToggleLeft size={28} className="text-[#BDBDBD]" />}
+                  : <ToggleLeft  size={28} className="text-[#BDBDBD]" />}
               </button>
             </div>
 
@@ -362,8 +343,6 @@ export default function NovaLancamentoPage() {
                     </div>
                   )}
                 </div>
-
-                {/* Preview datas */}
                 {datesPreview.length > 0 && (
                   <div className="mt-3">
                     <div className="flex items-center gap-1.5 mb-1.5">
@@ -372,7 +351,7 @@ export default function NovaLancamentoPage() {
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {datesPreview.map((d, i) => (
-                        <span key={i} className="text-[10px] bg-[#E3F2FD] text-[#1565C0] font-semibold px-2 py-0.5 rounded-full">
+                        <span key={i} className="text-[10px] bg-[#F0F4FB] text-[#1565C0] font-semibold px-2 py-0.5 rounded-full">
                           {i+1}. {fmtDate(d)}
                         </span>
                       ))}
@@ -392,7 +371,7 @@ export default function NovaLancamentoPage() {
             className="w-full text-sm text-[#212121] outline-none bg-transparent resize-none" />
         </div>
 
-        {/* Anexos — disponível na edição; no detalhe após criação */}
+        {/* Anexos — disponível na edição */}
         {editId && activeCompany?.id && (
           <div className="bg-white rounded-2xl px-4 py-4 shadow-sm">
             <AnexosSection transactionId={editId} companyId={activeCompany.id} />

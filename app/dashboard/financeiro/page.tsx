@@ -113,36 +113,38 @@ export default function FinanceiroDashboard() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            {/* Saldo total — largo */}
-            <div className="col-span-2 bg-[#1A237E] rounded-2xl p-4 shadow-md flex items-center justify-between">
+            {/* Saldo do mês */}
+            <div className="col-span-2 bg-white rounded-2xl p-4 shadow-md flex items-center justify-between border border-[#E8EDF5]">
               <div>
-                <p className="text-white/70 text-xs mb-0.5">Saldo do mês</p>
-                <p className={`text-2xl font-bold ${saldo >= 0 ? "text-white" : "text-[#FF6B6B]"}`}>
+                <p className="text-[#9E9E9E] text-xs mb-0.5">Saldo do mês</p>
+                <p className={`text-2xl font-bold ${saldo >= 0 ? "text-[#1565C0]" : "text-[#D32F2F]"}`}>
                   {fmtBRL(saldo)}
                 </p>
               </div>
-              <Wallet size={32} className="text-white/30" />
+              <Wallet size={28} className="text-[#E0E0E0]" />
             </div>
 
+            {/* Receitas */}
             <div className="bg-white rounded-2xl p-3 shadow-sm">
               <div className="flex items-center gap-1.5 mb-1">
-                <TrendingUp size={13} className="text-[#4CAF50]" />
+                <TrendingUp size={13} className="text-[#1565C0]" />
                 <p className="text-[#9E9E9E] text-[11px]">Receitas pagas</p>
               </div>
-              <p className="font-bold text-[#4CAF50] text-sm">{fmtBRL(Number(s?.receitas_pagas ?? 0))}</p>
+              <p className="font-bold text-[#1565C0] text-sm">{fmtBRL(Number(s?.receitas_pagas ?? 0))}</p>
               {Number(s?.a_receber ?? 0) > 0 && (
-                <p className="text-[10px] text-[#9E9E9E] mt-0.5">+{fmtBRL(Number(s?.a_receber ?? 0))} a receber</p>
+                <p className="text-[10px] text-[#9E9E9E] mt-0.5">+{fmtBRL(Number(s.a_receber))} a receber</p>
               )}
             </div>
 
+            {/* Despesas */}
             <div className="bg-white rounded-2xl p-3 shadow-sm">
               <div className="flex items-center gap-1.5 mb-1">
-                <TrendingDown size={13} className="text-[#F44336]" />
+                <TrendingDown size={13} className="text-[#D32F2F]" />
                 <p className="text-[#9E9E9E] text-[11px]">Despesas pagas</p>
               </div>
-              <p className="font-bold text-[#F44336] text-sm">{fmtBRL(Number(s?.despesas_pagas ?? 0))}</p>
+              <p className="font-bold text-[#D32F2F] text-sm">{fmtBRL(Number(s?.despesas_pagas ?? 0))}</p>
               {Number(s?.a_pagar ?? 0) > 0 && (
-                <p className="text-[10px] text-[#9E9E9E] mt-0.5">+{fmtBRL(Number(s?.a_pagar ?? 0))} a pagar</p>
+                <p className="text-[10px] text-[#9E9E9E] mt-0.5">+{fmtBRL(Number(s.a_pagar))} a pagar</p>
               )}
             </div>
           </div>
@@ -152,7 +154,7 @@ export default function FinanceiroDashboard() {
       {/* Gráfico barras 6 meses */}
       <div className="mx-4 mb-4 bg-white rounded-2xl p-4 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
-          <BarChart3 size={16} className="text-[#1565C0]" />
+          <BarChart3 size={15} className="text-[#9E9E9E]" />
           <p className="font-semibold text-[#212121] text-sm">Entradas vs Saídas — 6 meses</p>
         </div>
         {loading ? (
@@ -169,13 +171,13 @@ export default function FinanceiroDashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#9E9E9E" }} axisLine={false} tickLine={false} />
               <YAxis hide />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: "#F5F5F5" }} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: "#F9F9F9" }} />
               <Legend
                 iconType="circle" iconSize={7}
                 formatter={(v) => <span style={{ fontSize: 10, color: "#616161" }}>{v}</span>}
               />
-              <Bar dataKey="receitas" name="Receitas" fill="#4CAF50" radius={[4,4,0,0]} />
-              <Bar dataKey="despesas" name="Despesas" fill="#F44336" radius={[4,4,0,0]} />
+              <Bar dataKey="receitas" name="Receitas" fill="#1565C0" radius={[4,4,0,0]} />
+              <Bar dataKey="despesas" name="Despesas" fill="#D32F2F" radius={[4,4,0,0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -185,7 +187,7 @@ export default function FinanceiroDashboard() {
       <div className="mx-4 mb-4 bg-white rounded-2xl shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#F5F5F5]">
           <div className="flex items-center gap-2">
-            <Clock size={15} className="text-[#FF9800]" />
+            <Clock size={14} className="text-[#9E9E9E]" />
             <p className="font-semibold text-[#212121] text-sm">Próximos vencimentos</p>
           </div>
           <button onClick={() => router.push("/dashboard/financeiro/lancamentos?status=pendente")}
@@ -194,7 +196,7 @@ export default function FinanceiroDashboard() {
         {loading ? (
           <div className="p-4 flex justify-center"><Loader2 size={18} className="animate-spin text-[#BDBDBD]" /></div>
         ) : (data?.vencimentos ?? []).length === 0 ? (
-          <div className="px-4 py-6 text-center text-xs text-[#9E9E9E]">Nenhum vencimento nos próximos dias</div>
+          <div className="px-4 py-6 text-center text-xs text-[#9E9E9E]">Nenhum vencimento pendente</div>
         ) : (
           <ul>
             {(data?.vencimentos ?? []).map((v, i) => {
@@ -203,25 +205,24 @@ export default function FinanceiroDashboard() {
                 <li key={v.id}>
                   <button onClick={() => router.push(`/dashboard/financeiro/lancamentos/${v.id}`)}
                     className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#FAFAFA] transition-colors ${i > 0 ? "border-t border-[#F5F5F5]" : ""}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isVencida ? "bg-[#FFEBEE]" : "bg-[#FFF8E1]"}`}>
+                    <div className="w-8 h-8 rounded-full bg-[#F5F5F5] flex items-center justify-center flex-shrink-0">
                       {v.type === "receita"
-                        ? <TrendingUp size={13} className={isVencida ? "text-[#D32F2F]" : "text-[#F57F17]"} />
-                        : <TrendingDown size={13} className={isVencida ? "text-[#D32F2F]" : "text-[#F57F17]"} />}
+                        ? <TrendingUp size={13} className="text-[#1565C0]" />
+                        : <TrendingDown size={13} className="text-[#D32F2F]" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-[#212121] font-medium truncate">{v.description}</p>
                       {v.category_name && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full"
-                          style={{ backgroundColor: v.category_color ? `${v.category_color}20` : "#F5F5F5", color: v.category_color ?? "#9E9E9E" }}>
-                          {v.category_name}
-                        </span>
+                        <span className="text-[10px] text-[#9E9E9E]">{v.category_name}</span>
                       )}
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className={`font-bold text-sm ${isVencida ? "text-[#F44336]" : v.type === "receita" ? "text-[#4CAF50]" : "text-[#F44336]"}`}>
+                      <p className={`font-bold text-sm ${v.type === "receita" ? "text-[#1565C0]" : "text-[#D32F2F]"}`}>
                         {fmtBRL(Number(v.amount))}
                       </p>
-                      <p className={`text-[10px] ${isVencida ? "text-[#F44336] font-semibold" : "text-[#9E9E9E]"}`}>{fmtDue(v.due_date)}</p>
+                      <p className={`text-[10px] ${isVencida ? "text-[#D32F2F] font-semibold" : "text-[#9E9E9E]"}`}>
+                        {fmtDue(v.due_date)}
+                      </p>
                     </div>
                     <ChevronRight size={13} className="text-[#BDBDBD] flex-shrink-0" />
                   </button>
@@ -236,13 +237,13 @@ export default function FinanceiroDashboard() {
       <div className="mx-4 mb-32 grid grid-cols-2 gap-2">
         <button onClick={() => router.push("/dashboard/financeiro/lancamentos")}
           className="bg-white rounded-2xl p-4 shadow-sm flex flex-col gap-1.5 hover:shadow-md transition-shadow text-left">
-          <BarChart3 size={20} className="text-[#1565C0]" />
+          <BarChart3 size={20} className="text-[#9E9E9E]" />
           <p className="font-semibold text-[#212121] text-sm">Lançamentos</p>
           <p className="text-[11px] text-[#9E9E9E]">Extrato completo</p>
         </button>
         <button onClick={() => router.push("/dashboard/financeiro/relatorios")}
           className="bg-white rounded-2xl p-4 shadow-sm flex flex-col gap-1.5 hover:shadow-md transition-shadow text-left">
-          <TrendingUp size={20} className="text-[#4CAF50]" />
+          <TrendingUp size={20} className="text-[#9E9E9E]" />
           <p className="font-semibold text-[#212121] text-sm">Relatórios</p>
           <p className="text-[11px] text-[#9E9E9E]">Fluxo e extrato</p>
         </button>
@@ -263,14 +264,14 @@ export default function FinanceiroDashboard() {
             <div className="flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-150 delay-75">
               <span className="bg-[#212121] text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Despesa</span>
               <button onClick={() => { setFabOpen(false); router.push("/dashboard/financeiro/lancamentos/nova?type=despesa") }}
-                className="w-11 h-11 rounded-full bg-[#F44336] shadow-lg flex items-center justify-center hover:bg-[#D32F2F] transition-colors">
+                className="w-11 h-11 rounded-full bg-[#D32F2F] shadow-lg flex items-center justify-center hover:bg-[#B71C1C] transition-colors">
                 <TrendingDown size={18} className="text-white" />
               </button>
             </div>
             <div className="flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-150 delay-150">
               <span className="bg-[#212121] text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Receita</span>
               <button onClick={() => { setFabOpen(false); router.push("/dashboard/financeiro/lancamentos/nova?type=receita") }}
-                className="w-11 h-11 rounded-full bg-[#4CAF50] shadow-lg flex items-center justify-center hover:bg-[#388E3C] transition-colors">
+                className="w-11 h-11 rounded-full bg-[#1565C0] shadow-lg flex items-center justify-center hover:bg-[#0D47A1] transition-colors">
                 <TrendingUp size={18} className="text-white" />
               </button>
             </div>

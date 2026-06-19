@@ -32,7 +32,7 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
   if (!value) return null
   return (
     <div className="flex items-start gap-3 py-2.5 border-b border-[#F5F5F5] last:border-0">
-      <div className="mt-0.5 text-[#9E9E9E] flex-shrink-0">{icon}</div>
+      <div className="mt-0.5 text-[#BDBDBD] flex-shrink-0">{icon}</div>
       <div className="min-w-0">
         <p className="text-[10px] uppercase tracking-wider text-[#9E9E9E] font-semibold">{label}</p>
         <p className="text-sm text-[#212121] font-medium">{value}</p>
@@ -121,14 +121,13 @@ export default function LancamentoDetailPage({ params }: { params: Promise<{ id:
 
   const isVencida = transacao.status === "pendente" && transacao.due_date && new Date(transacao.due_date) < new Date()
   const isReceita = transacao.type === "receita"
-  const headerColor = isReceita ? "#1B5E20" : "#B71C1C"
-  const amountColor = isReceita ? "#4CAF50" : "#F44336"
+  const amountColor = isReceita ? "#1565C0" : "#D32F2F"
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] flex flex-col">
-      {/* Header */}
-      <div className="px-4 pt-4 pb-8" style={{ backgroundColor: headerColor }}>
-        <div className="flex items-center gap-3 mb-3">
+      {/* Header — azul único para ambos os tipos */}
+      <div className="bg-[#1565C0] px-4 pt-4 pb-10">
+        <div className="flex items-center gap-3 mb-4">
           <button onClick={() => router.back()} className="text-white/80 hover:text-white p-1">
             <ArrowLeft size={22} />
           </button>
@@ -138,7 +137,6 @@ export default function LancamentoDetailPage({ params }: { params: Promise<{ id:
             <Pencil size={16} className="text-white" />
           </button>
         </div>
-        {/* Valor + badge tipo */}
         <div className="flex items-end justify-between">
           <div>
             <p className="text-white/60 text-xs mb-0.5">{isReceita ? "Receita" : "Despesa"}</p>
@@ -149,31 +147,41 @@ export default function LancamentoDetailPage({ params }: { params: Promise<{ id:
               <p className="text-white/60 text-xs mt-0.5">Parcela {transacao.installment_index} de {transacao.installment_total}</p>
             )}
           </div>
-          <span className="text-xs font-bold px-3 py-1.5 rounded-full"
-            style={{
-              backgroundColor: transacao.status==="pago"?"rgba(255,255,255,0.2)":isVencida?"#FF6B6B":"rgba(255,255,255,0.15)",
-              color: "white",
-            }}>
+          <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-white/20 text-white">
             {transacao.status==="pago"?"Pago":transacao.status==="cancelado"?"Cancelado":isVencida?"Vencida":"Pendente"}
           </span>
         </div>
       </div>
 
       <div className="px-4 -mt-4 flex flex-col gap-3 pb-28">
+
+        {/* Tipo do lançamento — indicador discreto */}
+        <div className="bg-white rounded-2xl px-4 py-3 shadow-sm flex items-center gap-3">
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${isReceita ? "bg-[#EEF2FA]" : "bg-[#FEF0F0]"}`}>
+            {isReceita
+              ? <TrendingUp size={16} className="text-[#1565C0]" />
+              : <TrendingDown size={16} className="text-[#D32F2F]" />}
+          </div>
+          <div>
+            <p className="text-xs text-[#9E9E9E]">Tipo</p>
+            <p className="text-sm font-semibold" style={{ color: amountColor }}>{isReceita ? "Receita" : "Despesa"}</p>
+          </div>
+        </div>
+
         {/* Ação principal */}
         {transacao.status !== "cancelado" && (
           <button onClick={togglePago} disabled={patching}
             className={`w-full py-3.5 rounded-2xl font-bold text-white flex items-center justify-center gap-2 shadow-sm transition-colors ${
               transacao.status === "pago"
-                ? "bg-[#FF9800] hover:bg-[#F57C00]"
-                : "bg-[#4CAF50] hover:bg-[#388E3C]"
+                ? "bg-[#616161] hover:bg-[#424242]"
+                : "bg-[#212121] hover:bg-[#000000]"
             }`}>
             {patching ? <Loader2 size={16} className="animate-spin" /> : transacao.status === "pago" ? <RotateCcw size={16} /> : <Check size={16} />}
             {transacao.status === "pago" ? "Desfazer pagamento" : "Marcar como pago"}
           </button>
         )}
 
-        {/* Card de detalhes */}
+        {/* Detalhes */}
         <div className="bg-white rounded-2xl px-4 shadow-sm">
           <InfoRow icon={<Calendar size={15} />} label="Vencimento" value={fmtDate(transacao.due_date)} />
           {transacao.status === "pago" && transacao.paid_at && (
@@ -181,28 +189,25 @@ export default function LancamentoDetailPage({ params }: { params: Promise<{ id:
           )}
           {transacao.category_name && (
             <div className="flex items-start gap-3 py-2.5 border-b border-[#F5F5F5]">
-              <Tag size={15} className="text-[#9E9E9E] mt-0.5 flex-shrink-0" />
+              <Tag size={15} className="text-[#BDBDBD] mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-[#9E9E9E] font-semibold">Categoria</p>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full mt-0.5 inline-block"
-                  style={{ backgroundColor: transacao.category_color ? `${transacao.category_color}20` : "#F5F5F5", color: transacao.category_color ?? "#212121" }}>
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full mt-0.5 inline-block"
+                  style={{
+                    backgroundColor: transacao.category_color ? `${transacao.category_color}18` : "#F5F5F5",
+                    color: transacao.category_color ?? "#616161",
+                  }}>
                   {transacao.category_name}
                 </span>
               </div>
             </div>
           )}
-          {transacao.account_name && (
-            <InfoRow icon={<Wallet size={15} />} label="Conta" value={transacao.account_name} />
-          )}
-          {transacao.obra_name && (
-            <InfoRow icon={<Building2 size={15} />} label="Obra" value={transacao.obra_name} />
-          )}
+          <InfoRow icon={<Wallet size={15} />}    label="Conta"       value={transacao.account_name} />
+          <InfoRow icon={<Building2 size={15} />} label="Obra"        value={transacao.obra_name} />
           {(transacao.client_name || transacao.client_fantasy) && (
             <InfoRow icon={<User size={15} />} label="Cliente" value={transacao.client_fantasy ?? transacao.client_name} />
           )}
-          {transacao.notes && (
-            <InfoRow icon={<AlignLeft size={15} />} label="Observações" value={transacao.notes} />
-          )}
+          <InfoRow icon={<AlignLeft size={15} />} label="Observações" value={transacao.notes} />
           {transacao.recurrence && transacao.recurrence !== "unica" && (
             <InfoRow icon={<Layers size={15} />} label="Recorrência" value={transacao.recurrence} />
           )}
@@ -211,28 +216,27 @@ export default function LancamentoDetailPage({ params }: { params: Promise<{ id:
         {/* Anexos */}
         {activeCompany?.id && (
           <div className="bg-white rounded-2xl px-4 py-4 shadow-sm">
-            <AnexosSection
-              transactionId={id}
-              companyId={activeCompany.id}
-              initialAnexos={anexos}
-            />
+            <AnexosSection transactionId={id} companyId={activeCompany.id} initialAnexos={anexos} />
           </div>
         )}
 
         {/* Excluir */}
         {!confirmDelete ? (
           <button onClick={() => setConfirmDelete(true)}
-            className="w-full py-3 rounded-2xl border border-[#FFCDD2] text-[#F44336] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#FFEBEE] transition-colors">
+            className="w-full py-3 rounded-2xl border border-[#E0E0E0] text-[#9E9E9E] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#F5F5F5] transition-colors">
             <Trash2 size={15} />Excluir lançamento
           </button>
         ) : (
-          <div className="bg-[#FFEBEE] rounded-2xl px-4 py-3 flex flex-col gap-2">
-            <p className="text-sm font-semibold text-[#D32F2F] text-center">Confirmar exclusão?</p>
+          <div className="bg-[#F5F5F5] rounded-2xl px-4 py-3 flex flex-col gap-2 border border-[#E0E0E0]">
+            <p className="text-sm font-semibold text-[#212121] text-center">Confirmar exclusão?</p>
             <p className="text-xs text-[#9E9E9E] text-center">Esta ação não pode ser desfeita.</p>
             <div className="flex gap-2">
-              <button onClick={() => setConfirmDelete(false)} className="flex-1 py-2.5 rounded-xl border border-[#E0E0E0] text-[#616161] text-sm font-semibold">Cancelar</button>
+              <button onClick={() => setConfirmDelete(false)}
+                className="flex-1 py-2.5 rounded-xl border border-[#E0E0E0] text-[#616161] text-sm font-semibold">
+                Cancelar
+              </button>
               <button onClick={handleDelete} disabled={deleting}
-                className="flex-1 py-2.5 rounded-xl bg-[#F44336] text-white text-sm font-semibold flex items-center justify-center gap-1">
+                className="flex-1 py-2.5 rounded-xl bg-[#D32F2F] text-white text-sm font-semibold flex items-center justify-center gap-1">
                 {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}Excluir
               </button>
             </div>
