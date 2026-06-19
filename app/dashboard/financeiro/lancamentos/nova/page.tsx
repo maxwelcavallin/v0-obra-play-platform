@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
-  ArrowLeft, Loader2, Check, ChevronDown, ToggleLeft, ToggleRight, CalendarDays,
+  ArrowLeft, Loader2, Check, ChevronDown, ToggleLeft, ToggleRight, CalendarDays, ShoppingCart,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/auth-fetch"
@@ -51,6 +51,10 @@ export default function NovaLancamentoPage() {
   const typeQ   = (params.get("type") as TabType) ?? "despesa"
   const { activeCompany } = useAuth()
 
+  const ocId       = params.get("oc_id")
+  const ocAmount   = params.get("amount")
+  const ocDesc     = params.get("description")
+
   const [tab, setTab]         = useState<TabType>(typeQ)
   const [saving, setSaving]   = useState(false)
   const [loadingEdit, setLoadingEdit] = useState(!!editId)
@@ -93,10 +97,19 @@ export default function NovaLancamentoPage() {
     }).catch(err => console.error("[nova-lancamento] meta:", err))
   }, [activeCompany?.id])
 
+  // Pré-preenche via OC (oc_id + amount + description nos query params)
+  useEffect(() => {
+    if (!ocId || editId) return
+    if (ocDesc) setDesc(ocDesc)
+    if (ocAmount) {
+      const cents = Math.round(Number(ocAmount) * 100)
+      if (cents > 0) setAmount(formatMoneyInput(cents))
+    }
+  }, [ocId, ocAmount, ocDesc, editId])
+
   useEffect(() => {
     if (!editId) return
     authFetch(`/api/financeiro/transacoes/${editId}`).then(r => r.json()).then(t => {
-      console.log("[nova-lancamento] editando:", t.id)
       setTab(t.type as TabType)
       setDesc(t.description)
       setAmount(formatMoneyInput(Math.round(Number(t.amount) * 100)))
@@ -140,19 +153,17 @@ export default function NovaLancamentoPage() {
         notes:       notes.trim() || null,
         installments: useInstallments ? installments : 1,
       }
-      console.log("[nova-lancamento] salvando:", JSON.stringify(body))
-
       const url    = editId ? `/api/financeiro/transacoes/${editId}` : "/api/financeiro/transacoes"
       const method = editId ? "PUT" : "POST"
       const res    = await authFetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
       const data   = await res.json()
       if (!res.ok) throw new Error(data.error ?? "Erro ao salvar")
 
-      const newId = data.id ?? data.rows?.[0]?.id
-      setSavedId(newId)
+      const newId = data.id ?? data.rows?.[0]?.id ?? data.installment_group_id
+      setSavedId(data.id ?? data.rows?.[0]?.id)
       toast.success(editId ? "Transação atualizada!" : useInstallments ? `${installments} parcelas criadas!` : "Transação criada!")
       if (!useInstallments || editId) {
-        router.push(`/dashboard/financeiro/lancamentos/${newId}`)
+        router.push(newId ? `/dashboard/financeiro/lancamentos/${data.id ?? data.rows?.[0]?.id}` : "/dashboard/financeiro/lancamentos")
       }
     } catch (err: any) {
       console.error("[nova-lancamento] erro:", err?.message)
@@ -205,6 +216,19 @@ export default function NovaLancamentoPage() {
       </div>
 
       <div className="flex-1 px-4 py-4 flex flex-col gap-3 pb-32">
+
+        {/* Banner: lançamento originado de OC */}
+        {ocId && (
+          <div className="bg-[#E3F2FD] rounded-2xl px-4 py-3 flex items-start gap-3">
+            <ShoppingCart size={16} className="text-[#1565C0] mt-0.5 flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-[#1565C0]">Lançamento via Ordem de Compra</p>
+              <p className="text-[11px] text-[#1565C0]/70 mt-0.5">
+                Dados pré-preenchidos. Confirme ou ajuste antes de salvar.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Tabs: Receita | Despesa | Transferência */}
         <div className="bg-white rounded-2xl p-1 flex shadow-sm">

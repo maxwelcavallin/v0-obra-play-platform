@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
   TrendingUp, TrendingDown, ArrowLeft, Settings, Clock,
-  ChevronRight, Loader2, BarChart3, Wallet
+  ChevronRight, Loader2, BarChart3, Wallet, Plus, ArrowRightLeft
 } from "lucide-react"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -59,6 +59,7 @@ export default function FinanceiroDashboard() {
   const { activeCompany } = useAuth()
   const [data, setData]   = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fabOpen, setFabOpen] = useState(false)
 
   const fetchDashboard = useCallback(async () => {
     if (!activeCompany?.id) return
@@ -232,7 +233,7 @@ export default function FinanceiroDashboard() {
       </div>
 
       {/* Atalhos */}
-      <div className="mx-4 mb-6 grid grid-cols-2 gap-2">
+      <div className="mx-4 mb-32 grid grid-cols-2 gap-2">
         <button onClick={() => router.push("/dashboard/financeiro/lancamentos")}
           className="bg-white rounded-2xl p-4 shadow-sm flex flex-col gap-1.5 hover:shadow-md transition-shadow text-left">
           <BarChart3 size={20} className="text-[#1565C0]" />
@@ -244,6 +245,40 @@ export default function FinanceiroDashboard() {
           <TrendingUp size={20} className="text-[#4CAF50]" />
           <p className="font-semibold text-[#212121] text-sm">Relatórios</p>
           <p className="text-[11px] text-[#9E9E9E]">Fluxo e extrato</p>
+        </button>
+      </div>
+
+      {/* FAB expandido — novo lançamento */}
+      {fabOpen && <div className="fixed inset-0 z-40" onClick={() => setFabOpen(false)} />}
+      <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
+        {fabOpen && (
+          <>
+            <div className="flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-150">
+              <span className="bg-[#212121] text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Transferência</span>
+              <button onClick={() => { setFabOpen(false); router.push("/dashboard/financeiro/lancamentos/nova?type=transferencia") }}
+                className="w-11 h-11 rounded-full bg-[#1565C0] shadow-lg flex items-center justify-center hover:bg-[#0D47A1] transition-colors">
+                <ArrowRightLeft size={18} className="text-white" />
+              </button>
+            </div>
+            <div className="flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-150 delay-75">
+              <span className="bg-[#212121] text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Despesa</span>
+              <button onClick={() => { setFabOpen(false); router.push("/dashboard/financeiro/lancamentos/nova?type=despesa") }}
+                className="w-11 h-11 rounded-full bg-[#F44336] shadow-lg flex items-center justify-center hover:bg-[#D32F2F] transition-colors">
+                <TrendingDown size={18} className="text-white" />
+              </button>
+            </div>
+            <div className="flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-150 delay-150">
+              <span className="bg-[#212121] text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Receita</span>
+              <button onClick={() => { setFabOpen(false); router.push("/dashboard/financeiro/lancamentos/nova?type=receita") }}
+                className="w-11 h-11 rounded-full bg-[#4CAF50] shadow-lg flex items-center justify-center hover:bg-[#388E3C] transition-colors">
+                <TrendingUp size={18} className="text-white" />
+              </button>
+            </div>
+          </>
+        )}
+        <button onClick={() => setFabOpen(v => !v)}
+          className={`w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all duration-200 ${fabOpen ? "bg-[#616161] rotate-45" : "bg-[#1565C0]"}`}>
+          <Plus size={24} className="text-white" />
         </button>
       </div>
 

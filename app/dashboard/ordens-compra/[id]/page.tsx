@@ -327,8 +327,18 @@ export default function OrdemCompraDetalhePage() {
         </Section>
 
         {/* Botão lançamento financeiro */}
-        {(oc.status === "Processada" || oc.status === "Entrega confirmada") && (
+        {oc.status !== "Cancelada" && (
           <button
+            onClick={() => {
+              const params = new URLSearchParams({
+                type: "despesa",
+                oc_id: oc.id,
+                description: `Pagamento OC ${oc.identifier} — ${oc.supplier_name}`,
+                amount: String(oc.total ?? 0),
+                ...(oc.obra_name ? { obra_hint: oc.obra_name } : {}),
+              })
+              router.push(`/dashboard/financeiro/lancamentos/nova?${params.toString()}`)
+            }}
             className="w-full py-3.5 rounded-2xl bg-[#1565C0] text-white font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#0D47A1] transition-colors shadow-sm">
             <TrendingUp size={16} />
             Gerar lançamento financeiro
