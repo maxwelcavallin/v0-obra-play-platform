@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft, Loader2, Check, ToggleLeft, ToggleRight, CalendarDays, ShoppingCart,
@@ -43,7 +43,7 @@ function Field({ label, children, divider = false }: { label: string; children: 
   )
 }
 
-export default function NovaLancamentoPage() {
+function NovaLancamentoForm() {
   const router  = useRouter()
   const params  = useSearchParams()
   const editId  = params.get("edit")
@@ -178,6 +178,8 @@ export default function NovaLancamentoPage() {
       <Loader2 size={28} className="animate-spin text-[#1565C0]" />
     </div>
   )
+
+  // necessário aqui pois useSearchParams() exige Suspense no App Router
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] flex flex-col">
@@ -388,5 +390,17 @@ export default function NovaLancamentoPage() {
         </button>
       </div>
     </div>
+  )
+}
+
+export default function NovaLancamentoPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
+        <Loader2 size={28} className="animate-spin text-[#1565C0]" />
+      </div>
+    }>
+      <NovaLancamentoForm />
+    </Suspense>
   )
 }
