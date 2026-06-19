@@ -18,6 +18,7 @@ interface OC {
   supplier_phone?: string
   cotacao_identifier?: string
   obraplay_quotation_code?: string
+  obra_id?: string
   obra_name?: string
   delivery_street?: string
   delivery_number?: string
@@ -335,7 +336,9 @@ export default function OrdemCompraDetalhePage() {
                 oc_id: oc.id,
                 description: `Pagamento OC ${oc.identifier} — ${oc.supplier_name}`,
                 amount: String(oc.total ?? 0),
-                ...(oc.obra_name ? { obra_hint: oc.obra_name } : {}),
+                supplier_name: oc.supplier_name,
+                ...(oc.obra_id   ? { obra_id:   oc.obra_id }   : {}),
+                ...(oc.obra_name ? { obra_name: oc.obra_name } : {}),
               })
               router.push(`/dashboard/financeiro/lancamentos/nova?${params.toString()}`)
             }}

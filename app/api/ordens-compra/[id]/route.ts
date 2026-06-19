@@ -13,6 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     SELECT oc.*,
       c.identifier AS cotacao_identifier,
       c.obraplay_quotation_code,
+      c.obra_id,
       o.name AS obra_name,
       o.delivery_street, o.delivery_number, o.delivery_neighbourhood,
       o.delivery_city, o.delivery_state, o.delivery_zipcode,

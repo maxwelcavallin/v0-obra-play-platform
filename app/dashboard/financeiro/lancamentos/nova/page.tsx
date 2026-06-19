@@ -51,9 +51,12 @@ export default function NovaLancamentoPage() {
   const typeQ   = (params.get("type") as TabType) ?? "despesa"
   const { activeCompany } = useAuth()
 
-  const ocId       = params.get("oc_id")
-  const ocAmount   = params.get("amount")
-  const ocDesc     = params.get("description")
+  const ocId           = params.get("oc_id")
+  const ocAmount       = params.get("amount")
+  const ocDesc         = params.get("description")
+  const ocSupplierName = params.get("supplier_name")
+  const ocObraId       = params.get("obra_id")
+  const ocObraName     = params.get("obra_name")
 
   const [tab, setTab]         = useState<TabType>(typeQ)
   const [saving, setSaving]   = useState(false)
@@ -97,15 +100,16 @@ export default function NovaLancamentoPage() {
     }).catch(err => console.error("[nova-lancamento] meta:", err))
   }, [activeCompany?.id])
 
-  // Pré-preenche via OC (oc_id + amount + description nos query params)
+  // Pré-preenche via OC (oc_id + amount + description + obra_id nos query params)
   useEffect(() => {
     if (!ocId || editId) return
-    if (ocDesc) setDesc(ocDesc)
+    if (ocDesc)   setDesc(ocDesc)
+    if (ocObraId) setObraId(ocObraId)
     if (ocAmount) {
       const cents = Math.round(Number(ocAmount) * 100)
       if (cents > 0) setAmount(formatMoneyInput(cents))
     }
-  }, [ocId, ocAmount, ocDesc, editId])
+  }, [ocId, ocAmount, ocDesc, ocObraId, editId])
 
   useEffect(() => {
     if (!editId) return
@@ -221,11 +225,25 @@ export default function NovaLancamentoPage() {
         {ocId && (
           <div className="bg-[#E3F2FD] rounded-2xl px-4 py-3 flex items-start gap-3">
             <ShoppingCart size={16} className="text-[#1565C0] mt-0.5 flex-shrink-0" />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-xs font-bold text-[#1565C0]">Lançamento via Ordem de Compra</p>
               <p className="text-[11px] text-[#1565C0]/70 mt-0.5">
                 Dados pré-preenchidos. Confirme ou ajuste antes de salvar.
               </p>
+              {(ocSupplierName || ocObraName) && (
+                <div className="mt-2 flex flex-col gap-0.5">
+                  {ocSupplierName && (
+                    <p className="text-[11px] text-[#1565C0] font-medium">
+                      Fornecedor: <span className="font-bold">{ocSupplierName}</span>
+                    </p>
+                  )}
+                  {ocObraName && (
+                    <p className="text-[11px] text-[#1565C0] font-medium">
+                      Obra: <span className="font-bold">{ocObraName}</span>
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
