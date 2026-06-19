@@ -213,7 +213,7 @@ export default function ConfigFinanceiroPage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm text-[#212121] truncate">{a.name}</p>
                       <p className="text-[11px] text-[#9E9E9E]">{ACCOUNT_TYPES.find(t=>t.value===a.type)?.label ?? a.type}{a.bank ? ` · ${a.bank}` : ""}</p>
-                      <p className="text-xs font-bold mt-0.5" style={{ color: Number(a.current_balance) >= 0 ? "#4CAF50" : "#F44336" }}>
+                      <p className="text-xs font-bold mt-0.5" style={{ color: Number(a.current_balance) >= 0 ? "#1565C0" : "#D32F2F" }}>
                         Saldo: R$ {Number(a.current_balance).toLocaleString("pt-BR",{minimumFractionDigits:2})}
                       </p>
                     </div>
@@ -235,8 +235,7 @@ export default function ConfigFinanceiroPage() {
             <div className="flex gap-2">
               {(["despesa","receita"] as CatType[]).map(t => (
                 <button key={t} onClick={() => setCatTypeTab(t)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors ${catTypeTab===t?"text-white":"text-[#9E9E9E] bg-white shadow-sm"}`}
-                  style={{ backgroundColor: catTypeTab===t?(t==="despesa"?"#F44336":"#4CAF50"):undefined }}>
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors ${catTypeTab===t?"bg-[#212121] text-white":"text-[#9E9E9E] bg-white shadow-sm"}`}>
                   {t === "despesa" ? "Despesas" : "Receitas"}
                 </button>
               ))}
@@ -347,8 +346,7 @@ export default function ConfigFinanceiroPage() {
                 <div className="flex gap-2">
                   {(["despesa","receita"] as CatType[]).map(t => (
                     <button key={t} onClick={() => setCatType(t)}
-                      className={`flex-1 py-2 rounded-xl text-sm font-bold transition-colors ${catType===t?"text-white":"bg-[#F5F5F5] text-[#9E9E9E]"}`}
-                      style={{ backgroundColor: catType===t?(t==="despesa"?"#F44336":"#4CAF50"):undefined }}>
+                      className={`flex-1 py-2 rounded-xl text-sm font-bold transition-colors ${catType===t?"bg-[#212121] text-white":"bg-[#F5F5F5] text-[#9E9E9E]"}`}>
                       {t === "despesa" ? "Despesa" : "Receita"}
                     </button>
                   ))}

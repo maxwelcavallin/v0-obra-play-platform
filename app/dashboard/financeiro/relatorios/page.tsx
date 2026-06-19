@@ -6,7 +6,7 @@ import {
   ArrowLeft, TrendingUp, TrendingDown, Loader2, Building2, ChevronRight, BarChart3,
 } from "lucide-react"
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend,
 } from "recharts"
 import { useAuth } from "@/lib/auth-context"
@@ -146,19 +146,19 @@ export default function RelatoriosPage() {
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-white rounded-2xl p-3 shadow-sm">
                 <p className="text-[10px] text-[#9E9E9E] mb-0.5">Receitas pagas</p>
-                <p className="font-bold text-[#4CAF50] text-sm">{fmtBRL(totalReceitas)}</p>
+                <p className="font-bold text-[#1565C0] text-sm">{fmtBRL(totalReceitas)}</p>
               </div>
               <div className="bg-white rounded-2xl p-3 shadow-sm">
                 <p className="text-[10px] text-[#9E9E9E] mb-0.5">Despesas pagas</p>
-                <p className="font-bold text-[#F44336] text-sm">{fmtBRL(totalDespesas)}</p>
+                <p className="font-bold text-[#D32F2F] text-sm">{fmtBRL(totalDespesas)}</p>
               </div>
               <div className="bg-white rounded-2xl p-3 shadow-sm">
                 <p className="text-[10px] text-[#9E9E9E] mb-0.5">A receber</p>
-                <p className="font-bold text-[#FF9800] text-sm">{fmtBRL(aReceber)}</p>
+                <p className="font-bold text-[#616161] text-sm">{fmtBRL(aReceber)}</p>
               </div>
               <div className="bg-white rounded-2xl p-3 shadow-sm">
                 <p className="text-[10px] text-[#9E9E9E] mb-0.5">A pagar</p>
-                <p className="font-bold text-[#E91E63] text-sm">{fmtBRL(aPagar)}</p>
+                <p className="font-bold text-[#616161] text-sm">{fmtBRL(aPagar)}</p>
               </div>
             </div>
             {/* Gráfico */}
@@ -173,8 +173,8 @@ export default function RelatoriosPage() {
                     <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#9E9E9E" }} axisLine={false} tickLine={false} />
                     <YAxis hide />
                     <Tooltip formatter={(v: any) => fmtBRL(v)} cursor={{ fill: "#F5F5F5" }} />
-                    <Bar dataKey="receitas" name="Receitas" fill="#4CAF50" radius={[4,4,0,0]} />
-                    <Bar dataKey="despesas" name="Despesas" fill="#F44336" radius={[4,4,0,0]} />
+                    <Bar dataKey="receitas" name="Receitas" fill="#1565C0" radius={[4,4,0,0]} />
+                    <Bar dataKey="despesas" name="Despesas" fill="#D32F2F" radius={[4,4,0,0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -206,7 +206,7 @@ export default function RelatoriosPage() {
               <>
                 <div className="bg-white rounded-2xl px-4 py-3 shadow-sm flex items-center justify-between">
                   <p className="text-xs text-[#9E9E9E]">Total pendente</p>
-                  <p className="font-bold text-[#FF9800]">{fmtBRL(contasPagar.reduce((s,c) => s+Number(c.amount), 0))}</p>
+                  <p className="font-bold text-[#212121]">{fmtBRL(contasPagar.reduce((s,c) => s+Number(c.amount), 0))}</p>
                 </div>
                 <div className="flex flex-col gap-1.5">
                   {contasPagar.map(c => {
@@ -214,18 +214,18 @@ export default function RelatoriosPage() {
                     return (
                       <button key={c.id} onClick={() => router.push(`/dashboard/financeiro/lancamentos/${c.id}`)}
                         className="bg-white rounded-xl px-3 py-3 shadow-sm flex items-center gap-3 text-left hover:shadow-md transition-shadow w-full">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${vencida?"bg-[#FFEBEE]":"bg-[#FFF8E1]"}`}>
-                          {c.type === "receita" ? <TrendingUp size={13} className={vencida?"text-[#D32F2F]":"text-[#F57F17]"} /> : <TrendingDown size={13} className={vencida?"text-[#D32F2F]":"text-[#F57F17]"} />}
+                        <div className="w-8 h-8 rounded-full bg-[#F5F5F5] flex items-center justify-center flex-shrink-0">
+                          {c.type === "receita" ? <TrendingUp size={13} className="text-[#1565C0]" /> : <TrendingDown size={13} className="text-[#D32F2F]" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-[#212121] truncate">{c.description}</p>
                           <p className="text-[10px] text-[#9E9E9E]">{c.category_name ?? ""}{c.account_name ? ` · ${c.account_name}` : ""}</p>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <p className={`font-bold text-sm ${vencida?"text-[#F44336]":c.type==="receita"?"text-[#4CAF50]":"text-[#F44336]"}`}>
+                          <p className={`font-bold text-sm ${c.type === "receita" ? "text-[#1565C0]" : "text-[#D32F2F]"}`}>
                             {fmtBRL(Number(c.amount))}
                           </p>
-                          <p className={`text-[10px] ${vencida?"text-[#F44336] font-semibold":"text-[#9E9E9E]"}`}>{fmtDate(c.due_date)}</p>
+                          <p className={`text-[10px] ${vencida ? "text-[#D32F2F] font-semibold" : "text-[#9E9E9E]"}`}>{fmtDate(c.due_date)}</p>
                         </div>
                         <ChevronRight size={12} className="text-[#BDBDBD] flex-shrink-0" />
                       </button>
@@ -257,11 +257,11 @@ export default function RelatoriosPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-white rounded-2xl p-3 shadow-sm">
                     <p className="text-[10px] text-[#9E9E9E] mb-0.5">Total receitas</p>
-                    <p className="font-bold text-[#4CAF50] text-sm">{fmtBRL(Number(extratoObra.totals?.total_receitas ?? 0))}</p>
+                    <p className="font-bold text-[#1565C0] text-sm">{fmtBRL(Number(extratoObra.totals?.total_receitas ?? 0))}</p>
                   </div>
                   <div className="bg-white rounded-2xl p-3 shadow-sm">
                     <p className="text-[10px] text-[#9E9E9E] mb-0.5">Total despesas</p>
-                    <p className="font-bold text-[#F44336] text-sm">{fmtBRL(Number(extratoObra.totals?.total_despesas ?? 0))}</p>
+                    <p className="font-bold text-[#D32F2F] text-sm">{fmtBRL(Number(extratoObra.totals?.total_despesas ?? 0))}</p>
                   </div>
                 </div>
                 {/* Lista */}
@@ -272,16 +272,14 @@ export default function RelatoriosPage() {
                     {extratoObra.rows.map((t: any) => (
                       <button key={t.id} onClick={() => router.push(`/dashboard/financeiro/lancamentos/${t.id}`)}
                         className="bg-white rounded-xl px-3 py-3 shadow-sm flex items-center gap-3 text-left hover:shadow-md w-full">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                          style={{ backgroundColor: t.type==="receita"?"#E8F5E9":"#FFEBEE" }}>
-                          {t.type === "receita" ? <TrendingUp size={13} className="text-[#4CAF50]" /> : <TrendingDown size={13} className="text-[#F44336]" />}
-                        </div>
+                        <div className="w-1 self-stretch rounded-full flex-shrink-0"
+                          style={{ backgroundColor: t.type === "receita" ? "#1565C0" : "#D32F2F" }} />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-[#212121] truncate">{t.description}</p>
                           <p className="text-[10px] text-[#9E9E9E]">{fmtDate(t.due_date)}{t.category_name ? ` · ${t.category_name}` : ""}</p>
                         </div>
-                        <p className="font-bold text-sm flex-shrink-0" style={{ color: t.type==="receita"?"#4CAF50":"#F44336" }}>
-                          {t.type==="receita"?"+":"-"}{fmtBRL(Number(t.amount))}
+                        <p className={`font-bold text-sm flex-shrink-0 ${t.type === "receita" ? "text-[#1565C0]" : "text-[#D32F2F]"}`}>
+                          {t.type === "receita" ? "+" : "-"}{fmtBRL(Number(t.amount))}
                         </p>
                         <ChevronRight size={12} className="text-[#BDBDBD] flex-shrink-0" />
                       </button>
