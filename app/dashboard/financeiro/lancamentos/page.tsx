@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft, Search, SlidersHorizontal, TrendingUp, TrendingDown,
@@ -37,7 +37,7 @@ function fmtDate(d: string | null) {
   return `${day}/${m}/${y}`
 }
 
-export default function LancamentosPage() {
+function LancamentosContent() {
   const router     = useRouter()
   const params     = useSearchParams()
   const { activeCompany } = useAuth()
@@ -329,5 +329,17 @@ export default function LancamentosPage() {
       </div>
 
     </div>
+  )
+}
+
+export default function LancamentosPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
+        <Loader2 size={28} className="animate-spin text-[#1565C0]" />
+      </div>
+    }>
+      <LancamentosContent />
+    </Suspense>
   )
 }
