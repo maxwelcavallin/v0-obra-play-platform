@@ -21,8 +21,11 @@ export async function GET(req: NextRequest) {
 
       // Sumário do mês atual
       const now = new Date()
-      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`
-      const monthEnd   = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-31`
+      const year  = now.getFullYear()
+      const month = now.getMonth() + 1
+      const lastDay = new Date(year, month, 0).getDate() // último dia real do mês
+      const monthStart = `${year}-${String(month).padStart(2, "0")}-01`
+      const monthEnd   = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`
 
       const [summary] = await sql`
         SELECT
