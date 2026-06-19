@@ -22,7 +22,11 @@ export async function GET(req: NextRequest) {
     const accountId = p.get("account_id") ?? null
 
     const monthStart = month ? `${month}-01` : null
-    const monthEnd   = month ? `${month}-31` : null
+    const monthEnd   = month ? (() => {
+      const [y, m] = month.split("-").map(Number)
+      const lastDay = new Date(y, m, 0).getDate()
+      return `${month}-${String(lastDay).padStart(2, "0")}`
+    })() : null
 
     const rows = await sql`
       SELECT
