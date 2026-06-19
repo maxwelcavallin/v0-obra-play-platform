@@ -67,9 +67,10 @@ interface Props {
   companyId: string
   initialAnexos?: Anexo[]
   readOnly?: boolean
+  pendingMode?: boolean   // true = transação ainda não foi salva; mostra UI bloqueada
 }
 
-export function AnexosSection({ transactionId, companyId, initialAnexos = [], readOnly = false }: Props) {
+export function AnexosSection({ transactionId, companyId, initialAnexos = [], readOnly = false, pendingMode = false }: Props) {
   const [anexos, setAnexos]       = useState<Anexo[]>(initialAnexos)
   const [uploading, setUploading] = useState(false)
   const [dragging, setDragging]   = useState(false)
@@ -146,6 +147,20 @@ export function AnexosSection({ transactionId, companyId, initialAnexos = [], re
     e.preventDefault(); setDragging(false)
     addFiles(e.dataTransfer.files)
   }
+
+  if (pendingMode) return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <Paperclip size={15} className="text-[#616161]" />
+        <p className="font-semibold text-[#212121] text-sm">Anexos</p>
+      </div>
+      <div className="border-2 border-dashed border-[#E0E0E0] rounded-2xl flex flex-col items-center gap-2 py-5 px-4 bg-[#FAFAFA] opacity-60 cursor-not-allowed select-none">
+        <Upload size={22} className="text-[#BDBDBD]" />
+        <p className="text-xs text-[#9E9E9E] text-center">Salve o lançamento para adicionar anexos</p>
+        <p className="text-[10px] text-[#BDBDBD]">NF, comprovantes, boletos, contratos</p>
+      </div>
+    </div>
+  )
 
   return (
     <div className="flex flex-col gap-3">
