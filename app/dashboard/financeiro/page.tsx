@@ -3,248 +3,250 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
-  ArrowLeft, Plus, TrendingUp, TrendingDown, Loader2,
-  Search, ChevronLeft, ChevronRight, Tag, ChevronRight as GoIcon,
+  TrendingUp, TrendingDown, ArrowLeft, Settings, Clock,
+  ChevronRight, Loader2, BarChart3, Wallet
 } from "lucide-react"
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Legend
+} from "recharts"
 import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/auth-fetch"
 import { fmtBRL } from "@/lib/money"
 
-interface Transacao {
-  id: string
-  description: string
-  amount: number
-  type: "receita" | "despesa"
-  status: "pendente" | "pago" | "cancelado"
-  due_date: string | null
-  paid_at: string | null
-  recurrence: string | null
-  category_name: string | null
-  category_color: string | null
-  client_name: string | null
-  client_fantasy: string | null
+interface DashboardData {
+  summary: {
+    receitas_pagas:  number
+    despesas_pagas:  number
+    a_receber:       number
+    a_pagar:         number
+    resultado_mes:   number
+  }
+  chart: Array<{ month: string; receitas: number; despesas: number }>
+  vencimentos: Array<{
+    id: string; description: string; amount: number; type: string
+    due_date: string; category_name: string | null; category_color: string | null
+  }>
 }
 
-const MONTH_NAMES = [
-  "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
-  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
-]
+const MONTH_SHORT: Record<string, string> = {
+  "01":"Jan","02":"Fev","03":"Mar","04":"Abr","05":"Mai","06":"Jun",
+  "07":"Jul","08":"Ago","09":"Set","10":"Out","11":"Nov","12":"Dez",
+}
 
-function fmtData(d: string | null) {
+function fmtDue(d: string | null) {
   if (!d) return "—"
-  const [y, m, day] = d.split("T")[0].split("-")
-  return `${day}/${m}/${y}`
-}
-function currentYYYYMM() {
-  const n = new Date()
-  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`
+  const [, m, day] = d.split("T")[0].split("-")
+  return `${day}/${m}`
 }
 
-export default function FinanceiroPage() {
+function CustomTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null
+  const [year, mon] = (label ?? "").split("-")
+  const lbl = `${MONTH_SHORT[mon] ?? mon}/${year}`
+  return (
+    <div className="bg-white border border-[#E0E0E0] rounded-xl px-3 py-2 shadow-md text-xs">
+      <p className="font-semibold text-[#212121] mb-1">{lbl}</p>
+      {payload.map((p: any) => (
+        <p key={p.dataKey} style={{ color: p.color }}>{p.name}: {fmtBRL(p.value)}</p>
+      ))}
+    </div>
+  )
+}
+
+export default function FinanceiroDashboard() {
   const router = useRouter()
   const { activeCompany } = useAuth()
+  const [data, setData]   = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const [transacoes, setTransacoes] = useState<Transacao[]>([])
-  const [loading, setLoading]       = useState(true)
-  const [tab, setTab]               = useState<"todas" | "receita" | "despesa">("todas")
-  const [statusFilter, setStatusFilter] = useState<"" | "pendente" | "pago" | "cancelado">("")
-  const [search, setSearch]         = useState("")
-  const [month, setMonth]           = useState(currentYYYYMM())
-
-  const fetchTransacoes = useCallback(async () => {
+  const fetchDashboard = useCallback(async () => {
     if (!activeCompany?.id) return
     setLoading(true)
     try {
-      const qs = new URLSearchParams({ company_id: activeCompany.id, month })
-      if (tab !== "todas")    qs.set("type", tab)
-      if (statusFilter)       qs.set("status", statusFilter)
-      if (search.trim())      qs.set("search", search.trim())
-
-      const res = await authFetch(`/api/financeiro/transacoes?${qs}`)
-      const data = await res.json()
-      console.log("[financeiro] transacoes recebidas:", Array.isArray(data) ? data.length : data)
-      setTransacoes(Array.isArray(data) ? data : [])
+      const res = await authFetch(`/api/financeiro/relatorios?company_id=${activeCompany.id}&tipo=dashboard`)
+      if (!res.ok) throw new Error("Erro ao carregar dashboard")
+      const json = await res.json()
+      setData(json)
     } catch (err) {
-      console.error("[financeiro] erro ao buscar transacoes:", err)
-      setTransacoes([])
+      console.error("[financeiro-dashboard] erro:", err)
     } finally {
       setLoading(false)
     }
-  }, [activeCompany?.id, month, tab, statusFilter, search])
+  }, [activeCompany?.id])
 
-  useEffect(() => { fetchTransacoes() }, [fetchTransacoes])
+  useEffect(() => { fetchDashboard() }, [fetchDashboard])
 
-  // Navega mês
-  function changeMonth(delta: number) {
-    const [y, m] = month.split("-").map(Number)
-    const d = new Date(y, m - 1 + delta, 1)
-    setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`)
-  }
-
-  const receitas  = transacoes.filter(t => t.type === "receita" && t.status === "pago").reduce((s, t) => s + Number(t.amount), 0)
-  const despesas  = transacoes.filter(t => t.type === "despesa" && t.status === "pago").reduce((s, t) => s + Number(t.amount), 0)
-  const pendentes = transacoes.filter(t => t.status === "pendente").reduce((s, t) => s + Number(t.amount), 0)
-  const saldo     = receitas - despesas
-
-  const [y, m] = month.split("-").map(Number)
-  const monthLabel = `${MONTH_NAMES[m - 1]} ${y}`
+  const s = data?.summary
+  const saldo = (Number(s?.receitas_pagas ?? 0)) - (Number(s?.despesas_pagas ?? 0))
+  const chartData = (data?.chart ?? []).map(c => ({
+    ...c,
+    receitas: Number(c.receitas),
+    despesas: Number(c.despesas),
+    label: `${MONTH_SHORT[c.month.split("-")[1]] ?? ""}`,
+  }))
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F5F5F5]">
 
       {/* Header */}
-      <div className="bg-[#1565C0] px-4 pt-4 pb-16">
-        <div className="flex items-center gap-3 mb-4">
-          <button onClick={() => router.back()} className="text-white/80 hover:text-white">
+      <div className="bg-[#1565C0] px-4 pt-4 pb-20">
+        <div className="flex items-center gap-3 mb-1">
+          <button onClick={() => router.back()} className="text-white/80 hover:text-white p-1">
             <ArrowLeft size={22} />
           </button>
-          <h1 className="text-white font-semibold text-lg flex-1">Financeiro</h1>
-          <button
-            onClick={() => router.push("/dashboard/financeiro/categorias")}
-            className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30"
-            aria-label="Categorias"
-          >
-            <Tag size={18} className="text-white" />
-          </button>
-          <button
-            onClick={() => router.push("/dashboard/financeiro/nova")}
-            className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30"
-            aria-label="Nova transação"
-          >
-            <Plus size={20} className="text-white" />
+          <h1 className="text-white font-bold text-xl flex-1">Financeiro</h1>
+          <button onClick={() => router.push("/dashboard/financeiro/configuracoes")}
+            className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30">
+            <Settings size={18} className="text-white" />
           </button>
         </div>
-
-        {/* Navegação de mês */}
-        <div className="flex items-center justify-center gap-4 mb-4">
-          <button onClick={() => changeMonth(-1)} className="text-white/70 hover:text-white p-1">
-            <ChevronLeft size={20} />
-          </button>
-          <span className="text-white font-semibold text-base w-44 text-center">{monthLabel}</span>
-          <button onClick={() => changeMonth(1)} className="text-white/70 hover:text-white p-1">
-            <ChevronRight size={20} />
-          </button>
-        </div>
+        <p className="text-white/70 text-sm ml-9">Visão geral da sua empresa</p>
       </div>
 
-      {/* Cards de resumo sobrepostos */}
-      <div className="px-4 -mt-12 grid grid-cols-2 gap-2 mb-3">
-        <div className="bg-white rounded-2xl p-4 shadow-sm col-span-2 flex gap-4">
-          <div className="flex-1">
-            <p className="text-[#9E9E9E] text-xs mb-1">Receitas pagas</p>
-            <p className="font-bold text-[#4CAF50] text-base">{fmtBRL(receitas)}</p>
+      {/* Cards sobrepostos */}
+      <div className="px-4 -mt-14 mb-4">
+        {loading ? (
+          <div className="bg-white rounded-2xl p-6 shadow-sm flex justify-center">
+            <Loader2 size={24} className="animate-spin text-[#1565C0]" />
           </div>
-          <div className="w-px bg-[#F5F5F5]" />
-          <div className="flex-1">
-            <p className="text-[#9E9E9E] text-xs mb-1">Despesas pagas</p>
-            <p className="font-bold text-[#F44336] text-base">{fmtBRL(despesas)}</p>
-          </div>
-        </div>
-        <div className="bg-white rounded-2xl p-3 shadow-sm">
-          <p className="text-[#9E9E9E] text-xs mb-1">Saldo</p>
-          <p className="font-bold text-base" style={{ color: saldo >= 0 ? "#1565C0" : "#F44336" }}>{fmtBRL(saldo)}</p>
-        </div>
-        <div className="bg-white rounded-2xl p-3 shadow-sm">
-          <p className="text-[#9E9E9E] text-xs mb-1">A receber/pagar</p>
-          <p className="font-bold text-[#FF9800] text-base">{fmtBRL(pendentes)}</p>
-        </div>
-      </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {/* Saldo total — largo */}
+            <div className="col-span-2 bg-[#1A237E] rounded-2xl p-4 shadow-md flex items-center justify-between">
+              <div>
+                <p className="text-white/70 text-xs mb-0.5">Saldo do mês</p>
+                <p className={`text-2xl font-bold ${saldo >= 0 ? "text-white" : "text-[#FF6B6B]"}`}>
+                  {fmtBRL(saldo)}
+                </p>
+              </div>
+              <Wallet size={32} className="text-white/30" />
+            </div>
 
-      {/* Busca */}
-      <div className="px-4 mb-3">
-        <div className="bg-white rounded-xl flex items-center gap-2 px-3 shadow-sm">
-          <Search size={16} className="text-[#9E9E9E] flex-shrink-0" />
-          <input
-            className="flex-1 py-2.5 text-sm outline-none bg-transparent text-[#212121] placeholder:text-[#BDBDBD]"
-            placeholder="Buscar transação ou cliente..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-      </div>
+            <div className="bg-white rounded-2xl p-3 shadow-sm">
+              <div className="flex items-center gap-1.5 mb-1">
+                <TrendingUp size={13} className="text-[#4CAF50]" />
+                <p className="text-[#9E9E9E] text-[11px]">Receitas pagas</p>
+              </div>
+              <p className="font-bold text-[#4CAF50] text-sm">{fmtBRL(Number(s?.receitas_pagas ?? 0))}</p>
+              {Number(s?.a_receber ?? 0) > 0 && (
+                <p className="text-[10px] text-[#9E9E9E] mt-0.5">+{fmtBRL(Number(s?.a_receber ?? 0))} a receber</p>
+              )}
+            </div>
 
-      {/* Tabs tipo */}
-      <div className="flex gap-1.5 px-4 mb-2">
-        {(["todas", "receita", "despesa"] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-              tab === t ? "bg-[#1565C0] text-white" : "bg-white text-[#757575] shadow-sm"
-            }`}>
-            {t === "todas" ? "Todas" : t === "receita" ? "Receitas" : "Despesas"}
-          </button>
-        ))}
-        <div className="flex-1" />
-        {/* Filter status */}
-        <select
-          value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value as any)}
-          className="text-xs text-[#757575] bg-white rounded-full px-2 py-1.5 shadow-sm border-none outline-none"
-        >
-          <option value="">Todos</option>
-          <option value="pendente">Pendente</option>
-          <option value="pago">Pago</option>
-          <option value="cancelado">Cancelado</option>
-        </select>
-      </div>
-
-      {/* Lista */}
-      <div className="flex-1 px-4 flex flex-col gap-2 pb-6">
-        {loading && (
-          <div className="flex justify-center py-16">
-            <Loader2 size={28} className="animate-spin text-[#1565C0]" />
+            <div className="bg-white rounded-2xl p-3 shadow-sm">
+              <div className="flex items-center gap-1.5 mb-1">
+                <TrendingDown size={13} className="text-[#F44336]" />
+                <p className="text-[#9E9E9E] text-[11px]">Despesas pagas</p>
+              </div>
+              <p className="font-bold text-[#F44336] text-sm">{fmtBRL(Number(s?.despesas_pagas ?? 0))}</p>
+              {Number(s?.a_pagar ?? 0) > 0 && (
+                <p className="text-[10px] text-[#9E9E9E] mt-0.5">+{fmtBRL(Number(s?.a_pagar ?? 0))} a pagar</p>
+              )}
+            </div>
           </div>
         )}
-        {!loading && transacoes.length === 0 && (
-          <div className="text-center py-16 flex flex-col items-center gap-3">
-            <TrendingUp size={40} className="text-[#E0E0E0]" />
-            <p className="text-[#9E9E9E] text-sm">Nenhuma transação em {monthLabel}</p>
-            <button onClick={() => router.push("/dashboard/financeiro/nova")}
-              className="mt-1 px-5 py-2.5 bg-[#1565C0] text-white text-sm font-semibold rounded-full">
-              Nova transação
-            </button>
-          </div>
-        )}
-        {!loading && transacoes.map(t => {
-          const isVencida = t.status === "pendente" && t.due_date && new Date(t.due_date) < new Date()
-          return (
-            <button key={t.id}
-              onClick={() => router.push(`/dashboard/financeiro/${t.id}`)}
-              className="bg-white rounded-xl px-4 py-3 shadow-sm flex items-center gap-3 text-left w-full hover:shadow-md transition-shadow">
-              {/* Ícone colorido pela cor da categoria ou tipo */}
-              <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: t.type === "receita" ? "#E8F5E9" : "#FFEBEE" }}>
-                {t.type === "receita"
-                  ? <TrendingUp size={16} className="text-[#4CAF50]" />
-                  : <TrendingDown size={16} className="text-[#F44336]" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[#212121] truncate">{t.description}</p>
-                <p className="text-xs text-[#9E9E9E] truncate">
-                  {t.category_name ?? "Sem categoria"}
-                  {(t.client_name || t.client_fantasy) ? ` · ${t.client_fantasy ?? t.client_name}` : ""}
-                </p>
-                <p className={`text-xs ${isVencida ? "text-[#F44336] font-medium" : "text-[#BDBDBD]"}`}>
-                  {t.status === "pago" && t.paid_at ? `Pago em ${fmtData(t.paid_at)}` : `Vence ${fmtData(t.due_date)}`}
-                  {isVencida ? " · Vencida" : ""}
-                </p>
-              </div>
-              <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                <p className="font-bold text-sm" style={{ color: t.type === "receita" ? "#4CAF50" : "#F44336" }}>
-                  {t.type === "receita" ? "+" : "-"}{fmtBRL(Number(t.amount))}
-                </p>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                  style={{
-                    backgroundColor: t.status === "pago" ? "#E8F5E9" : t.status === "cancelado" ? "#FFEBEE" : isVencida ? "#FFF3E0" : "#FFF8E1",
-                    color: t.status === "pago" ? "#388E3C" : t.status === "cancelado" ? "#D32F2F" : isVencida ? "#E65100" : "#F57F17",
-                  }}>
-                  {t.status === "pago" ? "Pago" : t.status === "cancelado" ? "Cancelado" : isVencida ? "Vencida" : "Pendente"}
-                </span>
-              </div>
-              <GoIcon size={14} className="text-[#BDBDBD] flex-shrink-0" />
-            </button>
-          )
-        })}
       </div>
+
+      {/* Gráfico barras 6 meses */}
+      <div className="mx-4 mb-4 bg-white rounded-2xl p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <BarChart3 size={16} className="text-[#1565C0]" />
+          <p className="font-semibold text-[#212121] text-sm">Entradas vs Saídas — 6 meses</p>
+        </div>
+        {loading ? (
+          <div className="h-40 flex items-center justify-center">
+            <Loader2 size={20} className="animate-spin text-[#BDBDBD]" />
+          </div>
+        ) : chartData.length === 0 ? (
+          <div className="h-40 flex items-center justify-center text-xs text-[#BDBDBD]">
+            Sem dados para exibir
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={chartData} barCategoryGap="30%" barGap={2}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#9E9E9E" }} axisLine={false} tickLine={false} />
+              <YAxis hide />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: "#F5F5F5" }} />
+              <Legend
+                iconType="circle" iconSize={7}
+                formatter={(v) => <span style={{ fontSize: 10, color: "#616161" }}>{v}</span>}
+              />
+              <Bar dataKey="receitas" name="Receitas" fill="#4CAF50" radius={[4,4,0,0]} />
+              <Bar dataKey="despesas" name="Despesas" fill="#F44336" radius={[4,4,0,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Próximos vencimentos */}
+      <div className="mx-4 mb-4 bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#F5F5F5]">
+          <div className="flex items-center gap-2">
+            <Clock size={15} className="text-[#FF9800]" />
+            <p className="font-semibold text-[#212121] text-sm">Próximos vencimentos</p>
+          </div>
+          <button onClick={() => router.push("/dashboard/financeiro/lancamentos?status=pendente")}
+            className="text-xs text-[#1565C0] font-medium">Ver todos</button>
+        </div>
+        {loading ? (
+          <div className="p-4 flex justify-center"><Loader2 size={18} className="animate-spin text-[#BDBDBD]" /></div>
+        ) : (data?.vencimentos ?? []).length === 0 ? (
+          <div className="px-4 py-6 text-center text-xs text-[#9E9E9E]">Nenhum vencimento nos próximos dias</div>
+        ) : (
+          <ul>
+            {(data?.vencimentos ?? []).map((v, i) => {
+              const isVencida = v.due_date && new Date(v.due_date) < new Date()
+              return (
+                <li key={v.id}>
+                  <button onClick={() => router.push(`/dashboard/financeiro/lancamentos/${v.id}`)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#FAFAFA] transition-colors ${i > 0 ? "border-t border-[#F5F5F5]" : ""}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isVencida ? "bg-[#FFEBEE]" : "bg-[#FFF8E1]"}`}>
+                      {v.type === "receita"
+                        ? <TrendingUp size={13} className={isVencida ? "text-[#D32F2F]" : "text-[#F57F17]"} />
+                        : <TrendingDown size={13} className={isVencida ? "text-[#D32F2F]" : "text-[#F57F17]"} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-[#212121] font-medium truncate">{v.description}</p>
+                      {v.category_name && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full"
+                          style={{ backgroundColor: v.category_color ? `${v.category_color}20` : "#F5F5F5", color: v.category_color ?? "#9E9E9E" }}>
+                          {v.category_name}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className={`font-bold text-sm ${isVencida ? "text-[#F44336]" : v.type === "receita" ? "text-[#4CAF50]" : "text-[#F44336]"}`}>
+                        {fmtBRL(Number(v.amount))}
+                      </p>
+                      <p className={`text-[10px] ${isVencida ? "text-[#F44336] font-semibold" : "text-[#9E9E9E]"}`}>{fmtDue(v.due_date)}</p>
+                    </div>
+                    <ChevronRight size={13} className="text-[#BDBDBD] flex-shrink-0" />
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
+
+      {/* Atalhos */}
+      <div className="mx-4 mb-6 grid grid-cols-2 gap-2">
+        <button onClick={() => router.push("/dashboard/financeiro/lancamentos")}
+          className="bg-white rounded-2xl p-4 shadow-sm flex flex-col gap-1.5 hover:shadow-md transition-shadow text-left">
+          <BarChart3 size={20} className="text-[#1565C0]" />
+          <p className="font-semibold text-[#212121] text-sm">Lançamentos</p>
+          <p className="text-[11px] text-[#9E9E9E]">Extrato completo</p>
+        </button>
+        <button onClick={() => router.push("/dashboard/financeiro/relatorios")}
+          className="bg-white rounded-2xl p-4 shadow-sm flex flex-col gap-1.5 hover:shadow-md transition-shadow text-left">
+          <TrendingUp size={20} className="text-[#4CAF50]" />
+          <p className="font-semibold text-[#212121] text-sm">Relatórios</p>
+          <p className="text-[11px] text-[#9E9E9E]">Fluxo e extrato</p>
+        </button>
+      </div>
+
     </div>
   )
 }
