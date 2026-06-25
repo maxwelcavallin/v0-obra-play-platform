@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/auth-fetch"
 import { toast } from "sonner"
 import { applyMoneyMask, parseBRL, formatMoneyInput } from "@/lib/money"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 interface Account {
   id: string; name: string; type: string; bank: string | null
@@ -47,6 +48,8 @@ export default function ConfigFinanceiroPage() {
   const [accBalance, setAccBalance]     = useState("")
   const [accColor, setAccColor]         = useState(COLORS[0])
   const [savingAcc, setSavingAcc]       = useState(false)
+  const [confirmDeleteAcc, setConfirmDeleteAcc] = useState<Account | null>(null)
+  const [deletingAcc, setDeletingAcc]   = useState(false)
 
   // ─── Categorias ───────────────────────────────
   const [categorias, setCategorias]     = useState<Categoria[]>([])
@@ -58,6 +61,8 @@ export default function ConfigFinanceiroPage() {
   const [catType, setCatType]           = useState<CatType>("despesa")
   const [catColor, setCatColor]         = useState(COLORS[0])
   const [savingCat, setSavingCat]       = useState(false)
+  const [confirmDeleteCat, setConfirmDeleteCat] = useState<Categoria | null>(null)
+  const [deletingCat, setDeletingCat]   = useState(false)
 
   const fetchAccounts = useCallback(async () => {
     if (!activeCompany?.id) return
@@ -113,17 +118,20 @@ export default function ConfigFinanceiroPage() {
     } finally { setSavingAcc(false) }
   }
 
-  async function deleteAccount(id: string) {
+  async function deleteAccount() {
+    if (!confirmDeleteAcc) return
+    setDeletingAcc(true)
     try {
-      const res  = await authFetch(`/api/financeiro/contas/${id}`, { method: "DELETE" })
+      const res  = await authFetch(`/api/financeiro/contas/${confirmDeleteAcc.id}`, { method: "DELETE" })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       toast.success("Conta excluída")
+      setConfirmDeleteAcc(null)
       fetchAccounts()
     } catch (err: any) {
       console.error("[config-fin] deleteAcc:", err?.message)
       toast.error(err?.message ?? "Erro ao excluir")
-    }
+    } finally { setDeletingAcc(false) }
   }
 
   // ─── Categoria handlers ───────────────────────
@@ -154,17 +162,20 @@ export default function ConfigFinanceiroPage() {
     } finally { setSavingCat(false) }
   }
 
-  async function deleteCategoria(id: string) {
+  async function deleteCategoria() {
+    if (!confirmDeleteCat) return
+    setDeletingCat(true)
     try {
-      const res  = await authFetch(`/api/financeiro/categorias/${id}`, { method: "DELETE" })
+      const res  = await authFetch(`/api/financeiro/categorias/${confirmDeleteCat.id}`, { method: "DELETE" })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       toast.success("Categoria excluída")
+      setConfirmDeleteCat(null)
       fetchCategorias()
     } catch (err: any) {
       console.error("[config-fin] deleteCat:", err?.message)
       toast.error(err?.message ?? "Erro ao excluir")
-    }
+    } finally { setDeletingCat(false) }
   }
 
   const catsFiltradas = categorias.filter(c => c.type === catTypeTab)
@@ -219,7 +230,7 @@ export default function ConfigFinanceiroPage() {
                     </div>
                     <div className="flex gap-1.5 flex-shrink-0">
                       <button onClick={() => openAccForm(a)} className="w-8 h-8 rounded-full bg-[#F5F5F5] flex items-center justify-center hover:bg-[#E3F2FD]"><Pencil size={13} className="text-[#616161]" /></button>
-                      <button onClick={() => deleteAccount(a.id)} className="w-8 h-8 rounded-full bg-[#F5F5F5] flex items-center justify-center hover:bg-[#FFEBEE]"><Trash2 size={13} className="text-[#9E9E9E]" /></button>
+                      <button onClick={() => setConfirmDeleteAcc(a)} className="w-8 h-8 rounded-full bg-[#F5F5F5] flex items-center justify-center hover:bg-[#FFEBEE]"><Trash2 size={13} className="text-[#9E9E9E]" /></button>
                     </div>
                   </div>
                 ))}
@@ -256,7 +267,7 @@ export default function ConfigFinanceiroPage() {
                     <p className="flex-1 font-medium text-sm text-[#212121]">{c.name}</p>
                     <div className="flex gap-1.5">
                       <button onClick={() => openCatForm(c)} className="w-8 h-8 rounded-full bg-[#F5F5F5] flex items-center justify-center hover:bg-[#E3F2FD]"><Pencil size={13} className="text-[#616161]" /></button>
-                      <button onClick={() => deleteCategoria(c.id)} className="w-8 h-8 rounded-full bg-[#F5F5F5] flex items-center justify-center hover:bg-[#FFEBEE]"><Trash2 size={13} className="text-[#9E9E9E]" /></button>
+                      <button onClick={() => setConfirmDeleteCat(c)} className="w-8 h-8 rounded-full bg-[#F5F5F5] flex items-center justify-center hover:bg-[#FFEBEE]"><Trash2 size={13} className="text-[#9E9E9E]" /></button>
                     </div>
                   </div>
                 ))}
@@ -324,6 +335,28 @@ export default function ConfigFinanceiroPage() {
           </div>
         </>
       )}
+
+      {/* ─── Confirmações de exclusão ─── */}
+      <ConfirmDialog
+        open={!!confirmDeleteAcc}
+        title="Excluir conta?"
+        description={`"${confirmDeleteAcc?.name}" será removida permanentemente. Esta ação não pode ser desfeita.`}
+        confirmLabel="Excluir"
+        destructive
+        loading={deletingAcc}
+        onConfirm={deleteAccount}
+        onCancel={() => setConfirmDeleteAcc(null)}
+      />
+      <ConfirmDialog
+        open={!!confirmDeleteCat}
+        title="Excluir categoria?"
+        description={`"${confirmDeleteCat?.name}" será removida permanentemente. Esta ação não pode ser desfeita.`}
+        confirmLabel="Excluir"
+        destructive
+        loading={deletingCat}
+        onConfirm={deleteCategoria}
+        onCancel={() => setConfirmDeleteCat(null)}
+      />
 
       {/* ─── Modal Form Categoria ─── */}
       {showCatForm && (

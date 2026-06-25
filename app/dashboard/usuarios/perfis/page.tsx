@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Plus, Save, Loader2, Trash2 } from "lucide-react"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
 
@@ -152,6 +153,8 @@ export default function PerfisPage() {
   const [selected, setSelected] = useState<PermissionProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [confirmDeletePerfil, setConfirmDeletePerfil] = useState<PermissionProfile | null>(null)
+  const [deletingPerfil, setDeletingPerfil] = useState(false)
 
   useEffect(() => {
     if (!activeCompany?.id) return
@@ -201,20 +204,21 @@ export default function PerfisPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Tem certeza que deseja excluir este perfil?")) return
+  async function handleDelete() {
+    if (!confirmDeletePerfil) return
     try {
-      setSaving(true)
-      const res = await fetch(`/api/permission-profiles/${id}`, { method: "DELETE" })
+      setDeletingPerfil(true)
+      const res = await fetch(`/api/permission-profiles/${confirmDeletePerfil.id}`, { method: "DELETE" })
       if (!res.ok) throw new Error("Erro ao excluir perfil")
-      setProfiles((prev) => prev.filter((p) => p.id !== id))
-      if (selected?.id === id) setSelected(profiles.find(p => p.id !== id) || null)
+      setProfiles((prev) => prev.filter((p) => p.id !== confirmDeletePerfil.id))
+      if (selected?.id === confirmDeletePerfil.id) setSelected(profiles.find(p => p.id !== confirmDeletePerfil.id) || null)
+      setConfirmDeletePerfil(null)
       toast.success("Perfil excluído!")
     } catch (e) {
       console.error("[perfis handleDelete] erro:", e)
       toast.error("Erro ao excluir perfil")
     } finally {
-      setSaving(false)
+      setDeletingPerfil(false)
     }
   }
 
@@ -304,10 +308,21 @@ export default function PerfisPage() {
           key={selected.id}
           profile={selected}
           onSave={handleSave}
-          onDelete={handleDelete}
+          onDelete={(id) => setConfirmDeletePerfil(profiles.find(p => p.id === id) ?? null)}
           saving={saving}
         />
       )}
+
+      <ConfirmDialog
+        open={!!confirmDeletePerfil}
+        title="Excluir perfil?"
+        description={`"${confirmDeletePerfil?.name}" será removido permanentemente. Usuários com este perfil perderão as permissões vinculadas.`}
+        confirmLabel="Excluir"
+        destructive
+        loading={deletingPerfil}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDeletePerfil(null)}
+      />
     </div>
   )
 }

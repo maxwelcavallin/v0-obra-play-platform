@@ -9,6 +9,7 @@ import {
 import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/auth-fetch"
 import { toast } from "sonner"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 type UserRole = "Admin" | "Comprador" | "Financeiro" | "Visualizador" | "Personalizado"
 
@@ -337,6 +338,8 @@ export default function UsuariosPage() {
   const [inviteOpen, setInviteOpen] = useState(false)
   const [menuUser, setMenuUser] = useState<CompanyUser | null>(null)
   const [permUser, setPermUser] = useState<CompanyUser | null>(null)
+  const [confirmRemoveUser, setConfirmRemoveUser] = useState<CompanyUser | null>(null)
+  const [removingUser, setRemovingUser] = useState(false)
 
   useEffect(() => {
     if (!activeCompany?.id) return
@@ -348,11 +351,19 @@ export default function UsuariosPage() {
       .finally(() => setLoadingUsers(false))
   }, [activeCompany?.id])
 
-  async function handleRemove(userId: string) {
-    if (!activeCompany?.id) return
-    await authFetch(`/api/empresas/${activeCompany.id}/usuarios/${userId}`, { method: "DELETE" })
-    setUsers((prev) => prev.filter((u) => u.id !== userId))
-    toast.success("Usuário removido")
+  async function handleRemove() {
+    if (!activeCompany?.id || !confirmRemoveUser) return
+    setRemovingUser(true)
+    try {
+      await authFetch(`/api/empresas/${activeCompany.id}/usuarios/${confirmRemoveUser.id}`, { method: "DELETE" })
+      setUsers((prev) => prev.filter((u) => u.id !== confirmRemoveUser.id))
+      toast.success("Usuário removido")
+      setConfirmRemoveUser(null)
+    } catch (err) {
+      toast.error("Erro ao remover usuário")
+    } finally {
+      setRemovingUser(false)
+    }
   }
 
   async function handleApplyProfile(userId: string, profileId: string) {
@@ -462,9 +473,19 @@ export default function UsuariosPage() {
           user={menuUser}
           onClose={() => setMenuUser(null)}
           onManagePerms={() => setPermUser(menuUser)}
-          onRemove={() => handleRemove(menuUser.id)}
+          onRemove={() => { setMenuUser(null); setConfirmRemoveUser(menuUser) }}
         />
       )}
+      <ConfirmDialog
+        open={!!confirmRemoveUser}
+        title="Remover usuário?"
+        description={`${confirmRemoveUser?.name} será removido da empresa. Esta ação não pode ser desfeita.`}
+        confirmLabel="Remover"
+        destructive
+        loading={removingUser}
+        onConfirm={handleRemove}
+        onCancel={() => setConfirmRemoveUser(null)}
+      />
       {permUser && activeCompany && (
         <PermissionsModal
           user={permUser}

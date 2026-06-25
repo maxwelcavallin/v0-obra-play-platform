@@ -11,6 +11,7 @@ import { authFetch } from "@/lib/auth-fetch"
 import { toast } from "sonner"
 import { fmtBRL } from "@/lib/money"
 import { AnexosSection, type Anexo } from "@/components/financeiro/anexos-section"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 interface Transacao {
   id: string; description: string; amount: number
@@ -221,28 +222,23 @@ export default function LancamentoDetailPage({ params }: { params: Promise<{ id:
         )}
 
         {/* Excluir */}
-        {!confirmDelete ? (
-          <button onClick={() => setConfirmDelete(true)}
-            className="w-full py-3 rounded-2xl border border-[#E0E0E0] text-[#9E9E9E] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#F5F5F5] transition-colors">
-            <Trash2 size={15} />Excluir lançamento
-          </button>
-        ) : (
-          <div className="bg-[#F5F5F5] rounded-2xl px-4 py-3 flex flex-col gap-2 border border-[#E0E0E0]">
-            <p className="text-sm font-semibold text-[#212121] text-center">Confirmar exclusão?</p>
-            <p className="text-xs text-[#9E9E9E] text-center">Esta ação não pode ser desfeita.</p>
-            <div className="flex gap-2">
-              <button onClick={() => setConfirmDelete(false)}
-                className="flex-1 py-2.5 rounded-xl border border-[#E0E0E0] text-[#616161] text-sm font-semibold">
-                Cancelar
-              </button>
-              <button onClick={handleDelete} disabled={deleting}
-                className="flex-1 py-2.5 rounded-xl bg-[#D32F2F] text-white text-sm font-semibold flex items-center justify-center gap-1">
-                {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}Excluir
-              </button>
-            </div>
-          </div>
-        )}
+        <button onClick={() => setConfirmDelete(true)}
+          className="w-full py-3 rounded-2xl border border-[#E0E0E0] text-[#9E9E9E] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#F5F5F5] transition-colors">
+          <Trash2 size={15} />Excluir lançamento
+        </button>
+
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Excluir lançamento?"
+        description="Esta ação não pode ser desfeita. O lançamento será removido permanentemente."
+        confirmLabel="Excluir"
+        destructive
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   )
 }
