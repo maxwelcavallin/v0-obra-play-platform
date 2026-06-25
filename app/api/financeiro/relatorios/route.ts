@@ -179,7 +179,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ rows, totals })
     }
 
-    // Contas a pagar/receber
+    // Contas a pagar — apenas despesas pendentes
     if (tipo === "contas_pagar") {
       const rows = await sql`
         SELECT
@@ -192,6 +192,7 @@ export async function GET(req: NextRequest) {
         LEFT JOIN transaction_categories cat ON cat.id = t.category_id
         LEFT JOIN accounts acc ON acc.id = t.account_id
         WHERE t.company_id = ${companyId}
+          AND t.type = 'despesa'
           AND t.status = 'pendente'
           AND t.deleted_at IS NULL
         ORDER BY t.due_date ASC
