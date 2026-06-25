@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
-  ArrowLeft, TrendingUp, TrendingDown, Loader2, Building2, ChevronRight, BarChart3,
+  ArrowLeft, TrendingUp, TrendingDown, Loader2, Building2, ChevronRight, BarChart3, FileDown,
 } from "lucide-react"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -12,6 +12,7 @@ import {
 import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/auth-fetch"
 import { fmtBRL } from "@/lib/money"
+import { exportFluxoPDF, exportContasPagarPDF, exportExtratoPDF } from "@/lib/pdf-export"
 
 interface FluxoRow {
   month: string; receitas: number; despesas: number
@@ -58,6 +59,9 @@ export default function RelatoriosPage() {
   const [extratoObra, setExtratoObra]   = useState<{ rows: any[]; totals: any } | null>(null)
   const [loadingEO, setLoadingEO]       = useState(false)
 
+  // Exportação
+  const [exporting, setExporting] = useState(false)
+
   const fetchFluxo = useCallback(async () => {
     if (!activeCompany?.id) return
     setLoadingFluxo(true)
@@ -99,6 +103,28 @@ export default function RelatoriosPage() {
     finally { setLoadingEO(false) }
   }
 
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const companyName = (activeCompany as any)?.fantasy_name ?? (activeCompany as any)?.company_name ?? activeCompany?.fantasyName ?? activeCompany?.companyName ?? "Empresa"
+      if (tab === "fluxo") {
+        exportFluxoPDF(fluxo, companyName)
+      } else if (tab === "contas_pagar") {
+        exportContasPagarPDF(contasPagar, companyName)
+      } else if (tab === "extrato_obra") {
+        const obraName = obras.find(o => o.id === selectedObra)?.name ?? "Obra"
+        if (extratoObra) exportExtratoPDF(obraName, extratoObra.rows, extratoObra.totals, companyName)
+      }
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const canExport =
+    (tab === "fluxo" && fluxo.length > 0) ||
+    (tab === "contas_pagar" && contasPagar.length > 0) ||
+    (tab === "extrato_obra" && !!extratoObra)
+
   const fluxoChart = fluxo.map(f => ({
     label: `${MONTH_SHORT[f.month.split("-")[1]] ?? f.month}`,
     receitas: Number(f.receitas),
@@ -119,6 +145,16 @@ export default function RelatoriosPage() {
         <div className="flex items-center gap-3">
           <button onClick={() => router.back()} className="text-white/80 hover:text-white"><ArrowLeft size={22} /></button>
           <h1 className="text-white font-bold text-lg flex-1">Relatórios</h1>
+          <button
+            onClick={handleExport}
+            disabled={!canExport || exporting}
+            className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
+          >
+            {exporting
+              ? <Loader2 size={13} className="animate-spin" />
+              : <FileDown size={13} />}
+            PDF
+          </button>
         </div>
       </div>
 
