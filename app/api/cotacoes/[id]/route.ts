@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
-import { requireSession } from "@/lib/session"
+import { requireSession, blockAgentDelete } from "@/lib/session"
 import { obraplay } from "@/lib/obraplay-client"
 import type { OPQuotationAnswer, OPQuotationItem } from "@/lib/obraplay-client"
 
@@ -55,6 +55,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
 // ── DELETE: exclui rascunho fisicamente ou cancela cotação enviada ───────────
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const agentBlock = await blockAgentDelete(); if (agentBlock) return agentBlock
   try { await requireSession() } catch { return NextResponse.json({ error: "Não autenticado" }, { status: 401 }) }
   const { id } = await params
   const body = await req.json().catch(() => ({}))

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
-import { getSession } from "@/lib/session"
+import { getSession, blockAgentDelete } from "@/lib/session"
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -29,6 +29,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
     const { id } = await params
     const b = await req.json()
+
+    // R2: toda obra precisa de cliente vinculado OU ser obra própria
+    if (!b.is_own && !b.client_id) {
+      return NextResponse.json(
+        { error: "É obrigatório vincular um cliente ou marcar como obra própria." },
+        { status: 400 }
+      )
+    }
+
     const rows = await sql`
       UPDATE obras SET
         client_id = ${b.client_id ?? null},
@@ -68,11 +77,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const agentBlock = await blockAgentDelete(); if (agentBlock) return agentBlock
   try {
     const session = await getSession()
     if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
     const { id } = await params
-    await sql`DELETE FROM obras WHERE id = ${id}`
+    // R7 + R13: soft delete; agente bloqueado acima
+    await sql`UPDATE obras SET deleted_at = now() WHERE id = ${id} AND deleted_at IS NULL`
     return NextResponse.json({ ok: true })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })

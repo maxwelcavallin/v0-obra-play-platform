@@ -47,6 +47,8 @@ interface SupplierMap {
   mirror_company_id?: number
   obraplay_answer_id?: number | null
   answered: boolean
+  /** R5: true somente se ofertou todos os itens sem "—" */
+  is_eligible: boolean
   payment_method?: string | null
   installments?: string | null
   installments_obs?: string | null
@@ -175,15 +177,10 @@ export default function MapaCotacaoPage() {
   // Fornecedor com melhor oferta completa
   const bestSupplierId = useMemo(() => {
     if (!mapa) return null
-    const answered = mapa.suppliers.filter(s => s.answered)
-    const full = answered.filter(s =>
-      mapa.items.every(item => {
-        const itemId = item.id ?? item.cotacao_item_id
-        return s.answered_items.find(ai => ai.cotacao_item_id === itemId && ai.available && ai.unit_price != null)
-      })
-    )
-    if (full.length === 0) return null
-    return full.reduce((best, s) => s.total < best.total ? s : best, full[0]).supplier_id
+    // R5: elegível apenas quem ofertou todos os itens (is_eligible vem da API)
+    const eligible = mapa.suppliers.filter(s => s.is_eligible)
+    if (eligible.length === 0) return null
+    return eligible.reduce((best, s) => s.total < best.total ? s : best, eligible[0]).supplier_id
   }, [mapa])
 
   // Ordens agrupadas por fornecedor (modo Melhor Compra)

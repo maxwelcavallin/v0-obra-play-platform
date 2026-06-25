@@ -42,6 +42,22 @@ export async function GET(req: NextRequest) {
   }
 }
 
+// R4: Calcula similaridade de Jaccard por bigramas entre duas strings (0–1)
+function similarity(a: string, b: string): number {
+  const bigrams = (s: string) => {
+    const n = s.toLowerCase().replace(/\s+/g, " ").trim()
+    const set = new Set<string>()
+    for (let i = 0; i < n.length - 1; i++) set.add(n.slice(i, i + 2))
+    return set
+  }
+  const sa = bigrams(a)
+  const sb = bigrams(b)
+  if (sa.size === 0 || sb.size === 0) return 0
+  let intersection = 0
+  sa.forEach(bg => { if (sb.has(bg)) intersection++ })
+  return intersection / (sa.size + sb.size - intersection)
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession()
@@ -50,6 +66,30 @@ export async function POST(req: NextRequest) {
     const b = await req.json()
     if (!b.name || !b.unit || !b.category) {
       return NextResponse.json({ error: "Nome, unidade e categoria são obrigatórios" }, { status: 400 })
+    }
+
+    // R4: busca insumos similares (≥70% match) antes de salvar
+    // O parâmetro skip_similarity_check=true permite ao frontend confirmar e prosseguir
+    if (!b.skip_similarity_check) {
+      const existing = await sql`
+        SELECT id, name, unit, category, origin FROM insumos
+        WHERE (company_id = ${b.company_id} OR company_id IS NULL)
+        ORDER BY name
+      `
+      const { INSUMOS_SISTEMA } = await import("@/lib/insumos-mock")
+      const allNames = [
+        ...existing.map((r: any) => ({ id: r.id, name: r.name, unit: r.unit, category: r.category, origin: r.origin })),
+        ...INSUMOS_SISTEMA.map((i: any) => ({ id: i.id, name: i.name, unit: i.unit, category: i.category, origin: "Sistema" })),
+      ]
+      const matches = allNames
+        .map(item => ({ ...item, score: similarity(b.name, item.name) }))
+        .filter(item => item.score >= 0.70)
+        .sort((a, z) => z.score - a.score)
+        .slice(0, 5)
+
+      if (matches.length > 0) {
+        return NextResponse.json({ similar: true, matches }, { status: 409 })
+      }
     }
 
     const rows = await sql`

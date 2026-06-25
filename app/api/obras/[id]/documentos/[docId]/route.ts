@@ -23,6 +23,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     // Se o blob já foi removido, continua
   }
 
-  await sql`DELETE FROM obra_documentos WHERE id = ${docId}`
+  // R7: soft delete universal — marca deleted_at em vez de DELETE físico
+  await sql`UPDATE obra_documentos SET deleted_at = now() WHERE id = ${docId}`
   return NextResponse.json({ ok: true })
 }

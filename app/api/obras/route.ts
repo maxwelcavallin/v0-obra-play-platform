@@ -34,6 +34,14 @@ export async function POST(req: NextRequest) {
 
     const b = await req.json()
 
+    // R2: toda obra precisa de cliente vinculado OU ser obra própria
+    if (!b.is_own && !b.client_id) {
+      return NextResponse.json(
+        { error: "É obrigatório vincular um cliente ou marcar como obra própria." },
+        { status: 400 }
+      )
+    }
+
     const rows = await sql`
       INSERT INTO obras (
         company_id, client_id, is_own, name, status, type, area_m2,

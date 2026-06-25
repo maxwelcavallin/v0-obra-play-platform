@@ -65,7 +65,10 @@ export async function POST(req: NextRequest) {
       ON CONFLICT (company_id, email) DO NOTHING
     `
 
-    return NextResponse.json(company, { status: 201 })
+    // R1: empresa criada → remove flag de onboarding do middleware
+    const res = NextResponse.json(company, { status: 201 })
+    res.cookies.delete("op_no_company")
+    return res
   } catch (err) {
     console.error("[POST /api/empresas]", err)
     return NextResponse.json({ error: "Erro interno" }, { status: 500 })

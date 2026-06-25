@@ -49,3 +49,29 @@ export async function requireSession() {
   if (!session) throw new Error("Não autenticado")
   return session
 }
+
+/**
+ * R13: Agente IA não pode executar DELETE.
+ * Retorna true se a requisição atual usa autenticação por API Key (agente).
+ */
+export async function isAgentRequest(): Promise<boolean> {
+  const headerStore = await headers()
+  const apiKeyHeader = headerStore.get("x-api-key")
+  const authHeader = headerStore.get("authorization") ?? ""
+  return !!(apiKeyHeader || authHeader.startsWith("ApiKey "))
+}
+
+/**
+ * R13: Bloqueia DELETE quando a requisição vem do agente IA.
+ * Deve ser chamado no início de todo handler DELETE.
+ */
+export async function blockAgentDelete(): Promise<Response | null> {
+  if (await isAgentRequest()) {
+    const { NextResponse } = await import("next/server")
+    return NextResponse.json(
+      { error: "O agente IA não tem permissão para executar exclusões. Use a interface do usuário." },
+      { status: 403 }
+    )
+  }
+  return null
+}

@@ -95,6 +95,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const freight    = freteLinha?.free_shipping ? 0 : (freteLinha?.freight != null ? Number(freteLinha.freight) : null)
     const total      = freight != null ? subtotal + freight : subtotal
 
+    // R5: elegível apenas se respondeu E ofertou TODOS os itens (nenhum "—")
+    const isEligible =
+      hasAnswer &&
+      !linhas.every((r: any) => r.is_refused) &&
+      answeredItems.length > 0 &&
+      answeredItems.every((i: any) => i.available === true && i.unit_price != null)
+
     return {
       supplier_id:       sup.id,
       supplier_name:     sup.supplier_name,
@@ -106,6 +113,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       op_answer_id:      meta?.op_answer_id ?? sup.op_answer_id ?? null,
       obraplay_answer_id: meta?.op_answer_id ?? sup.op_answer_id ?? null,
       answered:          hasAnswer,
+      // R5: elegível para "melhor fornecedor" — ofertou todos os itens sem "—"
+      is_eligible:       isEligible,
       is_refused:        hasAnswer && linhas.every((r: any) => r.is_refused),
       payment_method:    meta?.payment_method    ?? null,
       installments:      meta?.installments      ?? null,

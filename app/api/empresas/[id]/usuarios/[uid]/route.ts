@@ -33,7 +33,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
     const { id: companyId, uid } = await params
 
-    await sql`DELETE FROM company_users WHERE id = ${uid} AND company_id = ${companyId}`
+    // R7: soft delete universal — nunca DELETE físico
+    await sql`
+      UPDATE company_users SET status = 'removido', updated_at = now()
+      WHERE id = ${uid} AND company_id = ${companyId}
+    `
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error("[DELETE usuario]", err)

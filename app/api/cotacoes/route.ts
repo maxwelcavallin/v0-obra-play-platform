@@ -49,6 +49,11 @@ export async function POST(req: NextRequest) {
   const b = await req.json()
   if (!b.company_id) return NextResponse.json({ error: "company_id obrigatório" }, { status: 400 })
 
+  // R3: toda cotação precisa estar vinculada a uma obra
+  if (!b.obra_id && !b.is_draft) {
+    return NextResponse.json({ error: "Toda cotação precisa estar vinculada a uma obra." }, { status: 400 })
+  }
+
   const isDraft = b.is_draft === true
   const existingDraftId: string | null = b.cotacao_id ?? null
 

@@ -8,8 +8,6 @@ export const dynamic = "force-dynamic"
 export async function GET(req: NextRequest) {
   try {
     const session = await requireSession()
-    console.log("[transacoes GET] user:", session.user_id)
-
     const p = req.nextUrl.searchParams
     const companyId = p.get("company_id")
     if (!companyId) return NextResponse.json({ error: "company_id obrigatório" }, { status: 400 })
@@ -80,7 +78,7 @@ export async function POST(req: NextRequest) {
   try {
     const session = await requireSession()
     const b = await req.json()
-    console.log("[transacoes POST] user:", session.user_id, "installments:", b.installments)
+    // log de debug removido (R10 — dados de usuário não devem ser expostos nos logs)
 
     if (!b.company_id || !b.description || b.amount == null || !b.type) {
       return NextResponse.json({ error: "company_id, description, amount e type são obrigatórios" }, { status: 400 })

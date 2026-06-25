@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
-import { requireSession } from "@/lib/session"
+import { requireSession, blockAgentDelete } from "@/lib/session"
 
 export const dynamic = "force-dynamic"
 
@@ -101,10 +101,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 // DELETE /api/financeiro/transacoes/[id] — soft delete
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const agentBlock = await blockAgentDelete(); if (agentBlock) return agentBlock
   try {
     await requireSession()
     const { id } = await params
-    console.log("[financeiro/transacoes/[id] DELETE] id:", id)
 
     await sql`UPDATE transactions SET deleted_at = now(), updated_at = now() WHERE id = ${id} AND deleted_at IS NULL`
     return NextResponse.json({ ok: true })

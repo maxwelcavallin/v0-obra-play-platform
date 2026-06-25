@@ -62,6 +62,20 @@ export async function POST(req: NextRequest) {
       path: "/",
     })
 
+    // R1: sinaliza ao middleware que o usuário ainda não tem empresa
+    if (companies.length === 0) {
+      response.cookies.set("op_no_company", "1", {
+        httpOnly: false, // lido também pelo cliente
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24, // expira em 1 dia
+        path: "/",
+      })
+    } else {
+      // Garante limpeza caso empresa tenha sido criada entre sessões
+      response.cookies.delete("op_no_company")
+    }
+
     return response
   } catch (err) {
     console.error("[auth/login]", err)
