@@ -1,10 +1,11 @@
-// route: permission-profiles/[id]
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/session"
 import { sql } from "@/lib/db"
 
+export const dynamic = "force-dynamic"
+
 export async function PUT(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -18,9 +19,10 @@ export async function PUT(
     const { name, is_admin, permissions } = body
 
     const [perfil] = await sql`
-      SELECT pp.id, pp.company_id, pp.name, pp.is_admin, pp.permissions
-      FROM permission_profiles pp
-      WHERE pp.id = ${id} LIMIT 1
+      SELECT id, company_id, name, is_admin, permissions
+      FROM permission_profiles
+      WHERE id = ${id}
+      LIMIT 1
     `
     if (!perfil) {
       return NextResponse.json({ error: "Perfil não encontrado" }, { status: 404 })
@@ -37,8 +39,8 @@ export async function PUT(
 
     const [updated] = await sql`
       UPDATE permission_profiles SET
-        name = ${name ?? perfil.name},
-        is_admin = ${is_admin ?? perfil.is_admin},
+        name        = ${name        ?? perfil.name},
+        is_admin    = ${is_admin    ?? perfil.is_admin},
         permissions = ${permissions ? JSON.stringify(permissions) : perfil.permissions}
       WHERE id = ${id}
       RETURNING id, company_id, name, is_admin, permissions
@@ -52,7 +54,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -64,8 +66,9 @@ export async function DELETE(
     const { id } = await params
 
     const [perfil] = await sql`
-      SELECT pp.id, pp.company_id FROM permission_profiles pp
-      WHERE pp.id = ${id} LIMIT 1
+      SELECT id, company_id FROM permission_profiles
+      WHERE id = ${id}
+      LIMIT 1
     `
     if (!perfil) {
       return NextResponse.json({ error: "Perfil não encontrado" }, { status: 404 })

@@ -1,17 +1,17 @@
-// route: permission-profiles
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/session"
 import { sql } from "@/lib/db"
 
-export async function GET(req: Request) {
+export const dynamic = "force-dynamic"
+
+export async function GET(req: NextRequest) {
   try {
     const session = await getSession()
     if (!session?.user_id) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
-    const params = new URL(req.url).searchParams
-    const companyId = params.get("company_id")
+    const companyId = req.nextUrl.searchParams.get("company_id")
     if (!companyId) {
       return NextResponse.json({ error: "company_id obrigatório" }, { status: 400 })
     }
@@ -30,7 +30,7 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const session = await getSession()
     if (!session?.user_id) {
