@@ -2,7 +2,9 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Search, Plus, X, Loader2 } from "lucide-react"
+import { Search, Plus, X, Users } from "lucide-react"
+import { SkeletonList } from "@/components/ui/skeleton-list"
+import { EmptyState } from "@/components/ui/empty-state"
 import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/auth-fetch"
 
@@ -102,15 +104,14 @@ export default function ClientesPage() {
 
       {/* Lista */}
       <div className="flex-1 px-3 py-3 flex flex-col gap-2">
-        {loading && (
-          <div className="flex justify-center py-12">
-            <Loader2 size={28} className="animate-spin text-[#1565C0]" />
-          </div>
-        )}
+        {loading && <SkeletonList count={5} hasAvatar hasTag />}
         {!loading && filtered.length === 0 && (
-          <div className="text-center py-12 text-[#9E9E9E]" style={{ fontSize: "0.875rem" }}>
-            {clients.length === 0 ? "Nenhum cliente cadastrado ainda" : "Nenhum cliente encontrado"}
-          </div>
+          <EmptyState
+            icon={Users}
+            title={clients.length === 0 ? "Nenhum cliente cadastrado" : "Nenhum cliente encontrado"}
+            description={clients.length === 0 ? "Adicione seus clientes para gerenciar contratos e obras." : "Tente ajustar o filtro ou o texto da busca."}
+            action={clients.length === 0 ? { label: "Novo cliente", onClick: () => router.push("/dashboard/clientes/novo") } : undefined}
+          />
         )}
         {!loading && filtered.map((c) => {
           const name = c.type === "PF" ? c.full_name : c.fantasy_name

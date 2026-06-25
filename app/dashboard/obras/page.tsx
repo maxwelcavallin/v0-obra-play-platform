@@ -2,7 +2,9 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Search, Plus, X, Loader2, HardHat, MapPin, Ruler } from "lucide-react"
+import { Search, Plus, X, HardHat, MapPin, Ruler } from "lucide-react"
+import { SkeletonList } from "@/components/ui/skeleton-list"
+import { EmptyState } from "@/components/ui/empty-state"
 import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/auth-fetch"
 
@@ -128,15 +130,14 @@ export default function ObrasPage() {
 
       {/* Lista */}
       <div className="flex-1 px-3 pb-24 flex flex-col gap-2">
-        {loading && (
-          <div className="flex justify-center py-12">
-            <Loader2 size={28} className="animate-spin text-[#1565C0]" />
-          </div>
-        )}
+        {loading && <SkeletonList count={4} hasAvatar hasTag />}
         {!loading && filtered.length === 0 && (
-          <div className="text-center py-12 text-[#9E9E9E]" style={{ fontSize: "0.875rem" }}>
-            {obras.length === 0 ? "Nenhuma obra cadastrada ainda" : "Nenhuma obra encontrada"}
-          </div>
+          <EmptyState
+            icon={HardHat}
+            title={obras.length === 0 ? "Nenhuma obra cadastrada" : "Nenhuma obra encontrada"}
+            description={obras.length === 0 ? "Cadastre sua primeira obra para começar a gerenciar cotações e financeiro." : "Tente ajustar os filtros ou a busca."}
+            action={obras.length === 0 ? { label: "Nova obra", onClick: () => router.push("/dashboard/obras/nova") } : undefined}
+          />
         )}
         {!loading && filtered.map((o) => {
           const clientName = o.client_name_pf ?? o.client_name_pj

@@ -506,10 +506,17 @@ export default function MapaCotacaoPage() {
             </h1>
           </div>
           <button
-            onClick={() => {
-              navigator.clipboard.writeText(window.location.href)
-              toast.success("Link copiado!")
+            onClick={async () => {
+              try {
+                const res = await authFetch(`/api/cotacoes/${id}/share`)
+                const data = await res.json()
+                await navigator.clipboard.writeText(data.url)
+                toast.success("Link público copiado!")
+              } catch {
+                toast.error("Erro ao gerar link")
+              }
             }}
+            title="Copiar link público (somente leitura)"
             className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors">
             <Share2 size={17} className="text-[#1565C0]" />
           </button>

@@ -4,12 +4,14 @@ import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
   Search, Plus, Package, MapPin, Calendar,
-  Eye, Loader2, ShoppingCart, Clock,
+  Eye, ShoppingCart, Clock,
   Pencil, Trash2, MoreVertical, Copy, BarChart2
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/auth-fetch"
 import { toast } from "sonner"
+import { SkeletonList } from "@/components/ui/skeleton-list"
+import { EmptyState } from "@/components/ui/empty-state"
 
 interface Cotacao {
   id: string
@@ -176,22 +178,15 @@ export default function CotacoesPage() {
 
       {/* Content */}
       <div className="flex-1 px-4 py-3 flex flex-col gap-3">
-        {loading && (
-          <div className="flex justify-center pt-16">
-            <Loader2 size={28} className="animate-spin text-[#1565C0]" />
-          </div>
-        )}
+        {loading && <SkeletonList count={4} hasAvatar hasTag />}
 
         {!loading && filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center pt-16 gap-3 text-center">
-            <ShoppingCart size={48} className="text-[#E0E0E0]" strokeWidth={1.2} />
-            <p className="font-semibold text-[#757575] text-sm">
-              {search ? "Nenhuma cotação encontrada" : tab === "Rascunho" ? "Nenhum rascunho salvo" : "Nenhuma cotação ainda"}
-            </p>
-            {!search && tab !== "Rascunho" && (
-              <p className="text-xs text-[#9E9E9E] px-8">Crie sua primeira cotação tocando no botão abaixo</p>
-            )}
-          </div>
+          <EmptyState
+            icon={ShoppingCart}
+            title={search ? "Nenhuma cotação encontrada" : tab === "Rascunho" ? "Nenhum rascunho salvo" : "Nenhuma cotação ainda"}
+            description={search ? "Tente ajustar o texto da busca." : tab === "Rascunho" ? "Cotações incompletas salvas aparecerão aqui." : "Crie sua primeira cotação para receber propostas de fornecedores."}
+            action={!search && tab !== "Rascunho" ? { label: "Nova cotação", onClick: () => router.push("/dashboard/cotacoes/nova") } : undefined}
+          />
         )}
 
         {!loading && filtered.map(c => {

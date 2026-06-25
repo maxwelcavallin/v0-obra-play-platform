@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ShoppingCart, Loader2, AlertCircle, ChevronRight } from "lucide-react"
+import { ShoppingCart, AlertCircle, ChevronRight } from "lucide-react"
+import { SkeletonList } from "@/components/ui/skeleton-list"
+import { EmptyState } from "@/components/ui/empty-state"
 import { authFetch } from "@/lib/auth-fetch"
 import { useAuth } from "@/lib/auth-context"
 
@@ -64,18 +66,14 @@ export default function OrdensCompraPage() {
         </div>
       </div>
 
-      {loading && (
-        <div className="flex justify-center py-16">
-          <Loader2 size={28} className="animate-spin text-[#1565C0]" />
-        </div>
-      )}
+      {loading && <div className="px-4 pt-4"><SkeletonList count={4} hasAvatar hasTag /></div>}
 
       {!loading && ordens.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 gap-4 text-[#9E9E9E]">
-          <ShoppingCart size={44} strokeWidth={1.2} />
-          <p className="text-sm font-medium">Nenhuma ordem de compra gerada ainda.</p>
-          <p className="text-xs text-center px-8">Gere ordens de compra a partir do mapa de cotação respondida.</p>
-        </div>
+        <EmptyState
+          icon={ShoppingCart}
+          title="Nenhuma ordem de compra"
+          description="Gere ordens de compra a partir do mapa de cotação respondida."
+        />
       )}
 
       {!loading && ordens.length > 0 && (
