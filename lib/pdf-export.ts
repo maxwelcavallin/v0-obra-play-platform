@@ -228,10 +228,16 @@ export function exportExtratoPDF(
     { label: "Resultado",       value: fmtBRL(resultado), color: resultado >= 0 ? VERDE : VERM },
   ])
 
+  const sortedRows = [...rows].sort((a, b) => {
+    const da = a.due_date ? new Date(a.due_date).getTime() : 0
+    const db = b.due_date ? new Date(b.due_date).getTime() : 0
+    return da - db
+  })
+
   autoTable(doc, {
     startY: y,
     head: [["Data", "Descrição", "Categoria", "Conta", "Tipo", "Status", "Valor"]],
-    body: rows.map(r => [
+    body: sortedRows.map(r => [
       fmtDate(r.due_date),
       r.description,
       r.category_name ?? "—",
