@@ -143,7 +143,7 @@ export default function RelatoriosPage() {
       {/* Header */}
       <div className="bg-[#1565C0] px-4 pt-4 pb-5">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="text-white/80 hover:text-white"><ArrowLeft size={22} /></button>
+          <button onClick={() => router.push("/dashboard/financeiro")} className="text-white/80 hover:text-white"><ArrowLeft size={22} /></button>
           <h1 className="text-white font-bold text-lg flex-1">Relatórios</h1>
           <button
             onClick={handleExport}

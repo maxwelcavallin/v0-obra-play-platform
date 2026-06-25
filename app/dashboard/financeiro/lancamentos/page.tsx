@@ -116,7 +116,7 @@ function LancamentosContent() {
       {/* Header */}
       <div className="bg-[#1565C0] px-4 pt-4 pb-3 sticky top-0 z-30">
         <div className="flex items-center gap-2 mb-3">
-          <button onClick={() => router.back()} className="text-white/80 hover:text-white p-1">
+          <button onClick={() => router.push("/dashboard/financeiro")} className="text-white/80 hover:text-white p-1">
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-white font-bold text-lg flex-1">Lançamentos</h1>

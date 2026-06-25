@@ -186,7 +186,7 @@ function NovaLancamentoForm() {
       {/* Header */}
       <div className="bg-[#1565C0] px-4 pt-4 pb-5">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="text-white/80 hover:text-white">
+          <button onClick={() => editId ? router.push(`/dashboard/financeiro/lancamentos/${editId}`) : router.push("/dashboard/financeiro/lancamentos")} className="text-white/80 hover:text-white">
             <ArrowLeft size={22} />
           </button>
           <h1 className="text-white font-bold text-lg flex-1">{editId ? "Editar lançamento" : "Novo lançamento"}</h1>

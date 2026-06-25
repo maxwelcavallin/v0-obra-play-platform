@@ -129,7 +129,7 @@ export default function LancamentoDetailPage({ params }: { params: Promise<{ id:
       {/* Header — azul único para ambos os tipos */}
       <div className="bg-[#1565C0] px-4 pt-4 pb-10">
         <div className="flex items-center gap-3 mb-4">
-          <button onClick={() => router.back()} className="text-white/80 hover:text-white p-1">
+          <button onClick={() => router.push("/dashboard/financeiro/lancamentos")} className="text-white/80 hover:text-white p-1">
             <ArrowLeft size={22} />
           </button>
           <h1 className="text-white font-bold text-lg flex-1 truncate">{transacao.description}</h1>
