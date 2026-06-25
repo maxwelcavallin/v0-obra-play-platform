@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/session"
-import { sql } from "@/lib/db"
+import { neon } from "@neondatabase/serverless"
 
 export const dynamic = "force-dynamic"
 
@@ -18,6 +18,7 @@ export async function PUT(
     const body = await req.json()
     const { name, is_admin, permissions } = body
 
+    const sql = neon(process.env.DATABASE_URL!)
     const [perfil] = await sql`
       SELECT id, company_id, name, is_admin, permissions
       FROM permission_profiles
@@ -65,6 +66,7 @@ export async function DELETE(
 
     const { id } = await params
 
+    const sql = neon(process.env.DATABASE_URL!)
     const [perfil] = await sql`
       SELECT id, company_id FROM permission_profiles
       WHERE id = ${id}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/session"
-import { sql } from "@/lib/db"
+import { neon } from "@neondatabase/serverless"
 
 export const dynamic = "force-dynamic"
 
@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "company_id obrigatório" }, { status: 400 })
     }
 
+    const sql = neon(process.env.DATABASE_URL!)
     const perfis = await sql`
       SELECT id, company_id, name, is_admin, permissions
       FROM permission_profiles
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "name e company_id obrigatórios" }, { status: 400 })
     }
 
+    const sql = neon(process.env.DATABASE_URL!)
     const [userInCompany] = await sql`
       SELECT cu.is_admin FROM company_users cu
       WHERE cu.company_id = ${company_id} AND cu.user_id = ${session.user_id}
