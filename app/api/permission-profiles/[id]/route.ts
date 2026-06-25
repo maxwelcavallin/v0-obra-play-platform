@@ -1,3 +1,4 @@
+// route: permission-profiles/[id]
 import { NextResponse } from "next/server"
 import { getSession } from "@/lib/session"
 import { sql } from "@/lib/db"
