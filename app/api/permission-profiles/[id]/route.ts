@@ -1,5 +1,3 @@
-'use server'
-
 import { NextResponse } from "next/server"
 import { getSession } from "@/lib/session"
 import { sql } from "@/lib/db"
@@ -18,9 +16,9 @@ export async function PUT(
     const body = await req.json()
     const { name, is_admin, permissions } = body
 
-    // Busca perfil e verifica permissão
     const [perfil] = await sql`
-      SELECT pp.id, pp.company_id FROM permission_profiles pp
+      SELECT pp.id, pp.company_id, pp.name, pp.is_admin, pp.permissions
+      FROM permission_profiles pp
       WHERE pp.id = ${id} LIMIT 1
     `
     if (!perfil) {
@@ -36,7 +34,6 @@ export async function PUT(
       return NextResponse.json({ error: "Sem permissão" }, { status: 403 })
     }
 
-    // Atualiza perfil
     const [updated] = await sql`
       UPDATE permission_profiles SET
         name = ${name ?? perfil.name},
@@ -65,7 +62,6 @@ export async function DELETE(
 
     const { id } = await params
 
-    // Busca perfil e verifica permissão
     const [perfil] = await sql`
       SELECT pp.id, pp.company_id FROM permission_profiles pp
       WHERE pp.id = ${id} LIMIT 1
@@ -83,10 +79,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Sem permissão" }, { status: 403 })
     }
 
-    // Soft delete (para manter integridade referencial)
-    await sql`
-      DELETE FROM permission_profiles WHERE id = ${id}
-    `
+    await sql`DELETE FROM permission_profiles WHERE id = ${id}`
 
     return NextResponse.json({ success: true })
   } catch (e) {
