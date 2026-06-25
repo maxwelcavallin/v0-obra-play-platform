@@ -316,7 +316,7 @@ function LancamentosContent() {
             <div className="flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-150 delay-150">
               <span className="bg-[#212121] text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Receita</span>
               <button onClick={() => { setFabOpen(false); router.push("/dashboard/financeiro/lancamentos/nova?type=receita") }}
-                className="w-11 h-11 rounded-full bg-[#1565C0] shadow-lg flex items-center justify-center hover:bg-[#0D47A1] transition-colors">
+                className="w-11 h-11 rounded-full bg-[#4CAF50] shadow-lg flex items-center justify-center hover:bg-[#388E3C] transition-colors">
                 <TrendingUp size={18} className="text-white" />
               </button>
             </div>
