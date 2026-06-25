@@ -23,22 +23,43 @@ export async function GET(req: NextRequest) {
       const now = new Date()
       const year  = now.getFullYear()
       const month = now.getMonth() + 1
-      const lastDay = new Date(year, month, 0).getDate() // último dia real do mês
+      const lastDay = new Date(year, month, 0).getDate()
       const monthStart = `${year}-${String(month).padStart(2, "0")}-01`
       const monthEnd   = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`
 
+      // Saldo inicial total das contas ativas (base do saldo geral)
+      const [accountsBase] = await sql`
+        SELECT COALESCE(SUM(initial_balance), 0) AS total_initial_balance
+        FROM accounts
+        WHERE company_id = ${companyId} AND deleted_at IS NULL AND is_active = true
+      `
+
       const [summary] = await sql`
         SELECT
-          COALESCE(SUM(CASE WHEN type='receita' AND status='pago'    THEN amount ELSE 0 END),0) AS receitas_pagas,
-          COALESCE(SUM(CASE WHEN type='despesa' AND status='pago'    THEN amount ELSE 0 END),0) AS despesas_pagas,
+          COALESCE(SUM(CASE WHEN type='receita' AND status='pago'     THEN amount ELSE 0 END),0) AS receitas_pagas,
+          COALESCE(SUM(CASE WHEN type='despesa' AND status='pago'     THEN amount ELSE 0 END),0) AS despesas_pagas,
           COALESCE(SUM(CASE WHEN type='receita' AND status='pendente' THEN amount ELSE 0 END),0) AS a_receber,
           COALESCE(SUM(CASE WHEN type='despesa' AND status='pendente' THEN amount ELSE 0 END),0) AS a_pagar,
-          COALESCE(SUM(CASE WHEN type='receita' THEN amount ELSE -amount END),0)                AS resultado_mes
+          COALESCE(SUM(CASE WHEN type='receita' THEN amount ELSE -amount END),0)                 AS resultado_mes
         FROM transactions
         WHERE company_id = ${companyId}
           AND deleted_at IS NULL
           AND due_date BETWEEN ${monthStart}::date AND ${monthEnd}::date
       `
+
+      // Saldo real acumulado = initial_balance + todas as transações pagas até hoje
+      const [realBalance] = await sql`
+        SELECT
+          COALESCE(SUM(CASE WHEN type='receita' AND status='pago' THEN amount ELSE 0 END), 0) -
+          COALESCE(SUM(CASE WHEN type='despesa' AND status='pago' THEN amount ELSE 0 END), 0) AS movimentos_pagos
+        FROM transactions
+        WHERE company_id = ${companyId} AND deleted_at IS NULL
+      `
+
+      const saldoAtual =
+        Number(accountsBase.total_initial_balance) + Number(realBalance.movimentos_pagos)
+
+      const summaryWithBalance = { ...summary, saldo_atual: saldoAtual }
 
       // Gráfico últimos 6 meses
       const sixMonthsAgo = new Date()
@@ -73,16 +94,36 @@ export async function GET(req: NextRequest) {
         LIMIT 5
       `
 
-      return NextResponse.json({ summary, chart, vencimentos })
+      return NextResponse.json({ summary: summaryWithBalance, chart, vencimentos })
     }
 
     // Fluxo de caixa mensal
     if (tipo === "fluxo") {
       const months = Math.min(Math.max(Number(p.get("months") ?? 12), 1), 24)
-      // Calcula a data de corte no JS para evitar interpolação de string em SQL
       const cutoff = new Date()
       cutoff.setMonth(cutoff.getMonth() - months)
       const cutoffStr = cutoff.toISOString().split("T")[0]
+
+      // Saldo inicial das contas — base para cálculo do saldo acumulado
+      const [accountsBase] = await sql`
+        SELECT COALESCE(SUM(initial_balance), 0) AS total_initial_balance
+        FROM accounts
+        WHERE company_id = ${companyId} AND deleted_at IS NULL AND is_active = true
+      `
+
+      // Movimentos pagos ANTES do período do gráfico (para compor o saldo inicial do primeiro mês)
+      const [beforePeriod] = await sql`
+        SELECT
+          COALESCE(SUM(CASE WHEN type='receita' AND status='pago' THEN amount ELSE 0 END), 0) -
+          COALESCE(SUM(CASE WHEN type='despesa' AND status='pago' THEN amount ELSE 0 END), 0) AS saldo_anterior
+        FROM transactions
+        WHERE company_id = ${companyId}
+          AND deleted_at IS NULL
+          AND due_date < ${cutoffStr}::date
+      `
+
+      const saldoBase =
+        Number(accountsBase.total_initial_balance) + Number(beforePeriod.saldo_anterior)
 
       const rows = await sql`
         SELECT
@@ -98,7 +139,15 @@ export async function GET(req: NextRequest) {
         GROUP BY TO_CHAR(due_date, 'YYYY-MM')
         ORDER BY month
       `
-      return NextResponse.json(rows)
+
+      // Calcula saldo acumulado mês a mês partindo do saldo base
+      let saldoAcumulado = saldoBase
+      const rowsWithBalance = rows.map((row: any) => {
+        saldoAcumulado += Number(row.receitas) - Number(row.despesas)
+        return { ...row, saldo: saldoAcumulado }
+      })
+
+      return NextResponse.json({ rows: rowsWithBalance, saldo_base: saldoBase })
     }
 
     // Extrato por obra

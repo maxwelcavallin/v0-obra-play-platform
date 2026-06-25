@@ -21,6 +21,7 @@ interface DashboardData {
     a_receber:       number
     a_pagar:         number
     resultado_mes:   number
+    saldo_atual:     number   // initial_balance das contas + movimentos pagos acumulados
   }
   chart: Array<{ month: string; receitas: number; despesas: number }>
   vencimentos: Array<{
@@ -79,7 +80,8 @@ export default function FinanceiroDashboard() {
   useEffect(() => { fetchDashboard() }, [fetchDashboard])
 
   const s = data?.summary
-  const saldo = (Number(s?.receitas_pagas ?? 0)) - (Number(s?.despesas_pagas ?? 0))
+  // Saldo real = initial_balance das contas + todos os movimentos pagos até hoje
+  const saldo = Number(s?.saldo_atual ?? 0)
   const chartData = (data?.chart ?? []).map(c => ({
     ...c,
     receitas: Number(c.receitas),
@@ -116,7 +118,7 @@ export default function FinanceiroDashboard() {
             {/* Saldo do mês */}
             <div className="col-span-2 bg-white rounded-2xl p-4 shadow-md flex items-center justify-between border border-[#E8EDF5]">
               <div>
-                <p className="text-[#9E9E9E] text-xs mb-0.5">Saldo do mês</p>
+                <p className="text-[#9E9E9E] text-xs mb-0.5">Saldo atual</p>
                 <p className={`text-2xl font-bold ${saldo >= 0 ? "text-[#1565C0]" : "text-[#D32F2F]"}`}>
                   {fmtBRL(saldo)}
                 </p>

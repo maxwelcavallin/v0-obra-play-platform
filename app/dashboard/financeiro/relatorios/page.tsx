@@ -14,7 +14,9 @@ import { authFetch } from "@/lib/auth-fetch"
 import { fmtBRL } from "@/lib/money"
 
 interface FluxoRow {
-  month: string; receitas: number; despesas: number; a_receber: number; a_pagar: number
+  month: string; receitas: number; despesas: number
+  a_receber: number; a_pagar: number
+  saldo: number  // saldo acumulado incluindo initial_balance das contas
 }
 interface ContasPagar {
   id: string; description: string; amount: number; type: string
@@ -62,7 +64,8 @@ export default function RelatoriosPage() {
     try {
       const res = await authFetch(`/api/financeiro/relatorios?company_id=${activeCompany.id}&tipo=fluxo&months=${fluxoMonths}`)
       const data = await res.json()
-      setFluxo(Array.isArray(data) ? data : [])
+      // API retorna { rows: FluxoRow[], saldo_base: number }
+      setFluxo(Array.isArray(data) ? data : (data?.rows ?? []))
     } catch (err) { console.error("[relatorios] fluxo:", err) }
     finally { setLoadingFluxo(false) }
   }, [activeCompany?.id, fluxoMonths])
@@ -100,7 +103,8 @@ export default function RelatoriosPage() {
     label: `${MONTH_SHORT[f.month.split("-")[1]] ?? f.month}`,
     receitas: Number(f.receitas),
     despesas: Number(f.despesas),
-    saldo: Number(f.receitas) - Number(f.despesas),
+    // saldo já vem acumulado da API (initial_balance + movimentos pagos anteriores + mês atual)
+    saldo: Number(f.saldo),
   }))
 
   const totalReceitas = fluxo.reduce((s,f) => s + Number(f.receitas), 0)
