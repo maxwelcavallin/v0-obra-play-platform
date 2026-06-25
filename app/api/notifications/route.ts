@@ -13,8 +13,23 @@ export async function GET(req: NextRequest) {
     if (!companyId) return NextResponse.json({ error: "company_id obrigatório" }, { status: 400 })
 
     const db = neon(process.env.DATABASE_URL!)
+
+    await db`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        company_id  UUID NOT NULL,
+        user_id     UUID,
+        type        VARCHAR(50) NOT NULL DEFAULT 'info',
+        title       TEXT NOT NULL,
+        description TEXT,
+        obra_name   TEXT,
+        read_at     TIMESTAMPTZ,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `
+
     const rows = await db`
-      SELECT id, type, title, description, entity_type, entity_id, read_at, created_at
+      SELECT id, type, title, description, obra_name, read_at, created_at
       FROM notifications
       WHERE company_id = ${companyId}
         AND (user_id = ${session.user_id} OR user_id IS NULL)

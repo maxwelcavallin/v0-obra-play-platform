@@ -97,10 +97,10 @@ const MOCK_FINANCIALS = [
 
 // Atalhos rápidos — estilo círculos azuis com ícone branco
 const QUICK_ACTIONS = [
-  { label: "Cotações",    href: "/cotacoes",  icon: FileText },
-  { label: "Financeiro",  href: "/financeiro", icon: DollarSign },
-  { label: "Minhas obras",href: "/obras",      icon: Building2 },
-  { label: "Configurar",  href: "/configuracoes", icon: Settings },
+  { label: "Cotações",     href: "/cotacoes",       icon: FileText,  tour: "tour-cotacoes"   },
+  { label: "Financeiro",   href: "/financeiro",     icon: DollarSign,tour: "tour-financeiro"  },
+  { label: "Minhas obras", href: "/obras",           icon: Building2, tour: "tour-obras"       },
+  { label: "Configurar",   href: "/configuracoes",  icon: Settings,  tour: ""                 },
 ]
 
 function StatusChip({ status }: { status: string }) {
@@ -184,6 +184,7 @@ export default function DashboardPage() {
                 key={item.href}
                 href={item.href}
                 className="flex flex-col items-center gap-2 group"
+                {...(item.tour ? { "data-tour": item.tour } : {})}
               >
                 <div className="op-icon-circle group-hover:opacity-80 transition-opacity">
                   <Icon size={22} className="text-white" />

@@ -7,6 +7,19 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
   const { token } = await params
   const db = neon(process.env.DATABASE_URL!)
 
+  // Garante que a tabela existe (idempotente)
+  await db`
+    CREATE TABLE IF NOT EXISTS share_tokens (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      entity_type VARCHAR(50) NOT NULL,
+      entity_id   UUID NOT NULL,
+      company_id  UUID,
+      token       TEXT NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(24), 'base64url'),
+      expires_at  TIMESTAMPTZ,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
+
   // Resolve token → cotacao_id
   const [st] = await db`
     SELECT entity_id FROM share_tokens

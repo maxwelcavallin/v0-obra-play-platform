@@ -10,6 +10,19 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params
   const db = neon(process.env.DATABASE_URL!)
 
+  // Garante que a tabela existe
+  await db`
+    CREATE TABLE IF NOT EXISTS share_tokens (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      entity_type VARCHAR(50) NOT NULL,
+      entity_id   UUID NOT NULL,
+      company_id  UUID,
+      token       TEXT NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(24), 'base64url'),
+      expires_at  TIMESTAMPTZ,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
+
   // Verifica se cotação existe
   const [cotacao] = await db`SELECT id, company_id FROM cotacoes WHERE id = ${id}`
   if (!cotacao) return NextResponse.json({ error: "Não encontrada" }, { status: 404 })

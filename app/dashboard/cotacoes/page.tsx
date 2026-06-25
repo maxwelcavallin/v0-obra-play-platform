@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
   Search, Plus, Package, MapPin, Calendar,
-  Eye, ShoppingCart, Clock,
+  Eye, ShoppingCart, Clock, Loader2,
   Pencil, Trash2, MoreVertical, Copy, BarChart2
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"

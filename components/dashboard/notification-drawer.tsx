@@ -94,6 +94,7 @@ export function NotificationBell({ companyId }: { companyId?: string }) {
     <>
       {/* Sino */}
       <button
+        data-tour="tour-notificacoes"
         onClick={() => { setOpen(true); load() }}
         className="relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
         aria-label="Notificações"
