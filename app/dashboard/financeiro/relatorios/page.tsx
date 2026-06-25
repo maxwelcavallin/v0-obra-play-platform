@@ -217,29 +217,29 @@ export default function RelatoriosPage() {
                     const vencida = c.due_date && new Date(c.due_date + "T00:00:00") < new Date()
                     return (
                       <button key={c.id} onClick={() => router.push(`/dashboard/financeiro/lancamentos/${c.id}`)}
-                        className={`rounded-xl px-3 py-3 shadow-sm flex items-center gap-3 text-left hover:shadow-md transition-shadow w-full border-l-4 ${
+                        className={`rounded-xl px-3 py-3 flex items-center gap-3 text-left w-full transition-all ${
                           vencida
-                            ? "bg-[#FEF2F2] border-[#D32F2F]"
-                            : "bg-white border-transparent"
+                            ? "bg-[#FEE2E2] border border-[#D32F2F] shadow-[0_0_0_1px_#D32F2F20] hover:bg-[#FECACA]"
+                            : "bg-white shadow-sm border border-transparent hover:shadow-md"
                         }`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${vencida ? "bg-[#FECACA]" : "bg-[#F5F5F5]"}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${vencida ? "bg-[#D32F2F]" : "bg-[#F5F5F5]"}`}>
                           {c.type === "receita"
-                            ? <TrendingUp size={13} className="text-[#1565C0]" />
-                            : <TrendingDown size={13} className={vencida ? "text-[#D32F2F]" : "text-[#D32F2F]"} />}
+                            ? <TrendingUp size={13} className={vencida ? "text-white" : "text-[#1565C0]"} />
+                            : <TrendingDown size={13} className={vencida ? "text-white" : "text-[#D32F2F]"} />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium truncate ${vencida ? "text-[#7F1D1D]" : "text-[#212121]"}`}>{c.description}</p>
-                          <p className="text-[10px] text-[#9E9E9E]">{c.category_name ?? ""}{c.account_name ? ` · ${c.account_name}` : ""}</p>
+                          <p className={`text-sm font-semibold truncate ${vencida ? "text-[#7F1D1D]" : "text-[#212121]"}`}>{c.description}</p>
+                          <p className={`text-[10px] ${vencida ? "text-[#B91C1C]" : "text-[#9E9E9E]"}`}>{c.category_name ?? ""}{c.account_name ? ` · ${c.account_name}` : ""}</p>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <p className={`font-bold text-sm ${c.type === "receita" ? "text-[#1565C0]" : "text-[#D32F2F]"}`}>
+                          <p className={`font-bold text-sm ${vencida ? "text-[#7F1D1D]" : c.type === "receita" ? "text-[#1565C0]" : "text-[#D32F2F]"}`}>
                             {fmtBRL(Number(c.amount))}
                           </p>
-                          <p className={`text-[10px] font-semibold ${vencida ? "text-[#D32F2F]" : "text-[#9E9E9E]"}`}>
+                          <p className={`text-[10px] font-semibold ${vencida ? "text-[#B91C1C]" : "text-[#9E9E9E]"}`}>
                             {vencida ? "Vencida · " : ""}{fmtDate(c.due_date)}
                           </p>
                         </div>
-                        <ChevronRight size={12} className={`flex-shrink-0 ${vencida ? "text-[#D32F2F]" : "text-[#BDBDBD]"}`} />
+                        <ChevronRight size={12} className={`flex-shrink-0 ${vencida ? "text-[#B91C1C]" : "text-[#BDBDBD]"}`} />
                       </button>
                     )
                   })}
