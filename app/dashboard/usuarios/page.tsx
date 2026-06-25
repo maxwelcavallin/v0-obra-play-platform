@@ -5,10 +5,20 @@ import { useRouter } from "next/navigation"
 import {
   MoreVertical, UserPlus, CheckCircle, Copy, Check, Link2, Shield, ChevronRight, Plus, Loader2,
 } from "lucide-react"
-import { MOCK_PROFILES, type UserRole, type PermissionProfile } from "@/lib/mock-data"
+
 import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/auth-fetch"
 import { toast } from "sonner"
+
+type UserRole = "Admin" | "Comprador" | "Financeiro" | "Visualizador" | "Personalizado"
+
+interface PermissionProfile {
+  id: string
+  company_id: string
+  name: string
+  is_admin: boolean
+  permissions: Record<string, Record<string, boolean>>
+}
 
 interface CompanyUser {
   id: string
@@ -18,6 +28,7 @@ interface CompanyUser {
   status: "ativo" | "inativo"
   is_verified: boolean
   avatar?: string
+  profile_id?: string
 }
 
 const ROLE_COLORS: Record<UserRole, string> = {
@@ -137,22 +148,57 @@ function InviteModal({ onClose }: { onClose: () => void }) {
 // ─── Modal Permissões ─────────────────────────────────────────
 function PermissionsModal({
   user,
+  companyId,
   onClose,
   onCreateNew,
+  onApply,
 }: {
   user: CompanyUser
+  companyId: string
   onClose: () => void
   onCreateNew: () => void
+  onApply: (profileId: string) => Promise<void>
 }) {
-  const [profiles] = useState<PermissionProfile[]>(MOCK_PROFILES)
-  const [selected, setSelected] = useState<string>(
-    profiles.find((p) => p.name === user.role)?.id ?? profiles[0]?.id ?? ""
-  )
+  const [profiles, setProfiles] = useState<PermissionProfile[]>([])
+  const [selected, setSelected] = useState<string>(user.profile_id ?? "")
+  const [loading, setLoading] = useState(true)
+  const [applying, setApplying] = useState(false)
 
-  function handleApply() {
-    const profile = profiles.find((p) => p.id === selected)
-    if (profile) toast.success(`Perfil "${profile.name}" aplicado a ${user.name}`)
-    onClose()
+  useEffect(() => {
+    if (!companyId) return
+    loadPerfis()
+  }, [companyId])
+
+  async function loadPerfis() {
+    try {
+      setLoading(true)
+      const res = await authFetch(`/api/permission-profiles?company_id=${companyId}`)
+      if (!res.ok) throw new Error("Erro ao carregar perfis")
+      const data = await res.json()
+      setProfiles(data)
+      if (!selected && data.length > 0) setSelected(data[0].id)
+    } catch (e) {
+      console.error("[PermissionsModal loadPerfis] erro:", e)
+      toast.error("Erro ao carregar perfis")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleApply() {
+    if (!selected) return
+    try {
+      setApplying(true)
+      await onApply(selected)
+      const profile = profiles.find((p) => p.id === selected)
+      if (profile) toast.success(`Perfil "${profile.name}" aplicado a ${user.name}`)
+      onClose()
+    } catch (e) {
+      console.error("[PermissionsModal handleApply] erro:", e)
+      toast.error("Erro ao aplicar perfil")
+    } finally {
+      setApplying(false)
+    }
   }
 
   return (
@@ -178,7 +224,17 @@ function PermissionsModal({
 
         {/* Lista de perfis */}
         <div className="flex-1 overflow-y-auto px-4 pb-2">
-          {profiles.map((profile) => (
+          {loading && (
+            <div className="flex justify-center py-6">
+              <Loader2 size={20} className="animate-spin text-[#1565C0]" />
+            </div>
+          )}
+          {!loading && profiles.length === 0 && (
+            <div className="text-center py-6 text-[#9E9E9E] text-sm">
+              Nenhum perfil criado ainda
+            </div>
+          )}
+          {!loading && profiles.map((profile) => (
             <button
               key={profile.id}
               type="button"
@@ -199,14 +255,8 @@ function PermissionsModal({
                 <p className="font-medium text-[#212121]" style={{ fontSize: "0.875rem" }}>
                   {profile.name}
                 </p>
-                <p className="text-[#9E9E9E] truncate" style={{ fontSize: "0.7rem" }}>
-                  {Object.entries(profile.permissions)
-                    .filter(([, v]) => Object.values(v).some(Boolean))
-                    .map(([k]) => k)
-                    .slice(0, 3)
-                    .join(", ")}
-                  {Object.entries(profile.permissions).filter(([, v]) => Object.values(v).some(Boolean)).length > 3
-                    ? "..." : ""}
+                <p className="text-[#9E9E9E]" style={{ fontSize: "0.7rem" }}>
+                  {profile.is_admin ? "Admin - Acesso total" : "Permissões customizadas"}
                 </p>
               </div>
             </button>
@@ -228,8 +278,14 @@ function PermissionsModal({
 
         {/* Botão aplicar */}
         <div className="flex-shrink-0 border-t border-[#EEEEEE]" style={{ padding: "12px 16px 28px" }}>
-          <button type="button" onClick={handleApply} className="op-btn-primary">
-            APLICAR PERFIL
+          <button
+            type="button"
+            onClick={handleApply}
+            disabled={applying || !selected}
+            className="op-btn-primary flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            {applying ? <Loader2 size={14} className="animate-spin" /> : null}
+            {applying ? "Aplicando..." : "APLICAR PERFIL"}
           </button>
         </div>
       </div>
@@ -297,6 +353,18 @@ export default function UsuariosPage() {
     await authFetch(`/api/empresas/${activeCompany.id}/usuarios/${userId}`, { method: "DELETE" })
     setUsers((prev) => prev.filter((u) => u.id !== userId))
     toast.success("Usuário removido")
+  }
+
+  async function handleApplyProfile(userId: string, profileId: string) {
+    if (!activeCompany?.id) return
+    const res = await authFetch(`/api/empresas/${activeCompany.id}/usuarios/${userId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile_id: profileId }),
+    })
+    if (!res.ok) throw new Error("Erro ao aplicar perfil")
+    const updated = await res.json()
+    setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)))
   }
 
   return (
@@ -393,15 +461,17 @@ export default function UsuariosPage() {
         <UserMenu
           user={menuUser}
           onClose={() => setMenuUser(null)}
-          onManagePerms={() => { setPermUser(menuUser); setMenuUser(null) }}
+          onManagePerms={() => setPermUser(menuUser)}
           onRemove={() => handleRemove(menuUser.id)}
         />
       )}
-      {permUser && (
+      {permUser && activeCompany && (
         <PermissionsModal
           user={permUser}
+          companyId={activeCompany.id}
           onClose={() => setPermUser(null)}
-          onCreateNew={() => { setPermUser(null); router.push("/dashboard/usuarios/perfis") }}
+          onCreateNew={() => router.push("/dashboard/usuarios/perfis")}
+          onApply={(profileId) => handleApplyProfile(permUser.id, profileId)}
         />
       )}
     </div>
