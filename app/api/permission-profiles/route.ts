@@ -16,8 +16,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "company_id obrigatório" }, { status: 400 })
     }
 
-    const sql = neon(process.env.DATABASE_URL!)
-    const perfis = await sql`
+    const db = neon(process.env.DATABASE_URL!)
+    const perfis = await db`
       SELECT id, company_id, name, is_admin, permissions
       FROM permission_profiles
       WHERE company_id = ${companyId}
@@ -45,8 +45,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "name e company_id obrigatórios" }, { status: 400 })
     }
 
-    const sql = neon(process.env.DATABASE_URL!)
-    const [userInCompany] = await sql`
+    const db = neon(process.env.DATABASE_URL!)
+    const [userInCompany] = await db`
       SELECT cu.is_admin FROM company_users cu
       WHERE cu.company_id = ${company_id} AND cu.user_id = ${session.user_id}
       LIMIT 1
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Apenas admins podem criar perfis" }, { status: 403 })
     }
 
-    const [perfil] = await sql`
+    const [perfil] = await db`
       INSERT INTO permission_profiles (company_id, name, is_admin, permissions)
       VALUES (${company_id}, ${name}, ${is_admin ?? false}, ${JSON.stringify(permissions ?? {})})
       RETURNING id, company_id, name, is_admin, permissions

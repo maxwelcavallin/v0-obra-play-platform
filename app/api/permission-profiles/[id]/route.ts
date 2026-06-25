@@ -18,36 +18,34 @@ export async function PUT(
     const body = await req.json()
     const { name, is_admin, permissions } = body
 
-    const sql = neon(process.env.DATABASE_URL!)
-    const [perfil] = await sql`
-      SELECT id, company_id, name, is_admin, permissions
-      FROM permission_profiles
-      WHERE id = ${id}
-      LIMIT 1
+    const db = neon(process.env.DATABASE_URL!)
+    const [existing] = await db`
+      SELECT id, company_id FROM permission_profiles WHERE id = ${id} LIMIT 1
     `
-    if (!perfil) {
+    if (!existing) {
       return NextResponse.json({ error: "Perfil não encontrado" }, { status: 404 })
     }
 
-    const [userInCompany] = await sql`
+    const [userInCompany] = await db`
       SELECT cu.is_admin FROM company_users cu
-      WHERE cu.company_id = ${perfil.company_id} AND cu.user_id = ${session.user_id}
+      WHERE cu.company_id = ${existing.company_id} AND cu.user_id = ${session.user_id}
       LIMIT 1
     `
     if (!userInCompany?.is_admin) {
-      return NextResponse.json({ error: "Sem permissão" }, { status: 403 })
+      return NextResponse.json({ error: "Apenas admins podem editar perfis" }, { status: 403 })
     }
 
-    const [updated] = await sql`
-      UPDATE permission_profiles SET
-        name        = ${name        ?? perfil.name},
-        is_admin    = ${is_admin    ?? perfil.is_admin},
-        permissions = ${permissions ? JSON.stringify(permissions) : perfil.permissions}
+    const [perfil] = await db`
+      UPDATE permission_profiles
+      SET
+        name        = COALESCE(${name ?? null}, name),
+        is_admin    = COALESCE(${is_admin ?? null}, is_admin),
+        permissions = COALESCE(${permissions ? JSON.stringify(permissions) : null}::jsonb, permissions)
       WHERE id = ${id}
       RETURNING id, company_id, name, is_admin, permissions
     `
 
-    return NextResponse.json(updated)
+    return NextResponse.json(perfil)
   } catch (e) {
     console.error("[perfis PUT] erro:", e)
     return NextResponse.json({ error: String(e) }, { status: 500 })
@@ -66,26 +64,24 @@ export async function DELETE(
 
     const { id } = await params
 
-    const sql = neon(process.env.DATABASE_URL!)
-    const [perfil] = await sql`
-      SELECT id, company_id FROM permission_profiles
-      WHERE id = ${id}
-      LIMIT 1
+    const db = neon(process.env.DATABASE_URL!)
+    const [existing] = await db`
+      SELECT id, company_id FROM permission_profiles WHERE id = ${id} LIMIT 1
     `
-    if (!perfil) {
+    if (!existing) {
       return NextResponse.json({ error: "Perfil não encontrado" }, { status: 404 })
     }
 
-    const [userInCompany] = await sql`
+    const [userInCompany] = await db`
       SELECT cu.is_admin FROM company_users cu
-      WHERE cu.company_id = ${perfil.company_id} AND cu.user_id = ${session.user_id}
+      WHERE cu.company_id = ${existing.company_id} AND cu.user_id = ${session.user_id}
       LIMIT 1
     `
     if (!userInCompany?.is_admin) {
-      return NextResponse.json({ error: "Sem permissão" }, { status: 403 })
+      return NextResponse.json({ error: "Apenas admins podem deletar perfis" }, { status: 403 })
     }
 
-    await sql`DELETE FROM permission_profiles WHERE id = ${id}`
+    await db`DELETE FROM permission_profiles WHERE id = ${id}`
 
     return NextResponse.json({ success: true })
   } catch (e) {
