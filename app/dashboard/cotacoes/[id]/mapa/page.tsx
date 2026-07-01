@@ -378,7 +378,28 @@ export default function MapaCotacaoPage() {
   )
 
   // Derivações simples (sem hooks) — seguro após os early returns
-  const answeredSuppliers = mapa.suppliers.filter(s => s.answered && !s.is_refused)
+
+  // Regra de ordenação das propostas (Melhor Compra e Melhor Fornecedor):
+  //   1. Melhor preço entre credenciados (is_recommended + is_eligible + menor total)
+  //   2. Melhor preço geral             (is_eligible + menor total)
+  //   3. Credenciados restantes         (is_recommended, ordenado por total)
+  //   4. Fornecedores gerais            (demais, ordenado por total)
+  function rankSupplier(s: SupplierMap): number {
+    const isRec = s.is_recommended
+    const isEli = s.is_eligible
+    if (isRec && isEli) return 0   // grupo 1 — melhor preço credenciado
+    if (isEli)          return 1   // grupo 2 — melhor preço geral
+    if (isRec)          return 2   // grupo 3 — credenciados restantes
+    return 3                       // grupo 4 — fornecedores gerais
+  }
+
+  const answeredSuppliers = mapa.suppliers
+    .filter(s => s.answered && !s.is_refused)
+    .sort((a, b) => {
+      const rankDiff = rankSupplier(a) - rankSupplier(b)
+      if (rankDiff !== 0) return rankDiff
+      return (a.total ?? 0) - (b.total ?? 0)   // desempate: menor total primeiro
+    })
   const refusedSuppliers = mapa.suppliers.filter(s => s.is_refused)
   const selectedSupplierList = mapa.suppliers.filter(s => selectedSuppliers.has(s.supplier_id))
   const hasCompraSelection = ordensPorFornecedor.length > 0
