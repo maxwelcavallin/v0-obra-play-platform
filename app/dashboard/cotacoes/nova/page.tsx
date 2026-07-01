@@ -10,6 +10,7 @@ import {
 import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/auth-fetch"
 import { toast } from "sonner"
+import { RegistrationBadge } from "@/components/ui/registration-badge"
 import { OpInput } from "@/components/ui/op-input"
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -961,7 +962,7 @@ function NovaCotacaoInner() {
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <p className="text-sm font-semibold text-[#212121] truncate">{preview.company_name}</p>
                         <span className="text-[10px] bg-[#1565C0] text-white px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Recomendado</span>
-                        {preview.registration_type === "certified" && <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Certificado</span>}
+                        <RegistrationBadge type={preview.registration_type} variant="pill" />
                       </div>
                           <p className="text-[11px] text-[#9E9E9E] mt-0.5 truncate">
                             {Array.isArray(preview.category_names) ? preview.category_names.slice(0, 3).join(" · ") : ""}
@@ -1035,7 +1036,7 @@ function NovaCotacaoInner() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <p className="text-sm font-semibold text-[#212121] truncate">{s.company_name}</p>
-                                  {s.registration_type === "certified" && <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Certificado</span>}
+                                  <RegistrationBadge type={s.registration_type} variant="pill" />
                                 </div>
                                 <p className="text-[11px] text-[#9E9E9E] mt-0.5 truncate">
                                   {Array.isArray(s.category_names) ? s.category_names.slice(0, 3).join(" · ") : ""}
@@ -1249,8 +1250,7 @@ function NovaCotacaoInner() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <p className="text-sm font-semibold text-[#212121] truncate">{s.company_name}</p>
-                            {s.registration_type === "certified" && <span className="text-[10px] bg-[#1565C0] text-white px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Certificado</span>}
-                            {s.registration_type === "validated" && <span className="text-[10px] bg-[#E3F2FD] text-[#1565C0] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Validado</span>}
+                            <RegistrationBadge type={s.registration_type} variant="pill" />
                           </div>
                           <div className="flex items-center gap-2 flex-wrap mt-0.5">
                             <span className="text-xs text-[#9E9E9E]">{[s.city_name, s.state_abbr].filter(Boolean).join(" · ")}</span>

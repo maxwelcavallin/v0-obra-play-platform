@@ -9,6 +9,7 @@ import {
 import { authFetch } from "@/lib/auth-fetch"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
+import { RegistrationBadge } from "@/components/ui/registration-badge"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -44,6 +45,7 @@ interface SupplierMap {
   supplier_email?: string
   supplier_phone?: string
   is_recommended: boolean
+  registration_type: "certified" | "validated" | "basic"
   mirror_company_id?: number
   obraplay_answer_id?: number | null
   answered: boolean
@@ -678,7 +680,7 @@ export default function MapaCotacaoPage() {
                       <div className="flex flex-col items-center gap-0.5">
                         <span className="font-bold text-[#212121] text-[11px] leading-tight text-center">{s.supplier_name}</span>
                         {s.supplier_city && <span className="text-[10px] text-[#9E9E9E]">{s.supplier_city}</span>}
-                        <span className="text-[9px] text-[#BDBDBD] mt-0.5">Clique para selecionar</span>
+                        <RegistrationBadge type={s.registration_type} variant="pill" />
                       </div>
                     </th>
                   ))}
@@ -856,12 +858,13 @@ export default function MapaCotacaoPage() {
                     <span className="text-xs font-bold text-white">Melhor oferta completa</span>
                   </div>
                 )}
-                <div className="px-4 py-4">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div>
-                      <p className="font-bold text-[#212121]">{s.supplier_name}</p>
-                      {s.supplier_city && <p className="text-xs text-[#9E9E9E]">{s.supplier_city}</p>}
-                    </div>
+                  <div className="px-4 py-4">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div>
+                        <p className="font-bold text-[#212121]">{s.supplier_name}</p>
+                        {s.supplier_city && <p className="text-xs text-[#9E9E9E]">{s.supplier_city}</p>}
+                        <RegistrationBadge type={s.registration_type} variant="pill" className="mt-1" />
+                      </div>
                     <div className="text-right">
                       <p className="text-lg font-bold text-[#1565C0]">{fmtBRL(s.total)}</p>
                       <p className="text-[11px] text-[#9E9E9E]">{availableCount}/{mapa.items.length} itens</p>

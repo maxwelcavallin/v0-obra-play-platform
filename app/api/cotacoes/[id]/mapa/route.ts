@@ -25,13 +25,19 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     ORDER BY created_at
   `
 
-  // Fornecedores convidados
+  // Fornecedores convidados — inclui registration_type via JOIN com mirror_companies
   const suppliers = await sql`
-    SELECT id, supplier_name, supplier_city, supplier_email, supplier_phone,
-           is_recommended, mirror_company_id, op_answer_id, op_answer_key
-    FROM cotacao_fornecedores
-    WHERE cotacao_id = ${id}
-    ORDER BY is_recommended DESC, created_at
+    SELECT cf.id, cf.supplier_name, cf.supplier_city, cf.supplier_email, cf.supplier_phone,
+           cf.is_recommended, cf.mirror_company_id, cf.op_answer_id, cf.op_answer_key,
+           CASE
+             WHEN mc.verified_cnpj AND mc.has_confirmed_address AND mc.has_confirmed_shipping THEN 'certified'
+             WHEN mc.verified_cnpj                                                            THEN 'validated'
+             ELSE                                                                                  'basic'
+           END AS registration_type
+    FROM cotacao_fornecedores cf
+    LEFT JOIN mirror_companies mc ON mc.company_id = cf.mirror_company_id
+    WHERE cf.cotacao_id = ${id}
+    ORDER BY cf.is_recommended DESC, cf.created_at
   `
 
   // Todas as linhas da tabela desnormalizada para esta cotação
@@ -103,13 +109,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       answeredItems.every((i: any) => i.available === true && i.unit_price != null)
 
     return {
-      supplier_id:       sup.id,
-      supplier_name:     sup.supplier_name,
-      supplier_city:     sup.supplier_city,
-      supplier_email:    sup.supplier_email,
-      supplier_phone:    sup.supplier_phone,
-      is_recommended:    sup.is_recommended,
-      mirror_company_id: sup.mirror_company_id,
+      supplier_id:        sup.id,
+      supplier_name:      sup.supplier_name,
+      supplier_city:      sup.supplier_city,
+      supplier_email:     sup.supplier_email,
+      supplier_phone:     sup.supplier_phone,
+      is_recommended:     sup.is_recommended,
+      registration_type:  (sup.registration_type ?? "basic") as "certified" | "validated" | "basic",
+      mirror_company_id:  sup.mirror_company_id,
       op_answer_id:      meta?.op_answer_id ?? sup.op_answer_id ?? null,
       obraplay_answer_id: meta?.op_answer_id ?? sup.op_answer_id ?? null,
       answered:          hasAnswer,
