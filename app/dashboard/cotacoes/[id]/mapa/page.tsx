@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import {
   ArrowLeft, Share2, Loader2, AlertCircle, ShoppingCart,
@@ -116,6 +116,13 @@ export default function MapaCotacaoPage() {
   const [selectedSuppliers, setSelectedSuppliers] = useState<Set<string>>(new Set())
   const [generating, setGenerating] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const tableScrollRef = useRef<HTMLDivElement>(null)
+  const [tableAtEnd, setTableAtEnd] = useState(false)
+  function onTableScroll() {
+    const el = tableScrollRef.current
+    if (!el) return
+    setTableAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 4)
+  }
 
   useEffect(() => {
     authFetch(`/api/cotacoes/${id}/mapa`)
@@ -590,7 +597,20 @@ export default function MapaCotacaoPage() {
             </div>
           )}
           {/* Scroll lateral na tabela */}
-          <div className="px-4 overflow-x-auto">
+          <div className="px-4 relative">
+            {/* Fade direita — some quando chega ao fim */}
+            {answeredSuppliers.length > 1 && !tableAtEnd && (
+              <div
+                className="pointer-events-none absolute top-0 right-4 bottom-0 w-12 z-20 rounded-r-2xl"
+                style={{ background: "linear-gradient(to right, transparent, rgba(255,255,255,0.95))" }}
+              />
+            )}
+          <div
+            ref={tableScrollRef}
+            onScroll={onTableScroll}
+            className="overflow-x-auto scrollbar-hide"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
           <div className="bg-white rounded-2xl shadow-sm" style={{ minWidth: 360 + answeredSuppliers.length * 140 }}>
             <table className="w-full text-xs border-collapse" style={{ minWidth: 380 + answeredSuppliers.length * 120 }}>
               <thead>
@@ -738,7 +758,17 @@ export default function MapaCotacaoPage() {
               </tfoot>
             </table>
           </div>
-          </div>{/* fim overflow-x-auto */}
+          </div>{/* fim overflow-x-auto scrollRef */}
+          {/* Pill de dica de scroll — visível apenas quando há mais de 1 fornecedor e ainda não chegou ao fim */}
+          {answeredSuppliers.length > 1 && !tableAtEnd && (
+            <div className="flex justify-center mt-2 mb-1">
+              <span className="inline-flex items-center gap-1 text-[10px] text-[#9E9E9E] bg-white border border-[#EEEEEE] rounded-full px-3 py-1 shadow-sm select-none">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                Deslize para ver mais fornecedores
+              </span>
+            </div>
+          )}
+          </div>{/* fim px-4 relative */}
         </div>
       )}
 
