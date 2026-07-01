@@ -12,8 +12,11 @@ export const dynamic = "force-dynamic"
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
 
-  // Valida formato básico do token (evita queries desnecessárias com inputs malformados)
-  if (!token || !/^[A-Za-z0-9_-]{20,}$/.test(token)) {
+  // Sanitiza o token recebido na URL (remove espaços, newlines, padding)
+  const cleanToken = token.replace(/[\s=]/g, "")
+
+  // Valida formato básico (evita queries com inputs claramente inválidos)
+  if (!cleanToken || !/^[A-Za-z0-9+/=_-]{20,}$/.test(cleanToken)) {
     return NextResponse.json({ error: "Link inválido" }, { status: 404 })
   }
 
@@ -26,16 +29,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
       entity_type VARCHAR(50) NOT NULL,
       entity_id   UUID NOT NULL,
       company_id  UUID,
-      token       TEXT NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(24), 'base64url'),
+      token       TEXT NOT NULL UNIQUE,
       expires_at  TIMESTAMPTZ,
       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `
 
-  // Resolve token → cotacao_id (nunca revela o ID real antes de validar)
+  // Resolve token → cotacao_id
+  // Compara limpando newlines/espaços de tokens legados gerados sem chr(10) strip
   const [st] = await db`
     SELECT entity_id FROM share_tokens
-    WHERE token = ${token}
+    WHERE replace(replace(token, chr(10), ''), ' ', '') = ${cleanToken}
       AND entity_type = 'cotacao_mapa'
       AND (expires_at IS NULL OR expires_at > NOW())
     LIMIT 1

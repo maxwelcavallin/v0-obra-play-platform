@@ -37,18 +37,23 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!existing) {
     // Gera token via encode(gen_random_bytes, 'base64') e substitui chars problemáticos
     // replace +→-, /→_, remove = para ficar URL-safe
+    // Gera token URL-safe: base64 → remove newlines (\n) → troca +→- e /→_ → remove =
     ;[existing] = await db`
       INSERT INTO share_tokens (entity_type, entity_id, company_id, token)
       VALUES (
         'cotacao_mapa',
         ${id},
         ${cotacao.company_id},
-        replace(replace(replace(encode(gen_random_bytes(24), 'base64'), '+', '-'), '/', '_'), '=', '')
+        replace(replace(replace(replace(
+          encode(gen_random_bytes(24), 'base64'),
+          chr(10), ''),
+          '+', '-'),
+          '/', '_'),
+          '=', '')
       )
       ON CONFLICT (token) DO NOTHING
       RETURNING token
     `
-    // Fallback improvável de colisão: tenta mais uma vez com uuid
     if (!existing) {
       ;[existing] = await db`
         INSERT INTO share_tokens (entity_type, entity_id, company_id, token)
@@ -56,7 +61,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           'cotacao_mapa',
           ${id},
           ${cotacao.company_id},
-          replace(replace(replace(encode(gen_random_bytes(24), 'base64'), '+', '-'), '/', '_'), '=', '')
+          replace(replace(replace(replace(
+            encode(gen_random_bytes(24), 'base64'),
+            chr(10), ''),
+            '+', '-'),
+            '/', '_'),
+            '=', '')
         )
         RETURNING token
       `
