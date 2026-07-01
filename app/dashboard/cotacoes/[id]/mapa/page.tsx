@@ -235,10 +235,10 @@ export default function MapaCotacaoPage() {
   }
 
   function toggleSupplier(sid: string) {
+    // R6: apenas 1 fornecedor pode estar selecionado por vez no modo Melhor Fornecedor
     setSelectedSuppliers(prev => {
-      const n = new Set(prev)
-      n.has(sid) ? n.delete(sid) : n.add(sid)
-      return n
+      if (prev.has(sid)) return new Set<string>()   // deseleciona se já estava marcado
+      return new Set<string>([sid])                  // seleciona somente este, limpa os demais
     })
   }
 
@@ -306,16 +306,32 @@ export default function MapaCotacaoPage() {
       for (const sid of supplierIds) {
         const sup = mapa.suppliers.find(s => s.supplier_id === sid)
         if (!sup) continue
+        // Somente itens que pertencem à cotação, foram ofertados, estão disponíveis e não têm OC ativa
+        const cotacaoItemIds = new Set(mapa.items.map(i => i.id ?? i.cotacao_item_id))
+        const eligibleItems = sup.answered_items.filter(ai =>
+          cotacaoItemIds.has(ai.cotacao_item_id) &&
+          ai.available &&
+          ai.unit_price != null &&
+          !blockedIds.has(ai.cotacao_item_id)
+        )
+        if (eligibleItems.length === 0) {
+          toast.error(`${sup.supplier_name} não tem itens disponíveis para gerar OC.`)
+          continue
+        }
+        const subtotal = eligibleItems.reduce((s, ai) => s + (ai.total_price ?? 0), 0)
+        const freight  = sup.free_shipping ? 0 : (sup.freight ?? 0)
+        const total    = subtotal + freight
+
         const result = await postOrdem({
           company_id: activeCompany.id,
           cotacao_id: mapa.cotacao_id,
           supplier_name: sup.supplier_name,
           supplier_email: sup.supplier_email ?? null,
           supplier_phone: sup.supplier_phone ?? null,
-          items: sup.answered_items.filter(ai => ai.available && ai.unit_price != null),
-          subtotal: sup.subtotal,
-          freight: sup.freight ?? 0,
-          total: sup.total,
+          items: eligibleItems,
+          subtotal,
+          freight,
+          total,
           payment_method: sup.payment_method ?? null,
           arrival_estimate: sup.arrival_estimate ?? null,
           obraplay_answer_id: sup.obraplay_answer_id ?? null,
@@ -572,13 +588,27 @@ export default function MapaCotacaoPage() {
           </button>
         </div>
         <div className="flex gap-1 px-4 pb-3">
-          <button onClick={() => setMode("compra")}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-colors ${mode === "compra" ? "bg-[#1565C0] text-white" : "bg-[#F5F5F5] text-[#616161]"}`}>
+          <button
+            onClick={() => setMode("compra")}
+            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-colors relative ${mode === "compra" ? "bg-[#1565C0] text-white" : "bg-[#F5F5F5] text-[#616161]"}`}>
             Melhor Compra
+            {/* badge: qtd de itens selecionados neste modo */}
+            {mode !== "compra" && Object.keys(itemSelection).length > 0 && (
+              <span className="absolute -top-1.5 -right-1 min-w-[16px] h-4 bg-[#1565C0] text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1">
+                {Object.keys(itemSelection).length}
+              </span>
+            )}
           </button>
-          <button onClick={() => setMode("fornecedor")}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-colors ${mode === "fornecedor" ? "bg-[#1565C0] text-white" : "bg-[#F5F5F5] text-[#616161]"}`}>
+          <button
+            onClick={() => setMode("fornecedor")}
+            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-colors relative ${mode === "fornecedor" ? "bg-[#1565C0] text-white" : "bg-[#F5F5F5] text-[#616161]"}`}>
             Melhor Fornecedor
+            {/* badge: fornecedor selecionado neste modo */}
+            {mode !== "fornecedor" && selectedSuppliers.size > 0 && (
+              <span className="absolute -top-1.5 -right-1 min-w-[16px] h-4 bg-[#1565C0] text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1">
+                {selectedSuppliers.size}
+              </span>
+            )}
           </button>
         </div>
       </div>
