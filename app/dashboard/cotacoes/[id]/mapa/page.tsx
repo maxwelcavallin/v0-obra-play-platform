@@ -656,7 +656,7 @@ export default function MapaCotacaoPage() {
                             className="px-3 py-2 text-center cursor-pointer transition-all select-none"
                             style={{
                               background: isSelected ? "#DBEAFE" : isBest ? "#E8F5E9" : undefined,
-                              outline: isSelected ? "2px solid #1565C0" : undefined,
+                              outline: isSelected ? "2px solid #1565C0" : isBest ? "2px solid #A5D6A7" : undefined,
                               outlineOffset: "-2px",
                             }}>
                             <div className="flex flex-col items-center gap-1">
@@ -664,12 +664,12 @@ export default function MapaCotacaoPage() {
                               <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${isSelected ? "bg-[#1565C0] border-[#1565C0]" : isBest ? "border-[#4CAF50]" : "border-[#BDBDBD]"}`}>
                                 {isSelected && <Check size={9} className="text-white" />}
                               </div>
-                              {/* Preço unitário */}
+                              {/* Preço unitário — bold verde quando menor da linha */}
                               <span className={`font-bold text-[12px] ${isSelected ? "text-[#1565C0]" : isBest ? "text-[#2E7D32]" : "text-[#212121]"}`}>
                                 {fmtBRL(ai.unit_price)}
                               </span>
-                              {/* Preço total */}
-                              <span className="text-[10px] text-[#9E9E9E]">total {fmtBRL(ai.total_price)}</span>
+                              {/* Preço total — bold verde quando menor da linha */}
+                              <span className={`text-[10px] ${isBest && !isSelected ? "font-bold text-[#2E7D32]" : "text-[#9E9E9E]"}`}>total {fmtBRL(ai.total_price)}</span>
                               {/* Badge economia */}
                               {pct != null && pct > 0 && (
                                 <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-[#E8F5E9] text-[#2E7D32]">
@@ -796,17 +796,24 @@ export default function MapaCotacaoPage() {
                   <div className="flex flex-col gap-1.5 mb-3">
                     {s.answered_items.map(ai => {
                       const itemId = ai.cotacao_item_id
+                      const isBestItem = ai.unit_price != null && minPrices[itemId] === ai.unit_price
                       const pct = ai.unit_price != null ? savingPct(ai.unit_price, maxPrices[itemId]) : null
                       return (
-                        <div key={itemId} className="flex justify-between items-start text-xs text-[#616161]">
-                          <span className="truncate mr-2 flex-1">{ai.name}</span>
+                        <div
+                          key={itemId}
+                          className="flex justify-between items-start text-xs rounded-md px-1.5 py-1 -mx-1.5 transition-colors"
+                          style={{ background: isBestItem ? "#E8F5E9" : undefined }}
+                        >
+                          <span className={`truncate mr-2 flex-1 ${isBestItem ? "text-[#2E7D32] font-medium" : "text-[#616161]"}`}>{ai.name}</span>
                           {!ai.available
                             ? <span className="text-[#F44336] font-medium flex-shrink-0 text-[10px]">Indisponível</span>
                             : ai.unit_price != null
                               ? (
                                 <div className="flex flex-col items-end flex-shrink-0">
-                                  <span className="font-bold text-[#212121]">{fmtBRL(ai.unit_price)}<span className="font-normal text-[#9E9E9E]">/{ai.unit}</span></span>
-                                  <span className="text-[10px] text-[#9E9E9E]">total {fmtBRL(ai.total_price)}</span>
+                                  <span className={`font-bold ${isBestItem ? "text-[#2E7D32]" : "text-[#212121]"}`}>
+                                    {fmtBRL(ai.unit_price)}<span className={`font-normal ${isBestItem ? "text-[#4CAF50]" : "text-[#9E9E9E]"}`}>/{ai.unit}</span>
+                                  </span>
+                                  <span className={`text-[10px] ${isBestItem ? "font-bold text-[#2E7D32]" : "text-[#9E9E9E]"}`}>total {fmtBRL(ai.total_price)}</span>
                                   {pct != null && pct > 0 && (
                                     <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-[#E8F5E9] text-[#2E7D32] mt-0.5">-{pct}%</span>
                                   )}
