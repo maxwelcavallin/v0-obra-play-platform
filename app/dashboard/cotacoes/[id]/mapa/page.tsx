@@ -534,16 +534,20 @@ export default function MapaCotacaoPage() {
             onClick={async () => {
               try {
                 const res = await authFetch(`/api/cotacoes/${id}/share`)
-                const data = await res.json()
-                await navigator.clipboard.writeText(data.url)
-                toast.success("Link público copiado!")
+                const json = await res.json()
+                await navigator.clipboard.writeText(json.url)
+                toast.success("Link público copiado!", {
+                  description: "Compartilhe com o cliente para visualização.",
+                  duration: 4000,
+                })
               } catch {
-                toast.error("Erro ao gerar link")
+                toast.error("Erro ao gerar link de compartilhamento")
               }
             }}
-            title="Copiar link público (somente leitura)"
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors">
-            <Share2 size={17} className="text-[#1565C0]" />
+            title="Compartilhar mapa (link público, somente leitura)"
+            className="flex items-center gap-1.5 text-xs font-semibold text-[#1565C0] bg-[#E3F2FD] hover:bg-[#BBDEFB] px-3 py-1.5 rounded-full transition-colors">
+            <Share2 size={13} />
+            Compartilhar
           </button>
         </div>
         <div className="flex gap-1 px-4 pb-3">
