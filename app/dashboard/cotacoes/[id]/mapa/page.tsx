@@ -405,38 +405,25 @@ export default function MapaCotacaoPage() {
   // Derivações simples (sem hooks) — seguro após os early returns
 
   // Regra de ordenação das propostas (Melhor Compra e Melhor Fornecedor):
-  //   1. Melhor preço entre os credenciados  → único fornecedor credenciado elegível com menor total
-  //   2. Melhor preço geral                  → único fornecedor elegível (qualquer) com menor total
-  //   3. Credenciados restantes              → is_recommended, ordenado por total
-  //   4. Fornecedores gerais                 → demais, ordenado por total
+  //   Grupo 1 — credenciados elegíveis        → todos, ordenados por menor total
+  //   Grupo 2 — melhor preço geral elegível   → não-credenciados elegíveis, ordenados por menor total
+  //   Grupo 3 — credenciados não-elegíveis    → is_recommended sem oferta completa, menor total
+  //   Grupo 4 — fornecedores gerais           → demais, menor total
   //
-  // "Melhor preço credenciado" e "Melhor preço geral" são posições únicas (o #1 de cada grupo).
-  // Os demais credenciados vão para o grupo 3; os demais gerais vão para o grupo 4.
+  // Quando há múltiplos certificados, o desempate é SEMPRE o menor preço (dentro do mesmo grupo).
 
-  const _eligible      = mapa.suppliers.filter(s => s.answered && !s.is_refused && s.is_eligible)
-  const _eligibleRec   = _eligible.filter(s => s.is_recommended)
-
-  // Menor total entre credenciados elegíveis (grupo 1 — pode ser nulo se não houver)
-  const _minRecTotal   = _eligibleRec.length > 0
-    ? Math.min(..._eligibleRec.map(s => s.total ?? Infinity))
-    : null
-
-  // Menor total entre todos elegíveis (grupo 2)
-  const _minAllTotal   = _eligible.length > 0
-    ? Math.min(..._eligible.map(s => s.total ?? Infinity))
-    : null
-
-  // IDs dos fornecedores que ocupam as posições de topo (para não repeti-los)
-  const _group1Id = _eligibleRec.find(s => (s.total ?? Infinity) === _minRecTotal)?.supplier_id ?? null
-  const _group2Id = _eligible.find(s =>
-    (s.total ?? Infinity) === _minAllTotal && s.supplier_id !== _group1Id
-  )?.supplier_id ?? null
+  const _eligibleIds = new Set(
+    mapa.suppliers
+      .filter(s => s.answered && !s.is_refused && s.is_eligible)
+      .map(s => s.supplier_id)
+  )
 
   function rankSupplier(s: SupplierMap): number {
-    if (s.supplier_id === _group1Id) return 0  // melhor preço entre credenciados
-    if (s.supplier_id === _group2Id) return 1  // melhor preço geral
-    if (s.is_recommended)            return 2  // credenciados restantes
-    return 3                                    // fornecedores gerais
+    const isEligible = _eligibleIds.has(s.supplier_id)
+    if (s.is_recommended && isEligible) return 0  // grupo 1: credenciados elegíveis
+    if (isEligible)                     return 1  // grupo 2: melhor preço geral elegível
+    if (s.is_recommended)               return 2  // grupo 3: credenciados sem oferta completa
+    return 3                                       // grupo 4: fornecedores gerais
   }
 
   const answeredSuppliers = mapa.suppliers
@@ -444,7 +431,7 @@ export default function MapaCotacaoPage() {
     .sort((a, b) => {
       const rankDiff = rankSupplier(a) - rankSupplier(b)
       if (rankDiff !== 0) return rankDiff
-      return (a.total ?? 0) - (b.total ?? 0)   // desempate dentro do mesmo grupo: menor total primeiro
+      return (a.total ?? 0) - (b.total ?? 0)   // desempate universal: menor total primeiro
     })
   const refusedSuppliers = mapa.suppliers.filter(s => s.is_refused)
   const selectedSupplierList = mapa.suppliers.filter(s => selectedSuppliers.has(s.supplier_id))
