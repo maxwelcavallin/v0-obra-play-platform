@@ -625,12 +625,12 @@ export default function MapaCotacaoPage() {
                         const isBlocked  = blockedIds.has(itemId)
 
                         if (!ai) {
-                          return <td key={s.supplier_id} className="px-3 py-2.5 text-center text-[#BDBDBD] text-[10px]">—</td>
+                          return <td key={s.supplier_id} className="px-3 py-2.5 text-center"><span className="text-[10px] text-[#9E9E9E]">Não possui</span></td>
                         }
                         if (!ai.available) {
                           return (
                             <td key={s.supplier_id} className="px-3 py-2.5 text-center">
-                              <span className="text-[10px] text-[#F44336] font-medium">Indisponível</span>
+                              <span className="text-[10px] text-[#9E9E9E]">Não possui</span>
                             </td>
                           )
                         }
@@ -805,10 +805,9 @@ export default function MapaCotacaoPage() {
                           style={{ background: isBestItem ? "#E8F5E9" : undefined }}
                         >
                           <span className={`truncate mr-2 flex-1 ${isBestItem ? "text-[#2E7D32] font-medium" : "text-[#616161]"}`}>{ai.name}</span>
-                          {!ai.available
-                            ? <span className="text-[#F44336] font-medium flex-shrink-0 text-[10px]">Indisponível</span>
-                            : ai.unit_price != null
-                              ? (
+                          {(!ai.available || ai.unit_price == null)
+                            ? <span className="text-[#9E9E9E] flex-shrink-0 text-[10px]">Não possui</span>
+                            : (
                                 <div className="flex flex-col items-end flex-shrink-0">
                                   <span className={`font-bold ${isBestItem ? "text-[#2E7D32]" : "text-[#212121]"}`}>
                                     {fmtBRL(ai.unit_price)}<span className={`font-normal ${isBestItem ? "text-[#4CAF50]" : "text-[#9E9E9E]"}`}>/{ai.unit}</span>
@@ -819,7 +818,6 @@ export default function MapaCotacaoPage() {
                                   )}
                                 </div>
                               )
-                              : <span className="text-[#BDBDBD] flex-shrink-0">—</span>
                           }
                         </div>
                       )
