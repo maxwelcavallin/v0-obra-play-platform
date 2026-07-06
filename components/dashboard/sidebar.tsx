@@ -21,6 +21,7 @@ import {
   UserCircle,
   Hammer,
   Package,
+  Store,
 } from "lucide-react"
 import { useAuth, type Company } from "@/lib/auth-context"
 
@@ -36,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Clientes", href: "/dashboard/clientes", icon: Users },
   { label: "Obras", href: "/dashboard/obras", icon: Hammer },
   { label: "Insumos", href: "/dashboard/insumos", icon: Package },
+  { label: "Vitrine de Insumos", href: "/dashboard/vitrine", icon: Store },
   { label: "Cotações", href: "/dashboard/cotacoes", icon: ShoppingCart },
   { label: "Ordens de Compra", href: "/dashboard/ordens-compra", icon: FileText },
   { label: "Financeiro", href: "/dashboard/financeiro", icon: DollarSign },
