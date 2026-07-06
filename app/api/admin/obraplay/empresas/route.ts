@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
         (${nivel} = 'validated' AND mc.verified_cnpj AND NOT (mc.has_confirmed_address AND mc.has_confirmed_shipping)) OR
         (${nivel} = 'basic' AND NOT mc.verified_cnpj)
       )
-    ORDER BY mc.short_name
+    ORDER BY mc.last_sync_at DESC NULLS LAST, mc.short_name
     LIMIT ${per} OFFSET ${(page - 1) * per}
   `
 

@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     FROM mirror_members mm
     JOIN mirror_companies mc ON mc.company_id = mm.company_id
     WHERE (${q} = '' OR mm.name ILIKE ${'%' + q + '%'} OR mm.email ILIKE ${'%' + q + '%'} OR mc.short_name ILIKE ${'%' + q + '%'})
-    ORDER BY mm.name
+    ORDER BY mm.last_sync_at DESC NULLS LAST, mm.name
     LIMIT ${per} OFFSET ${(page - 1) * per}
   `
 

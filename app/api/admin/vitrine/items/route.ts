@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     LEFT JOIN showcase_categories sc ON sc.id = si.category_id
     WHERE (${search} = '' OR si.name ILIKE ${'%' + search + '%'})
       AND (${category} = '' OR sc.slug = ${category})
-    ORDER BY si.name
+    ORDER BY si.created_at DESC
     LIMIT ${per} OFFSET ${offset}
   `
 

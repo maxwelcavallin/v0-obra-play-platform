@@ -13,16 +13,19 @@ export async function GET(req: NextRequest) {
   const per = 50
 
   const rows = await db`
-    SELECT DISTINCT ON (cr.cotacao_id, cr.op_answer_id)
-      cr.cotacao_id, cr.op_answer_id, cr.cotacao_identifier,
-      cr.supplier_name, cr.supplier_city,
-      cr.payment_method, cr.arrival_estimate, cr.answered_at,
-      cr.cotacao_fornecedor_id,
-      COUNT(*) OVER(PARTITION BY cr.cotacao_id, cr.op_answer_id) AS item_count,
-      COUNT(*) OVER() AS total_count
-    FROM cotacao_respostas cr
-    WHERE (${q} = '' OR cr.cotacao_identifier ILIKE ${'%' + q + '%'} OR cr.supplier_name ILIKE ${'%' + q + '%'})
-    ORDER BY cr.cotacao_id, cr.op_answer_id, cr.answered_at DESC
+    SELECT * FROM (
+      SELECT DISTINCT ON (cr.cotacao_id, cr.op_answer_id)
+        cr.cotacao_id, cr.op_answer_id, cr.cotacao_identifier,
+        cr.supplier_name, cr.supplier_city,
+        cr.payment_method, cr.arrival_estimate, cr.answered_at,
+        cr.cotacao_fornecedor_id,
+        COUNT(*) OVER(PARTITION BY cr.cotacao_id, cr.op_answer_id) AS item_count,
+        COUNT(*) OVER() AS total_count
+      FROM cotacao_respostas cr
+      WHERE (${q} = '' OR cr.cotacao_identifier ILIKE ${'%' + q + '%'} OR cr.supplier_name ILIKE ${'%' + q + '%'})
+      ORDER BY cr.cotacao_id, cr.op_answer_id, cr.answered_at DESC
+    ) sub
+    ORDER BY sub.answered_at DESC NULLS LAST
     LIMIT ${per} OFFSET ${(page - 1) * per}
   `
 
