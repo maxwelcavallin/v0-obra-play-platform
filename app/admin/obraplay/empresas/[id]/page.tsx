@@ -3,49 +3,22 @@
 import { useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Star, CheckCircle2, XCircle } from "lucide-react"
+import useSWR from "swr"
+import { ArrowLeft, CheckCircle2, XCircle, Loader2 } from "lucide-react"
 import { ReadonlyBadge, Badge, fmtDate, fmtBRL } from "@/components/admin/readonly-badge"
 
-// Dados mockados para o detalhe
-const MOCK_EMPRESA = {
-  id: "1",
-  full_name: "Depósito Central Materiais",
-  cnpj: "12.345.678/0001-90",
-  city: "São Paulo", state: "SP",
-  email: "contato@depositocentral.com.br",
-  phone: "(11) 3456-7890",
-  whatsapp: "(11) 9 9876-5432",
-  street: "Av. Paulista", number: "1000",
-  neighbourhood: "Bela Vista", zipcode: "01310-100",
-  verified_cnpj: true, has_confirmed_address: true,
-  has_confirmed_configuration: true, has_active_institutional_page: true,
-  has_autofill_enabled: false, base_freight_micros: 0,
-  operation_types: ["Materiais de construção", "Cimento", "Areia"],
-  metrics: { received: 284, answered: 201, response_rate: 70.8, orders: 87, avg_ticket: 4250000, avg_response_time_minutes: 220 },
-  membros: [
-    { name: "Carlos Oliveira", email: "carlos@depositocentral.com.br", role: "owner", status: "ativo", joined: "2024-03-15" },
-    { name: "Ana Lima", email: "ana@depositocentral.com.br", role: "member", status: "ativo", joined: "2024-04-01" },
-  ],
-  cotacoes: [
-    { code: "UHUTQJG", buyer: "Construtora ABC", date: "2026-06-20", status: "respondida", total: 8200000, autofilled: false },
-    { code: "3SQME6Y", buyer: "Obras e Cia", date: "2026-06-15", status: "convertida", total: 12400000, autofilled: true },
-  ],
-  avaliacoes: [
-    { nota: 5, comentario: "Entrega rápida e produto de qualidade.", date: "2026-06-10", oc: "OC-ZMSDNDL" },
-    { nota: 4, comentario: "Boa comunicação, embalagem poderia melhorar.", date: "2026-05-28", oc: "OC-ABCDEFG" },
-  ],
-  vitrine: [
-    { name: "Cimento CP-II 50kg", unit: "Saca", price: 37000000, disponivel: true },
-    { name: "Areia média lavada", unit: "m³", price: 110000000, disponivel: true },
-    { name: "Bloco cerâmico 14x19x29", unit: "Milheiro", price: 1850000000, disponivel: false },
-  ],
-}
+const fetcher = (url: string) => fetch(url, { credentials: "include" }).then(r => r.json())
 
-const TABS = ["Dados cadastrais", "Membros", "Cotações respondidas", "Ordens de Compra", "Avaliações", "Vitrine", "Documentos"]
+const TABS = ["Dados cadastrais", "Membros", "Cotações vinculadas"]
 
 export default function EmpresaFornecedoraDetalhe() {
+  const { id } = useParams<{ id: string }>()
   const [tab, setTab] = useState("Dados cadastrais")
-  const e = MOCK_EMPRESA
+  const { data, isLoading } = useSWR(`/api/admin/obraplay/empresas/${id}`, fetcher)
+
+  const e = data?.empresa
+  const membros: any[] = data?.membros ?? []
+  const cotacoes: any[] = data?.cotacoes_vinculadas ?? []
 
   function MetricCard({ label, value }: { label: string; value: string | number }) {
     return (
@@ -56,9 +29,20 @@ export default function EmpresaFornecedoraDetalhe() {
     )
   }
 
+  if (isLoading) return (
+    <div className="flex items-center justify-center h-64">
+      <Loader2 size={20} className="animate-spin text-gray-400" />
+    </div>
+  )
+
+  if (!e) return (
+    <div className="text-center py-20 text-gray-400 text-sm">Empresa não encontrada.</div>
+  )
+
+  const avgResponseH = e.avg_response_time_minutes ? Math.round(Number(e.avg_response_time_minutes) / 60) : null
+
   return (
     <div className="max-w-[1100px] mx-auto">
-      {/* Voltar */}
       <Link href="/admin/obraplay/empresas" className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 mb-4">
         <ArrowLeft size={14} /> Empresas Fornecedoras
       </Link>
@@ -67,18 +51,22 @@ export default function EmpresaFornecedoraDetalhe() {
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center text-xl font-bold text-gray-400 shrink-0">
-              {e.full_name.charAt(0)}
-            </div>
+            {e.logo ? (
+              <img src={e.logo} alt={e.short_name} className="w-14 h-14 rounded-xl object-cover border border-gray-100" />
+            ) : (
+              <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center text-xl font-bold text-gray-400 shrink-0">
+                {(e.short_name ?? e.full_name ?? "?").charAt(0)}
+              </div>
+            )}
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-lg font-bold text-gray-900">{e.full_name}</h1>
+                <h1 className="text-lg font-bold text-gray-900">{e.full_name ?? e.short_name}</h1>
                 {e.verified_cnpj && <Badge color="green">CNPJ verificado</Badge>}
                 {e.has_confirmed_address && <Badge color="blue">Endereço confirmado</Badge>}
-                {e.has_confirmed_configuration && <Badge color="blue">Config confirmada</Badge>}
+                {e.registration_type === "certified" && <Badge color="orange">Credenciado</Badge>}
               </div>
               <p className="text-sm text-gray-500 mt-1">{e.cnpj} · {e.city}, {e.state}</p>
-              <p className="text-sm text-gray-500">{e.email} · {e.phone}</p>
+              {e.email && <p className="text-sm text-gray-500">{e.email}{e.phone ? ` · ${e.phone}` : ""}</p>}
             </div>
           </div>
           <ReadonlyBadge />
@@ -86,26 +74,21 @@ export default function EmpresaFornecedoraDetalhe() {
       </div>
 
       {/* Métricas */}
-      <div className="grid grid-cols-6 gap-3 mb-4">
-        <MetricCard label="Cotações recebidas" value={e.metrics.received} />
-        <MetricCard label="Respondidas" value={e.metrics.answered} />
-        <MetricCard label="Taxa de resposta" value={`${e.metrics.response_rate}%`} />
-        <MetricCard label="Ordens de Compra" value={e.metrics.orders} />
-        <MetricCard label="Ticket médio" value={fmtBRL(e.metrics.avg_ticket)} />
-        <MetricCard label="Tempo médio resp." value={`${Math.round(e.metrics.avg_response_time_minutes / 60)}h`} />
+      <div className="grid grid-cols-4 gap-3 mb-4">
+        <MetricCard label="Cotações respondidas" value={e.finalized_answers_count ?? 0} />
+        <MetricCard label="Avaliações" value={e.total_reviews ?? 0} />
+        <MetricCard label="Nota média" value={e.rating ? Number(e.rating).toFixed(1) : "—"} />
+        <MetricCard label="Tempo médio resp." value={avgResponseH != null ? `${avgResponseH}h` : "—"} />
       </div>
 
       {/* Tabs */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="flex border-b border-gray-100 overflow-x-auto">
           {TABS.map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                 tab === t ? "border-[#1565C0] text-[#1565C0]" : "border-transparent text-gray-500 hover:text-gray-800"
-              }`}
-            >
+              }`}>
               {t}
             </button>
           ))}
@@ -116,26 +99,28 @@ export default function EmpresaFornecedoraDetalhe() {
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Endereço</h3>
-                <div className="space-y-2 text-sm">
-                  <p className="text-gray-700">{e.street}, {e.number}</p>
-                  <p className="text-gray-700">{e.neighbourhood} · CEP {e.zipcode}</p>
-                  <p className="text-gray-700">{e.city} — {e.state}</p>
+                <div className="space-y-1 text-sm text-gray-700">
+                  {e.street && <p>{e.street}{e.number ? `, ${e.number}` : ""}</p>}
+                  {e.neighbourhood && <p>{e.neighbourhood} · CEP {e.zipcode}</p>}
+                  <p>{e.city} — {e.state}</p>
                 </div>
               </div>
               <div>
                 <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Contato</h3>
-                <div className="space-y-2 text-sm">
-                  <p className="text-gray-700">{e.email}</p>
-                  <p className="text-gray-700">{e.phone}</p>
-                  {e.whatsapp && <p className="text-gray-700">WhatsApp: {e.whatsapp}</p>}
+                <div className="space-y-1 text-sm text-gray-700">
+                  {e.email && <p>{e.email}</p>}
+                  {e.phone && <p>{e.phone}</p>}
+                  {e.whatsapp && <p>WhatsApp: {e.whatsapp}</p>}
                 </div>
               </div>
-              <div>
-                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Operações</h3>
-                <div className="flex flex-wrap gap-1.5">
-                  {e.operation_types.map(op => <Badge key={op} color="blue">{op}</Badge>)}
+              {e.category_names && Array.isArray(e.category_names) && e.category_names.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Categorias</h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {e.category_names.map((cat: string) => <Badge key={cat} color="blue">{cat}</Badge>)}
+                  </div>
                 </div>
-              </div>
+              )}
               <div>
                 <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Configurações</h3>
                 <div className="space-y-2 text-sm">
@@ -143,8 +128,8 @@ export default function EmpresaFornecedoraDetalhe() {
                     ["CNPJ verificado", e.verified_cnpj],
                     ["Endereço confirmado", e.has_confirmed_address],
                     ["Config confirmada", e.has_confirmed_configuration],
+                    ["Entrega confirmada", e.has_confirmed_shipping],
                     ["Vitrine ativa", e.has_active_institutional_page],
-                    ["Autofill ativo", e.has_autofill_enabled],
                   ].map(([label, val]) => (
                     <div key={String(label)} className="flex items-center gap-2">
                       {val ? <CheckCircle2 size={14} className="text-green-600" /> : <XCircle size={14} className="text-gray-300" />}
@@ -157,93 +142,54 @@ export default function EmpresaFornecedoraDetalhe() {
           )}
 
           {tab === "Membros" && (
-            <table className="w-full text-sm">
-              <thead><tr className="border-b border-gray-100">
-                {["Nome", "E-mail", "Papel", "Status", "Entrada"].map(h => (
-                  <th key={h} className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide pb-2 pr-4">{h}</th>
-                ))}
-              </tr></thead>
-              <tbody className="divide-y divide-gray-50">
-                {e.membros.map((m, i) => (
-                  <tr key={i}>
-                    <td className="py-3 pr-4 font-medium text-gray-900">{m.name}</td>
-                    <td className="py-3 pr-4 text-gray-500">{m.email}</td>
-                    <td className="py-3 pr-4"><Badge color="blue">{m.role}</Badge></td>
-                    <td className="py-3 pr-4"><Badge color="green">{m.status}</Badge></td>
-                    <td className="py-3 text-gray-500">{fmtDate(m.joined)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            membros.length === 0 ? (
+              <p className="text-sm text-gray-400 py-4">Nenhum membro encontrado.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead><tr className="border-b border-gray-100">
+                  {["Nome", "E-mail", "Papel", "Ativo"].map(h => (
+                    <th key={h} className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide pb-2 pr-4">{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody className="divide-y divide-gray-50">
+                  {membros.map((m: any) => (
+                    <tr key={m.member_id ?? m.id}>
+                      <td className="py-3 pr-4 font-medium text-gray-900">{m.name}</td>
+                      <td className="py-3 pr-4 text-gray-500">{m.email}</td>
+                      <td className="py-3 pr-4"><Badge color="blue">{m.role}</Badge></td>
+                      <td className="py-3">{m.is_active ? <CheckCircle2 size={14} className="text-green-600" /> : <XCircle size={14} className="text-gray-300" />}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
           )}
 
-          {tab === "Cotações respondidas" && (
-            <table className="w-full text-sm">
-              <thead><tr className="border-b border-gray-100">
-                {["Código", "Comprador", "Data", "Status", "Valor total", "Tipo"].map(h => (
-                  <th key={h} className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide pb-2 pr-4">{h}</th>
-                ))}
-              </tr></thead>
-              <tbody className="divide-y divide-gray-50">
-                {e.cotacoes.map((c, i) => (
-                  <tr key={i} className="hover:bg-gray-50 cursor-pointer">
-                    <td className="py-3 pr-4"><Link href={`/admin/obraplay/cotacoes/${c.code}`} className="text-[#1565C0] font-mono font-medium hover:underline">{c.code}</Link></td>
-                    <td className="py-3 pr-4 text-gray-700">{c.buyer}</td>
-                    <td className="py-3 pr-4 text-gray-500">{fmtDate(c.date)}</td>
-                    <td className="py-3 pr-4"><Badge color={c.status === "convertida" ? "green" : "blue"}>{c.status}</Badge></td>
-                    <td className="py-3 pr-4 text-gray-900 font-medium">{fmtBRL(c.total)}</td>
-                    <td className="py-3"><Badge color={c.autofilled ? "orange" : "blue"}>{c.autofilled ? "Próprio" : "Marketplace"}</Badge></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-
-          {tab === "Avaliações" && (
-            <div className="space-y-4">
-              {e.avaliacoes.map((a, i) => (
-                <div key={i} className="border border-gray-100 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex gap-0.5">
-                      {Array.from({ length: 5 }).map((_, s) => (
-                        <Star key={s} size={14} className={s < a.nota ? "text-yellow-400 fill-yellow-400" : "text-gray-200 fill-gray-100"} />
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-400">
-                      <span>{fmtDate(a.date)}</span>
-                      <span>· OC: <Link href={`/admin/obraplay/ordens/${a.oc}`} className="text-[#1565C0] hover:underline">{a.oc}</Link></span>
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-700">{a.comentario}</p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {tab === "Vitrine" && (
-            <table className="w-full text-sm">
-              <thead><tr className="border-b border-gray-100">
-                {["Item", "Unidade", "Preço", "Disponível"].map(h => (
-                  <th key={h} className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide pb-2 pr-4">{h}</th>
-                ))}
-              </tr></thead>
-              <tbody className="divide-y divide-gray-50">
-                {e.vitrine.map((v, i) => (
-                  <tr key={i}>
-                    <td className="py-3 pr-4 font-medium text-gray-900">{v.name}</td>
-                    <td className="py-3 pr-4 text-gray-500">{v.unit}</td>
-                    <td className="py-3 pr-4 text-gray-900 font-medium">{fmtBRL(v.price)}</td>
-                    <td className="py-3">{v.disponivel ? <Badge color="green">Disponível</Badge> : <Badge color="gray">Indisponível</Badge>}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-
-          {(tab === "Ordens de Compra" || tab === "Documentos") && (
-            <div className="py-8 text-center text-sm text-gray-400">
-              Dados carregados via API ObraPlay. Conecte OBRAPLAY_API_TOKEN para visualizar.
-            </div>
+          {tab === "Cotações vinculadas" && (
+            cotacoes.length === 0 ? (
+              <p className="text-sm text-gray-400 py-4">Nenhuma cotação vinculada encontrada.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead><tr className="border-b border-gray-100">
+                  {["Identificador", "Empresa", "Itens", "Status", "Criada em"].map(h => (
+                    <th key={h} className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide pb-2 pr-4">{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody className="divide-y divide-gray-50">
+                  {cotacoes.map((c: any, i: number) => (
+                    <tr key={i} className="hover:bg-gray-50">
+                      <td className="py-3 pr-4">
+                        <Link href={`/admin/obraplay/cotacoes/${c.id ?? c.identifier}`} className="font-mono text-xs font-semibold text-[#1565C0] hover:underline">{c.identifier}</Link>
+                      </td>
+                      <td className="py-3 pr-4 text-gray-600 text-sm">{c.company_name ?? "—"}</td>
+                      <td className="py-3 pr-4 text-gray-700">{c.item_count ?? "—"}</td>
+                      <td className="py-3 pr-4"><Badge color={c.status === "Respondida" ? "green" : "gray"}>{c.status}</Badge></td>
+                      <td className="py-3 text-gray-500 text-xs">{fmtDate(c.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
           )}
         </div>
       </div>
