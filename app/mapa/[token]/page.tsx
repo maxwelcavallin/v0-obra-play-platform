@@ -193,7 +193,7 @@ export default function PublicMapaPage() {
   return (
     <div className="min-h-screen bg-[#F7F7F7] flex flex-col">
 
-      {/* ── Header ────────────────────────────────────────────────��────────── */}
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="bg-[#212121] sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -336,16 +336,21 @@ export default function PublicMapaPage() {
                             style={{ minWidth: 150 }}
                           >
                             <div className="flex flex-col items-center gap-0.5">
-                              <span className={`text-xs font-bold truncate max-w-[130px] ${isBestTotal ? "text-[#A5D6A7]" : "text-white"}`}>
+                              {s.is_recommended && (
+                                <span className="text-[9px] font-semibold text-[#9E9E9E] uppercase tracking-wide">
+                                  Credenciado
+                                </span>
+                              )}
+                              <span className="text-xs font-bold text-white truncate max-w-[130px]">
                                 {s.supplier_name}
                               </span>
                               {s.supplier_city && (
-                                <span className="text-[10px] text-white/30">
-                                  {s.supplier_city}
+                                <span className="text-[10px] text-white/40 flex items-center gap-0.5">
+                                  <MapPin size={8} /> {s.supplier_city}
                                 </span>
                               )}
                               {isBestTotal && (
-                                <span className="text-[9px] font-bold text-[#2E7D32] bg-[#E8F5E9] rounded-full px-2 py-0.5 mt-0.5">
+                                <span className="text-[9px] font-bold text-[#2E7D32] bg-[#E8F5E9] rounded-full px-2 py-0.5 mt-1">
                                   Melhor total
                                 </span>
                               )}
