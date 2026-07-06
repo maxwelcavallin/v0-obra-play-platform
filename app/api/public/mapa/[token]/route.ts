@@ -72,7 +72,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
     LEFT JOIN obras o ON o.id = c.obra_id
     LEFT JOIN companies co ON co.id = c.company_id
     WHERE c.id = ${cotacaoId}
-      AND c.deleted_at IS NULL
     LIMIT 1
   `
   if (!cotacao) return NextResponse.json({ error: "Cotação não encontrada" }, { status: 404 })
