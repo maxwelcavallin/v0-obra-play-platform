@@ -242,7 +242,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-[#EEEEEE]">
             <p className="op-section-title text-base">Últimas cotações</p>
             <Link
-              href="/cotacoes"
+              href="/dashboard/cotacoes"
               className="flex items-center gap-0.5 text-sm text-[#1565C0] font-medium"
             >
               Ver todas <ChevronRight size={16} />
@@ -252,7 +252,7 @@ export default function DashboardPage() {
           {MOCK_QUOTATIONS.map((q, idx) => (
             <Link
               key={q.id}
-              href={`/cotacoes/${q.id}`}
+              href={`/dashboard/cotacoes/${q.id}`}
               className={`flex items-start gap-3 px-3 py-2.5 hover:bg-[#F9F9F9] transition-colors block ${
                 idx < MOCK_QUOTATIONS.length - 1 ? "border-b border-[#EEEEEE]" : ""
               }`}
@@ -278,7 +278,7 @@ export default function DashboardPage() {
 
           <div className="px-3 py-2.5 border-t border-[#EEEEEE]">
             <Link
-              href="/cotacoes/nova"
+              href="/dashboard/cotacoes/nova"
               className="flex items-center justify-center gap-2 py-2 rounded-lg border border-dashed border-[#E0E0E0] text-sm text-[#1565C0] hover:bg-[#E3F2FD] transition-colors"
             >
               <Plus size={16} />
@@ -290,7 +290,7 @@ export default function DashboardPage() {
         {/* Histórico de transações */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <Link
-            href="/financeiro/historico"
+            href="/dashboard/financeiro/lancamentos"
             className="flex items-center justify-between px-3 py-3 hover:bg-[#F9F9F9] transition-colors"
           >
             <div>
@@ -306,7 +306,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-[#EEEEEE]">
             <p className="op-section-title text-base">Pendências</p>
             <Link
-              href="/financeiro"
+              href="/dashboard/financeiro"
               className="flex items-center gap-0.5 text-sm text-[#1565C0] font-medium"
             >
               Ver tudo <ChevronRight size={16} />
@@ -351,7 +351,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-[#EEEEEE]">
             <p className="op-section-title text-base">Minhas obras</p>
             <Link
-              href="/obras"
+              href="/dashboard/obras"
               className="flex items-center gap-0.5 text-sm text-[#1565C0] font-medium"
             >
               Ver todas <ChevronRight size={16} />
@@ -383,7 +383,7 @@ export default function DashboardPage() {
 
       {/* FAB mobile */}
       <Link
-        href="/cotacoes/nova"
+        href="/dashboard/cotacoes/nova"
         className="op-fab fixed bottom-20 right-4 md:hidden"
         aria-label="Nova cotação"
       >
