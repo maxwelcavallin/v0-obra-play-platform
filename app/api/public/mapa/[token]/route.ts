@@ -16,13 +16,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
   const cleanToken = token.replace(/[\s=]/g, "")
 
   // Valida formato básico (evita queries com inputs claramente inválidos)
-  if (!cleanToken || !/^[A-Za-z0-9+/=_-]{20,}$/.test(cleanToken)) {
+  if (!cleanToken || !/^[A-Za-z0-9_-]{20,}$/.test(cleanToken)) {
     return NextResponse.json({ error: "Link inválido" }, { status: 404 })
   }
 
   const db = neon(process.env.DATABASE_URL!)
 
-  // Garante que a tabela existe (idempotente)
+  // Garante que a tabela existe — sem nenhum DEFAULT com funções problemáticas
   await db`
     CREATE TABLE IF NOT EXISTS share_tokens (
       id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -35,15 +35,25 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
     )
   `
 
-  // Resolve token → cotacao_id
-  // Compara limpando newlines/espaços de tokens legados gerados sem chr(10) strip
-  const [st] = await db`
+  // Resolve token — tenta correspondência direta primeiro,
+  // depois com normalização de newlines para tokens legados
+  let [st] = await db`
     SELECT entity_id FROM share_tokens
-    WHERE replace(replace(token, chr(10), ''), ' ', '') = ${cleanToken}
+    WHERE token = ${cleanToken}
       AND entity_type = 'cotacao_mapa'
       AND (expires_at IS NULL OR expires_at > NOW())
     LIMIT 1
   `
+  if (!st) {
+    // Fallback: tokens gerados antes da correção podem ter \n embutido
+    ;[st] = await db`
+      SELECT entity_id FROM share_tokens
+      WHERE replace(replace(token, chr(10), ''), chr(13), '') = ${cleanToken}
+        AND entity_type = 'cotacao_mapa'
+        AND (expires_at IS NULL OR expires_at > NOW())
+      LIMIT 1
+    `
+  }
   if (!st) return NextResponse.json({ error: "Link inválido ou expirado" }, { status: 404 })
 
   const cotacaoId = st.entity_id as string

@@ -27,9 +27,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const [cotacao] = await db`SELECT id, company_id FROM cotacoes WHERE id = ${id}`
   if (!cotacao) return NextResponse.json({ error: "Não encontrada" }, { status: 404 })
 
-  // Busca token existente
+  // Busca token existente — normaliza newlines de tokens legados no retorno
   let [existing] = await db`
-    SELECT token FROM share_tokens
+    SELECT
+      replace(replace(token, chr(10), ''), chr(13), '') AS token
+    FROM share_tokens
     WHERE entity_type = 'cotacao_mapa' AND entity_id = ${id}
     LIMIT 1
   `
@@ -74,5 +76,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://v0-obra-play-platform.vercel.app"
-  return NextResponse.json({ token: existing.token, url: `${baseUrl}/mapa/${existing.token}` })
+  // Garante token sem newlines ou espaços antes de montar a URL
+  const cleanToken = (existing.token as string).replace(/[\s\r\n]/g, "")
+  return NextResponse.json({ token: cleanToken, url: `${baseUrl}/mapa/${cleanToken}` })
 }
