@@ -115,7 +115,7 @@ export default function AdminUsuarios() {
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-[#212121]">{u.name}</span>
                       {u.is_platform_admin && (
-                        <ShieldCheck size={13} className="text-[#1565C0]" title="Admin" />
+                        <ShieldCheck size={13} className="text-[#1565C0]" aria-label="Admin" />
                       )}
                     </div>
                   </td>

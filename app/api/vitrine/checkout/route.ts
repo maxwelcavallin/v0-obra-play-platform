@@ -5,7 +5,7 @@ import { getSession } from "@/lib/session"
 const db = neon(process.env.DATABASE_URL!)
 
 export async function POST(req: NextRequest) {
-  const session = await getSession(req)
+  const session = await getSession()
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
 
   const { obra_id, company_id, need_date, notes } = await req.json()

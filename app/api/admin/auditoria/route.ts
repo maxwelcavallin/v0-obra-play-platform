@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { neon } from "@neondatabase/serverless"
-import { requirePlatformAdmin } from "@/app/admin/middleware-check"
+import { requirePlatformAdminApi } from "@/app/admin/middleware-check"
 
 const db = neon(process.env.DATABASE_URL!)
 
 export async function GET(req: NextRequest) {
-  const adminCheck = await requirePlatformAdmin(req)
+  const adminCheck = await requirePlatformAdminApi(req)
   if (adminCheck) return adminCheck
 
   const { searchParams } = new URL(req.url)

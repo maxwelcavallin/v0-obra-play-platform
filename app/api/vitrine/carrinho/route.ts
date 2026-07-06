@@ -5,7 +5,7 @@ import { getSession } from "@/lib/session"
 const db = neon(process.env.DATABASE_URL!)
 
 export async function GET(req: NextRequest) {
-  const session = await getSession(req)
+  const session = await getSession()
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
 
   const items = await db`
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getSession(req)
+  const session = await getSession()
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
 
   const { item_id, quantity } = await req.json()
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const session = await getSession(req)
+  const session = await getSession()
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
 
   const { item_id } = await req.json()
