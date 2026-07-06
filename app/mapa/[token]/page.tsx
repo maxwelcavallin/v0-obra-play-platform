@@ -52,13 +52,11 @@ function fmtBRL(micros: number | null | undefined) {
   if (micros == null) return null
   return (micros / 1_000_000).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 }
-function fmtDate(d?: string | null) {
+function fmtDate(d?: string | Date | null) {
   if (!d) return null
-  // Se vier como ISO timestamp completo (contém T ou Z), usa direto
-  // Se vier só como YYYY-MM-DD, adiciona T00:00:00 para evitar offset de fuso
-  const parsed = /T|Z/.test(d) ? new Date(d) : new Date(d + "T00:00:00")
+  const parsed = d instanceof Date ? d : new Date(String(d))
   if (isNaN(parsed.getTime())) return null
-  return parsed.toLocaleDateString("pt-BR")
+  return parsed.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })
 }
 
 const PAYMENT_LABELS: Record<string, string> = {

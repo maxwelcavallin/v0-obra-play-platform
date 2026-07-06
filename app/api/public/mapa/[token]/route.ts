@@ -117,10 +117,20 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
     WHERE cotacao_id = ${cotacaoId}
   `
 
+  // Serializa datas explicitamente para string ISO para evitar
+  // que o driver Neon entregue Date objects que o cliente não consegue parsear
+  function serializeRow(row: Record<string, unknown>) {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(row)) {
+      out[k] = v instanceof Date ? v.toISOString() : v
+    }
+    return out
+  }
+
   return NextResponse.json({
-    cotacao,
-    items,
-    suppliers,
-    respostas,
+    cotacao:   serializeRow(cotacao as Record<string, unknown>),
+    items:     (items as Record<string, unknown>[]).map(serializeRow),
+    suppliers: (suppliers as Record<string, unknown>[]).map(serializeRow),
+    respostas: (respostas as Record<string, unknown>[]).map(serializeRow),
   })
 }
