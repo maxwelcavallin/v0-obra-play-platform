@@ -4,79 +4,118 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   LayoutDashboard,
-  Users,
   Building2,
-  Truck,
-  ShoppingBag,
+  FileText,
+  MessageSquare,
+  ShoppingCart,
+  Users,
   ClipboardList,
+  UserCircle,
+  HardHat,
+  Package,
+  Bot,
   LogOut,
   ChevronRight,
+  Store,
 } from "lucide-react"
 
-const NAV = [
-  { label: "Dashboard", href: "/admin", icon: LayoutDashboard, exact: true },
-  { label: "Usuários", href: "/admin/usuarios", icon: Users },
-  { label: "Empresas", href: "/admin/empresas", icon: Building2 },
-  { label: "Fornecedores", href: "/admin/fornecedores", icon: Truck },
-  { label: "Vitrine", href: "/admin/vitrine", icon: ShoppingBag },
-  { label: "Auditoria", href: "/admin/auditoria", icon: ClipboardList },
+const NAV_FORNECEDOR = [
+  { label: "Empresas Fornecedoras", href: "/admin/obraplay/empresas", icon: Building2 },
+  { label: "Cotações do Marketplace", href: "/admin/obraplay/cotacoes", icon: FileText },
+  { label: "Respostas de Cotação", href: "/admin/obraplay/respostas", icon: MessageSquare },
+  { label: "Ordens de Compra", href: "/admin/obraplay/ordens", icon: ShoppingCart },
+  { label: "Membros & Usuários", href: "/admin/obraplay/membros", icon: Users },
+  { label: "Auditoria de Credenciados", href: "/admin/obraplay/auditoria", icon: ClipboardList },
 ]
 
-export function AdminSidebar({ adminName, adminEmail }: { adminName: string; adminEmail: string }) {
+const NAV_CONSTRUCTOR = [
+  { label: "Usuários", href: "/admin/constructor/usuarios", icon: UserCircle },
+  { label: "Empresas Construtoras", href: "/admin/constructor/empresas", icon: HardHat },
+  { label: "Cotações", href: "/admin/constructor/cotacoes", icon: FileText },
+  { label: "Ordens de Compra", href: "/admin/constructor/ordens", icon: ShoppingCart },
+  { label: "Insumos padrão", href: "/admin/constructor/insumos", icon: Package },
+  { label: "Config Agente IA", href: "/admin/constructor/agente", icon: Bot },
+]
+
+function NavItem({ label, href, icon: Icon }: { label: string; href: string; icon: React.ElementType }) {
   const pathname = usePathname()
-
-  function isActive(href: string, exact?: boolean) {
-    return exact ? pathname === href : pathname.startsWith(href)
-  }
-
+  const active = pathname === href || pathname.startsWith(href + "/")
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-[240px] bg-[#0F1923] flex flex-col z-50">
+    <Link
+      href={href}
+      className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] font-medium transition-colors group ${
+        active ? "bg-[#1565C0] text-white" : "text-white/50 hover:text-white hover:bg-white/5"
+      }`}
+    >
+      <Icon size={14} className="shrink-0" />
+      <span className="flex-1 leading-tight">{label}</span>
+      {active && <ChevronRight size={12} className="opacity-60" />}
+    </Link>
+  )
+}
+
+export function AdminSidebar({ adminName, adminEmail }: { adminName: string; adminEmail: string }) {
+  return (
+    <aside className="fixed left-0 top-0 bottom-0 w-[220px] bg-[#0D1B3E] flex flex-col z-50 overflow-y-auto">
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-white/10">
+      <div className="px-4 py-4 border-b border-white/10 shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-[#1565C0] flex items-center justify-center">
-            <span className="text-white text-xs font-black">OP</span>
+          <div className="w-7 h-7 rounded-md bg-[#1565C0] flex items-center justify-center shrink-0">
+            <span className="text-white text-[10px] font-black">OP</span>
           </div>
-          <div>
-            <p className="text-white text-sm font-bold leading-none">ObraPlay</p>
-            <p className="text-white/40 text-[10px] leading-none mt-0.5">Admin</p>
+          <div className="min-w-0">
+            <p className="text-white text-sm font-bold leading-none">OBRA PLAY</p>
+            <span className="text-[9px] font-bold bg-[#E65100] text-white px-1.5 py-0.5 rounded mt-1 inline-block leading-none uppercase tracking-wide">
+              ADMIN
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5">
-        {NAV.map(({ label, href, icon: Icon, exact }) => {
-          const active = isActive(href, exact)
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                active
-                  ? "bg-[#1565C0] text-white"
-                  : "text-white/50 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <Icon size={16} />
-              <span className="flex-1">{label}</span>
-              {active && <ChevronRight size={13} className="opacity-60" />}
-            </Link>
-          )
-        })}
-      </nav>
+      {/* Dashboard */}
+      <div className="px-3 pt-3 shrink-0">
+        <NavItem label="Dashboard" href="/admin" icon={LayoutDashboard} />
+      </div>
+
+      {/* Seção ObraPlay Fornecedor */}
+      <div className="px-3 pt-4 shrink-0">
+        <div className="flex items-center gap-2 mb-2 px-1">
+          <Store size={11} className="text-[#FF9800]" />
+          <p className="text-[10px] font-bold text-[#FF9800] uppercase tracking-wider">ObraPlay Fornecedor</p>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          {NAV_FORNECEDOR.map(item => <NavItem key={item.href} {...item} />)}
+        </div>
+      </div>
+
+      {/* Separador */}
+      <div className="mx-4 my-4 border-t border-white/10 shrink-0" />
+
+      {/* Seção Constructor */}
+      <div className="px-3 shrink-0">
+        <div className="flex items-center gap-2 mb-2 px-1">
+          <HardHat size={11} className="text-[#64B5F6]" />
+          <p className="text-[10px] font-bold text-[#64B5F6] uppercase tracking-wider">ObraPlay Constructor</p>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          {NAV_CONSTRUCTOR.map(item => <NavItem key={item.href} {...item} />)}
+        </div>
+      </div>
+
+      {/* Spacer */}
+      <div className="flex-1" />
 
       {/* User */}
-      <div className="px-3 py-4 border-t border-white/10">
-        <div className="px-3 py-2.5 rounded-lg">
-          <p className="text-white text-xs font-semibold truncate">{adminName}</p>
+      <div className="px-3 py-3 border-t border-white/10 shrink-0">
+        <div className="px-3 py-2">
+          <p className="text-white text-[12px] font-semibold truncate">{adminName}</p>
           <p className="text-white/40 text-[10px] truncate mt-0.5">{adminEmail}</p>
         </div>
         <a
           href="/api/auth/logout"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/50 hover:text-white hover:bg-white/5 transition-colors mt-0.5"
+          className="flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] text-white/50 hover:text-white hover:bg-white/5 transition-colors"
         >
-          <LogOut size={16} />
+          <LogOut size={14} />
           <span>Sair</span>
         </a>
       </div>
