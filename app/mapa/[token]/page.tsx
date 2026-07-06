@@ -54,7 +54,11 @@ function fmtBRL(micros: number | null | undefined) {
 }
 function fmtDate(d?: string | null) {
   if (!d) return null
-  return new Date(d + "T00:00:00").toLocaleDateString("pt-BR")
+  // Se vier como ISO timestamp completo (contém T ou Z), usa direto
+  // Se vier só como YYYY-MM-DD, adiciona T00:00:00 para evitar offset de fuso
+  const parsed = /T|Z/.test(d) ? new Date(d) : new Date(d + "T00:00:00")
+  if (isNaN(parsed.getTime())) return null
+  return parsed.toLocaleDateString("pt-BR")
 }
 
 const PAYMENT_LABELS: Record<string, string> = {
