@@ -1,9 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
-import { Search, X, Building2, FileText, ShoppingCart, UserCircle } from "lucide-react"
-import { sql } from "@/lib/db"
+import { useRouter, usePathname } from "next/navigation"
+import { Search, X, Building2, FileText, ShoppingCart, UserCircle, Store, HardHat } from "lucide-react"
 
 type SearchResult = {
   type: "fornecedor" | "cotacao" | "oc" | "usuario"
@@ -42,7 +41,17 @@ export function AdminHeader({ breadcrumb, adminName }: { breadcrumb?: string; ad
   const [query, setQuery] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+  const pathname = usePathname()
   const { results, loading } = useGlobalSearch(query)
+
+  const isFornecedor = pathname.startsWith("/admin/obraplay")
+  const section = isFornecedor ? "fornecedor" : "constructor"
+
+  function switchSection(target: "fornecedor" | "constructor") {
+    if (target === section) return
+    if (target === "fornecedor") router.push("/admin/obraplay/empresas")
+    else router.push("/admin/constructor/usuarios")
+  }
 
   // Ctrl+K
   useEffect(() => {
@@ -152,6 +161,32 @@ export function AdminHeader({ breadcrumb, adminName }: { breadcrumb?: string; ad
             </div>
           </>
         )}
+      </div>
+
+      {/* Switcher de seção */}
+      <div className="flex items-center bg-gray-100 rounded-lg p-0.5 gap-0.5 shrink-0">
+        <button
+          onClick={() => switchSection("fornecedor")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+            section === "fornecedor"
+              ? "bg-white text-[#E65100] shadow-sm"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          <Store size={12} />
+          Fornecedor
+        </button>
+        <button
+          onClick={() => switchSection("constructor")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+            section === "constructor"
+              ? "bg-white text-[#1565C0] shadow-sm"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          <HardHat size={12} />
+          Constructor
+        </button>
       </div>
 
       {/* Avatar */}
