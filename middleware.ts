@@ -12,19 +12,25 @@ import { NextRequest, NextResponse } from "next/server"
  * tem empresa, e removido pelo completeOnboarding / setActiveCompany no cliente.
  */
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/dashboard/:path*", "/admin/:path*"],
 }
 
 export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // 1. Verifica presença de sessão
+  // 1. Verifica presença de sessão (tanto /dashboard quanto /admin)
   const sessionToken = req.cookies.get("op_session_token")?.value
   if (!sessionToken) {
     const url = req.nextUrl.clone()
     url.pathname = "/login"
     url.search = ""
     return NextResponse.redirect(url)
+  }
+
+  // Rotas /admin — só exige sessão aqui; a verificação is_platform_admin
+  // é feita server-side em requirePlatformAdmin() dentro de cada RSC/layout.
+  if (pathname.startsWith("/admin")) {
+    return NextResponse.next()
   }
 
   // 2. Se está no onboarding, deixa passar sempre
