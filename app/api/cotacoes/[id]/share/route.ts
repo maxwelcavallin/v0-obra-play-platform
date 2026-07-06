@@ -5,7 +5,7 @@ import { requireSession } from "@/lib/session"
 export const dynamic = "force-dynamic"
 
 // GET — retorna ou cria token de compartilhamento
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try { await requireSession() } catch { return NextResponse.json({ error: "Não autenticado" }, { status: 401 }) }
   const { id } = await params
   const db = neon(process.env.DATABASE_URL!)
@@ -75,8 +75,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://v0-obra-play-platform.vercel.app"
   // Garante token sem newlines ou espaços antes de montar a URL
   const cleanToken = (existing.token as string).replace(/[\s\r\n]/g, "")
+
+  // Usa o host real da request para não depender de NEXT_PUBLIC_APP_URL com valor incorreto
+  const proto = req.headers.get("x-forwarded-proto") ?? "https"
+  const host  = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "v0-obra-play-platform.vercel.app"
+  const baseUrl = `${proto}://${host}`
+
   return NextResponse.json({ token: cleanToken, url: `${baseUrl}/mapa/${cleanToken}` })
 }
