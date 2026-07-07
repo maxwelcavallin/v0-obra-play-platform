@@ -3,7 +3,7 @@
 import { useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
-import { Search, ExternalLink } from "lucide-react"
+import { Search, ExternalLink, RefreshCw } from "lucide-react"
 import { ReadonlyBadge, Badge, fmtDate, fmtBRL } from "@/components/admin/readonly-badge"
 import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
@@ -24,20 +24,29 @@ const STATUS_COLOR: Record<string, "green" | "blue" | "orange" | "gray" | "red">
   "Cancelada": "red",
 }
 
+const PERIOD_OPTIONS = [
+  { label: "Últimos 15 dias", value: "15" },
+  { label: "Últimos 30 dias", value: "30" },
+  { label: "Últimos 60 dias", value: "60" },
+  { label: "Últimos 90 dias", value: "90" },
+  { label: "Todos os registros", value: "todos" },
+]
+
 export default function OrdensObraPlayPage() {
   const [q, setQ] = useState("")
   const [query, setQuery] = useState("")
+  const [status, setStatus] = useState("")
+  const [days, setDays] = useState("15")
   const [page, setPage] = useState(1)
 
   const { sortKey, sortDir, toggle } = useSortable()
 
-  const { data, isLoading } = useSWR(
-    `/api/admin/obraplay/ordens?q=${encodeURIComponent(query)}&page=${page}${sortKey ? `&sort=${sortKey}&dir=${sortDir}` : ""}`,
-    fetcher
-  )
+  const swrKey = `/api/admin/obraplay/ordens?q=${encodeURIComponent(query)}&status=${encodeURIComponent(status)}&days=${days}&page=${page}${sortKey ? `&sort=${sortKey}&dir=${sortDir}` : ""}`
+  const { data, isLoading, isValidating, mutate } = useSWR(swrKey, fetcher)
 
   const rows: Ordem[] = data?.rows ?? []
   const total: number = data?.total ?? 0
+  const syncing = isValidating && !isLoading
 
   const COLS: ColDef[] = [
     { label: "Código OP",  key: "obraplay_order_code" },
@@ -55,7 +64,7 @@ export default function OrdensObraPlayPage() {
 
   return (
     <div className="max-w-[1280px] mx-auto">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-start justify-between mb-5 gap-3 flex-wrap">
         <div className="flex items-center gap-3">
           <div>
             <h1 className="text-lg font-bold text-gray-900">Ordens de Compra</h1>
@@ -63,12 +72,43 @@ export default function OrdensObraPlayPage() {
           </div>
           <ReadonlyBadge />
         </div>
-        <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input value={q} onChange={e => setQ(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleSearch()}
-            placeholder="Código, fornecedor ou empresa..."
-            className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg bg-white w-64 outline-none focus:border-[#1565C0]" />
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Período */}
+          <select value={days} onChange={e => { setDays(e.target.value); setPage(1) }}
+            className="text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-[#1565C0] bg-white font-medium text-gray-700">
+            {PERIOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+
+          {/* Status */}
+          <select value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}
+            className="text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-[#1565C0] bg-white">
+            <option value="">Todos os status</option>
+            <option value="Enviada ao fornecedor">Enviada ao fornecedor</option>
+            <option value="Confirmada">Confirmada</option>
+            <option value="Em andamento">Em andamento</option>
+            <option value="Entregue">Entregue</option>
+            <option value="Cancelada">Cancelada</option>
+          </select>
+
+          {/* Busca */}
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input value={q} onChange={e => setQ(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleSearch()}
+              placeholder="Código, fornecedor ou empresa..."
+              className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg bg-white w-56 outline-none focus:border-[#1565C0]" />
+          </div>
+
+          {/* Sincronizar */}
+          <button
+            onClick={() => mutate()}
+            disabled={syncing}
+            title="Atualizar dados"
+            className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white hover:border-[#1565C0] hover:text-[#1565C0] transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
+            {syncing ? "Atualizando..." : "Sincronizar"}
+          </button>
         </div>
       </div>
 
@@ -110,7 +150,10 @@ export default function OrdensObraPlayPage() {
           </tbody>
         </table>
         <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
-          <p className="text-xs text-gray-400">{total} ordem{total !== 1 ? "s" : ""}</p>
+          <p className="text-xs text-gray-400">
+            {total} ordem{total !== 1 ? "s" : ""}
+            {days !== "todos" && <span className="ml-1 text-gray-300">· últimos {days} dias</span>}
+          </p>
           <div className="flex items-center gap-2">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
               className="text-xs px-2 py-1 rounded border border-gray-200 disabled:opacity-40 hover:border-gray-400">Anterior</button>

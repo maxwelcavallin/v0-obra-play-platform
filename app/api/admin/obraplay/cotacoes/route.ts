@@ -21,10 +21,12 @@ export async function GET(req: NextRequest) {
 
   const db = neon(process.env.DATABASE_URL!)
   const { searchParams } = new URL(req.url)
-  const q = searchParams.get("q") ?? ""
+  const q      = searchParams.get("q")      ?? ""
   const status = searchParams.get("status") ?? ""
-  const page = Math.max(1, Number(searchParams.get("page") ?? 1))
-  const per = 50
+  const daysRaw = searchParams.get("days")
+  const days   = daysRaw === "todos" ? null : Math.max(1, Number(daysRaw ?? 15))
+  const page   = Math.max(1, Number(searchParams.get("page") ?? 1))
+  const per    = 50
   const orderBy = buildOrderBy(searchParams.get("sort"), searchParams.get("dir"), { columns: SORT, defaultOrder: "c.created_at DESC" })
 
   const rows = await db.query(
@@ -44,12 +46,13 @@ export async function GET(req: NextRequest) {
     LEFT JOIN cotacao_respostas cr ON cr.cotacao_id = c.id
     WHERE ($1 = '' OR c.identifier ILIKE $2 OR co.fantasy_name ILIKE $2)
       AND ($3 = '' OR c.status = $3)
+      AND ($4::int IS NULL OR c.created_at >= NOW() - ($4::int || ' days')::interval)
     GROUP BY c.id, co.fantasy_name, o.name
     ORDER BY ${orderBy}
-    LIMIT $4 OFFSET $5`,
-    [q, `%${q}%`, status, per, (page - 1) * per]
+    LIMIT $5 OFFSET $6`,
+    [q, `%${q}%`, status, days, per, (page - 1) * per]
   )
 
   const total = rows[0] ? Number(rows[0].total_count) : 0
-  return NextResponse.json({ rows, total, page, per })
+  return NextResponse.json({ rows, total, page, per, days: days ?? "todos" })
 }
