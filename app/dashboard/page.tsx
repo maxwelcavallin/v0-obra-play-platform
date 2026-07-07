@@ -16,6 +16,7 @@ import Link from "next/link"
 import { useState } from "react"
 import useSWR from "swr"
 import { useAuth } from "@/lib/auth-context"
+import { HomeBanner } from "@/components/dashboard/home-banner"
 
 // --- Helpers ---
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -157,6 +158,9 @@ export default function DashboardPage() {
           })}
         </div>
       </div>
+
+      {/* Carrossel de banners — exibido apenas quando há banners configurados */}
+      <HomeBanner />
 
       <div className="px-2 mt-3 pb-6 flex flex-col gap-3">
 

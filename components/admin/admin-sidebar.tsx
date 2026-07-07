@@ -17,6 +17,7 @@ import {
   LogOut,
   ChevronRight,
   Store,
+  Image,
 } from "lucide-react"
 
 const NAV_FORNECEDOR = [
@@ -34,6 +35,7 @@ const NAV_CONSTRUCTOR = [
   { label: "Cotações",              href: "/admin/constructor/cotacoes", icon: FileText },
   { label: "Ordens de Compra",      href: "/admin/constructor/ordens",   icon: ShoppingCart },
   { label: "Insumos padrão",        href: "/admin/constructor/insumos",  icon: Package },
+  { label: "Banners",               href: "/admin/constructor/banners",  icon: Image },
   { label: "Config Agente IA",      href: "/admin/constructor/agente",   icon: Bot },
 ]
 
