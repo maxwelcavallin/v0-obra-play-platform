@@ -1,3 +1,4 @@
+// route – admin/obraplay/respostas
 import { NextRequest, NextResponse } from "next/server"
 import { neon } from "@neondatabase/serverless"
 import { requirePlatformAdminApi } from "@/app/admin/middleware-check"
@@ -10,34 +11,33 @@ function cutoffDate(days: number | null): string | undefined {
   return d.toISOString().split("T")[0]
 }
 
-function scalar(v: any): string | null {
-  if (v == null) {
-    return null
+function toStr(val: unknown): string {
+  if (val == null) return ""
+  if (typeof val === "string") return val
+  if (typeof val === "number") return String(val)
+  if (typeof val === "object") {
+    const o = val as Record<string, unknown>
+    if (o.code != null) return String(o.code)
+    if (o.name != null) return String(o.name)
+    if (o.id   != null) return String(o.id)
+    return ""
   }
-  if (typeof v === "string") {
-    return v.length > 0 ? v : null
-  }
-  if (typeof v === "number") {
-    return String(v)
-  }
-  if (typeof v === "object") {
-    const picked = v.code != null
-      ? String(v.code)
-      : v.name != null
-        ? String(v.name)
-        : v.id != null
-          ? String(v.id)
-          : ""
-    return picked.length > 0 ? picked : null
-  }
-  return String(v)
+  return String(val)
 }
 
-function extractId(v: any): number | null {
+function scalar(v: unknown): string | null {
+  const s = toStr(v)
+  return s.length > 0 ? s : null
+}
+
+function extractId(v: unknown): number | null {
   if (v == null) return null
   if (typeof v === "number") return v
   if (typeof v === "string") return parseInt(v, 10) || null
-  if (typeof v === "object" && v.id != null) return Number(v.id) || null
+  if (typeof v === "object") {
+    const o = v as Record<string, unknown>
+    if (o.id != null) return Number(o.id) || null
+  }
   return null
 }
 
@@ -95,10 +95,13 @@ export async function GET(req: NextRequest) {
   const total: number = opResult.count ?? 0
 
   const opQuotationIds = [...new Set(
-    opRows.map(r => extractId(r.quotation)).filter((id): id is number => id != null)
+    opRows
+      .map(r => extractId(r.quotation))
+      .filter((id): id is number => id != null)
   )]
 
   const db = neon(process.env.DATABASE_URL!)
+
   type LocalQuotation = {
     company_name: string
     cotacao_id: string
@@ -109,6 +112,7 @@ export async function GET(req: NextRequest) {
     obra_name: string | null
     item_count: number
   }
+
   let quotationMap: Record<number, LocalQuotation> = {}
 
   if (opQuotationIds.length > 0) {
@@ -139,14 +143,14 @@ export async function GET(req: NextRequest) {
       )
       for (const row of local) {
         quotationMap[row.obraplay_quotation_id] = {
-          company_name:       row.company_name   ?? "—",
+          company_name:       row.company_name    ?? "—",
           cotacao_id:         row.id,
           cotacao_identifier: row.identifier,
-          requester_name:     row.requester_name ?? null,
+          requester_name:     row.requester_name  ?? null,
           requester_email:    row.requester_email ?? row.company_email ?? null,
           requester_phone:    row.requester_phone ?? row.company_phone ?? null,
-          obra_name:          row.obra_name       ?? null,
-          item_count:         row.item_count      ?? 0,
+          obra_name:          row.obra_name        ?? null,
+          item_count:         row.item_count       ?? 0,
         }
       }
     } catch (dbErr: any) {
@@ -156,23 +160,23 @@ export async function GET(req: NextRequest) {
 
   const rows = opRows.map(r => {
     const quotationId  = extractId(r.quotation)
-    const quotationObj = typeof r.quotation === "object" && r.quotation != null ? r.quotation : null
-    const local        = quotationId != null ? (quotationMap[quotationId] ?? null) : null
+    const quotationObj = (typeof r.quotation === "object" && r.quotation != null)
+      ? (r.quotation as Record<string, any>)
+      : null
+    const local = quotationId != null ? (quotationMap[quotationId] ?? null) : null
 
     const answered_at = scalar(r.answered_at) ?? null
     const status      = answered_at ? "Respondida" : "Em aberto"
 
-    const supplierName = scalar(
-      r.supplier != null
-        ? (r.supplier.display_name ?? r.supplier.full_name ?? r.supplier.short_name)
-        : r.supplier_name
-    ) ?? "—"
+    const supplierRaw = r.supplier != null
+      ? (r.supplier.display_name ?? r.supplier.full_name ?? r.supplier.short_name ?? null)
+      : (r.supplier_name ?? null)
+    const supplierName = scalar(supplierRaw) ?? "—"
 
-    const companyName = local?.company_name ?? scalar(
-      quotationObj?.company != null
-        ? (quotationObj.company.display_name ?? quotationObj.company.short_name)
-        : null
-    ) ?? "—"
+    const companyRaw = quotationObj?.company != null
+      ? (quotationObj.company.display_name ?? quotationObj.company.short_name ?? null)
+      : null
+    const companyName = local?.company_name ?? scalar(companyRaw) ?? "—"
 
     const quotationIdDisplay = quotationId != null ? `OP #${quotationId}` : "—"
 
@@ -180,25 +184,25 @@ export async function GET(req: NextRequest) {
       op_answer_id:         r.id,
       quotation_id:         quotationId,
       quotation_code:       scalar(quotationObj?.code) ?? scalar(r.quotation_code) ?? null,
-      cotacao_id:           local?.cotacao_id           ?? null,
-      cotacao_identifier:   local?.cotacao_identifier   ?? scalar(quotationObj?.code) ?? quotationIdDisplay,
+      cotacao_id:           local?.cotacao_id            ?? null,
+      cotacao_identifier:   local?.cotacao_identifier    ?? scalar(quotationObj?.code) ?? quotationIdDisplay,
       company_name:         companyName,
-      requester_name:       local?.requester_name       ?? scalar(quotationObj?.creator?.name) ?? null,
-      requester_email:      local?.requester_email      ?? null,
-      requester_phone:      local?.requester_phone      ?? null,
-      obra_name:            local?.obra_name             ?? scalar(quotationObj?.name) ?? null,
-      items_from_quotation: local?.item_count            ?? (typeof quotationObj?.items_count === "number" ? quotationObj.items_count : null),
+      requester_name:       local?.requester_name        ?? scalar(quotationObj?.creator?.name) ?? null,
+      requester_email:      local?.requester_email       ?? null,
+      requester_phone:      local?.requester_phone       ?? null,
+      obra_name:            local?.obra_name              ?? scalar(quotationObj?.name) ?? null,
+      items_from_quotation: local?.item_count             ?? (typeof quotationObj?.items_count === "number" ? quotationObj.items_count : null),
       supplier_name:        supplierName,
-      supplier_city:        scalar(r.supplier?.city)    ?? null,
-      supplier_email:       scalar(r.supplier_email)    ?? scalar(r.supplier?.email) ?? null,
-      supplier_foreign_id:  r.supplier?.id              ?? null,
-      payment_method:       scalar(r.payment_method)    ?? null,
-      arrival_estimate:     scalar(r.arrival_estimate)  ?? null,
-      valid_until:          scalar(r.valid_until)       ?? null,
+      supplier_city:        scalar(r.supplier?.city)     ?? null,
+      supplier_email:       scalar(r.supplier_email)     ?? scalar(r.supplier?.email) ?? null,
+      supplier_foreign_id:  r.supplier?.id               ?? null,
+      payment_method:       scalar(r.payment_method)     ?? null,
+      arrival_estimate:     scalar(r.arrival_estimate)   ?? null,
+      valid_until:          scalar(r.valid_until)        ?? null,
       answered_at,
       status,
       item_count:           Array.isArray(r.answered_items) ? r.answered_items.length : (r.items_count ?? 0),
-      observations:         scalar(r.observations)      ?? null,
+      observations:         scalar(r.observations)       ?? null,
     }
   })
 
