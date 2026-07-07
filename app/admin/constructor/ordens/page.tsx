@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { Search, ExternalLink } from "lucide-react"
-import { Badge, fmtDate, fmtBRL } from "@/components/admin/readonly-badge"
+import { Badge, fmtDate, fmtBRLReal } from "@/components/admin/readonly-badge"
 import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -78,7 +78,7 @@ export default function ConstructorOrdensPage() {
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600">{String(o.supplier_name ?? "—")}</td>
                 <td className="px-4 py-3"><Badge color={STATUS_COLOR[String(o.status)] ?? "gray"}>{String(o.status ?? "—")}</Badge></td>
-                <td className="px-4 py-3 font-medium text-gray-900">{fmtBRL(Number(o.total ?? 0))}</td>
+                <td className="px-4 py-3 font-medium text-gray-900">{fmtBRLReal(o.total as string)}</td>
                 <td className="px-4 py-3 text-xs text-gray-500">{fmtDate(String(o.created_at ?? ""))}</td>
                 <td className="px-4 py-3">
                   <Link href={`/admin/obraplay/ordens/${o.id}`} className="text-[#1565C0] hover:underline flex items-center gap-1 text-xs whitespace-nowrap">

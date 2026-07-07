@@ -4,7 +4,7 @@ import { use } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { ArrowLeft, Package } from "lucide-react"
-import { ReadonlyBadge, Badge, fmtDate, fmtBRL } from "@/components/admin/readonly-badge"
+import { ReadonlyBadge, Badge, fmtDate, fmtBRL, fmtBRLReal } from "@/components/admin/readonly-badge"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -55,7 +55,7 @@ export default function DetalheOCObraPlayPage({ params }: { params: Promise<{ id
               </div>
               <div>
                 <p className="text-[11px] text-gray-400 mb-1">Total</p>
-                <p className="text-sm font-bold text-gray-900">{fmtBRL(oc.total)}</p>
+                <p className="text-sm font-bold text-gray-900">{fmtBRLReal(oc.total)}</p>
               </div>
               <div>
                 <p className="text-[11px] text-gray-400 mb-1">Criada em</p>
@@ -92,7 +92,7 @@ export default function DetalheOCObraPlayPage({ params }: { params: Promise<{ id
               </div>
               <div>
                 <p className="text-[11px] text-gray-400 mb-1">Frete</p>
-                <p className="text-sm text-gray-700">{oc.freight_total ? fmtBRL(oc.freight_total) : "Grátis"}</p>
+                <p className="text-sm text-gray-700">{oc.freight_total ? fmtBRL(Number(oc.freight_total)) : "Grátis"}</p>
               </div>
               <div>
                 <p className="text-[11px] text-gray-400 mb-1">ID ObraPlay</p>

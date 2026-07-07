@@ -3,7 +3,7 @@
 import { useState } from "react"
 import useSWR from "swr"
 import { Download, X, ChevronDown, ChevronUp, TrendingUp } from "lucide-react"
-import { ReadonlyBadge, Badge, fmtBRL } from "@/components/admin/readonly-badge"
+import { ReadonlyBadge, Badge, fmtBRL, fmtBRLReal } from "@/components/admin/readonly-badge"
 import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -51,11 +51,11 @@ export default function AuditoriaCredenciadosPage() {
     const header = "Período,Fornecedor,CNPJ,Cotações Recebidas,Respondidas,Taxa%,OCs,Volume Total,Ticket Médio"
     const csvRows = rows.map(f => {
       const taxa = f.received > 0 ? ((f.answered / f.received) * 100).toFixed(1) : "0"
-      const ticket = f.ocs_total > 0 ? fmtBRL(f.volume_total_micros / f.ocs_total / 1_000_000) : "—"
+      const ticket = f.ocs_total > 0 ? fmtBRLReal(f.volume_total_micros / f.ocs_total / 1_000_000) : "—"
       return [
         `${MESES[mes - 1]}/${ano}`, f.name, f.cnpj ?? "",
         f.received, f.answered, taxa, f.ocs_total,
-        fmtBRL(f.volume_total_micros / 1_000_000), ticket,
+        fmtBRLReal(f.volume_total_micros / 1_000_000), ticket,
       ].join(",")
     })
     const csv = [header, ...csvRows].join("\n")
@@ -115,7 +115,7 @@ export default function AuditoriaCredenciadosPage() {
             )}
             {rows.map(f => {
               const taxa = f.received > 0 ? ((f.answered / f.received) * 100).toFixed(1) : "0"
-              const ticket = f.ocs_total > 0 ? fmtBRL(f.volume_total_micros / f.ocs_total / 1_000_000) : "—"
+              const ticket = f.ocs_total > 0 ? fmtBRLReal(f.volume_total_micros / f.ocs_total / 1_000_000) : "—"
               return (
                 <tr key={f.company_id} onClick={() => setDrawer(f)}
                   className="hover:bg-gray-50 transition-colors cursor-pointer">
@@ -132,7 +132,7 @@ export default function AuditoriaCredenciadosPage() {
                     </div>
                   </td>
                   <td className="px-3 py-3 text-center text-gray-700">{f.ocs_total}</td>
-                  <td className="px-3 py-3 font-medium text-gray-900 text-xs">{fmtBRL(f.volume_total_micros / 1_000_000)}</td>
+                  <td className="px-3 py-3 font-medium text-gray-900 text-xs">{fmtBRLReal(f.volume_total_micros / 1_000_000)}</td>
                   <td className="px-3 py-3 text-gray-700 text-xs">{ticket}</td>
                 </tr>
               )
@@ -164,8 +164,8 @@ export default function AuditoriaCredenciadosPage() {
                 ["Respondidas", drawer.answered],
                 ["Taxa", `${drawer.received > 0 ? ((drawer.answered / drawer.received) * 100).toFixed(1) : 0}%`],
                 ["OCs", drawer.ocs_total],
-                ["Volume Total", fmtBRL(drawer.volume_total_micros / 1_000_000)],
-                ["Ticket Médio", drawer.ocs_total > 0 ? fmtBRL(drawer.volume_total_micros / drawer.ocs_total / 1_000_000) : "—"],
+                ["Volume Total", fmtBRLReal(drawer.volume_total_micros / 1_000_000)],
+                ["Ticket Médio", drawer.ocs_total > 0 ? fmtBRLReal(drawer.volume_total_micros / drawer.ocs_total / 1_000_000) : "—"],
               ].map(([label, value]) => (
                 <div key={String(label)} className="bg-gray-50 rounded-xl p-3">
                   <p className="text-[10px] text-gray-400 uppercase tracking-wide">{label}</p>
@@ -191,7 +191,7 @@ export default function AuditoriaCredenciadosPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-medium text-gray-700">
-                          {c.total_micros != null ? fmtBRL(c.total_micros / 1_000_000) : "—"}
+                          {c.total_micros != null ? fmtBRLReal(c.total_micros / 1_000_000) : "—"}
                         </span>
                         {expandedCotacao === c.cotacao_id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                       </div>

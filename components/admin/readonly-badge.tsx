@@ -14,9 +14,18 @@ export function fmtDate(d?: string | Date | null) {
   return parsed.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })
 }
 
+/** Formata um valor em micros (÷ 1.000.000) para exibição em BRL */
 export function fmtBRL(micros?: number | null) {
   if (micros == null) return "—"
   return (micros / 1_000_000).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+}
+
+/** Formata um valor já em reais (sem divisão) para exibição em BRL */
+export function fmtBRLReal(value?: number | string | null) {
+  if (value == null || value === "") return "—"
+  const n = Number(value)
+  if (isNaN(n)) return "—"
+  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 }
 
 export function Badge({

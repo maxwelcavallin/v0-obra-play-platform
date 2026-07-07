@@ -4,7 +4,7 @@ import { useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { Search, ExternalLink, RefreshCw } from "lucide-react"
-import { ReadonlyBadge, Badge, fmtDate, fmtBRL } from "@/components/admin/readonly-badge"
+import { ReadonlyBadge, Badge, fmtDate, fmtBRL, fmtBRLReal } from "@/components/admin/readonly-badge"
 import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -132,7 +132,7 @@ export default function OrdensObraPlayPage() {
                 <td className="px-4 py-3"><Badge color={STATUS_COLOR[o.status] ?? "gray"}>{o.status}</Badge></td>
                 <td className="px-4 py-3 text-xs text-gray-500">{o.cotacao_identifier ?? "—"}</td>
                 <td className="px-4 py-3 font-medium text-gray-900">
-                  {o.total != null ? fmtBRL(Number(o.total)) : "—"}
+                  {o.total != null ? fmtBRLReal(o.total) : "—"}
                   {o.obraplay_sync_error && <span className="ml-1 text-red-400 text-[10px]" title={o.obraplay_sync_error}>!</span>}
                 </td>
                 <td className="px-4 py-3 text-xs text-gray-500">{fmtDate(o.created_at)}</td>
