@@ -51,7 +51,7 @@ export default function ConstructorOrdensPage() {
           <tbody className="divide-y divide-gray-50">
             {isLoading ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400">Carregando...</td></tr>
-            ) : filtered.length === 0 ? (
+            ) : items.length === 0 ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400">Nenhuma ordem encontrada.</td></tr>
             ) : items.map((o) => (
               <tr key={String(o.id)} className="hover:bg-gray-50 transition-colors">
