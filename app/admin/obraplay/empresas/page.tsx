@@ -30,8 +30,10 @@ export default function EmpresasFornecedorasPage() {
   const [nivel, setNivel] = useState("")
   const [page, setPage] = useState(1)
 
+  const { sortKey, sortDir, toggle } = useSortable()
+
   const { data, isLoading } = useSWR(
-    `/api/admin/obraplay/empresas?q=${encodeURIComponent(query)}&nivel=${nivel}&page=${page}`,
+    `/api/admin/obraplay/empresas?q=${encodeURIComponent(query)}&nivel=${nivel}&page=${page}${sortKey ? `&sort=${sortKey}&dir=${sortDir}` : ""}`,
     fetcher
   )
 
@@ -50,8 +52,8 @@ export default function EmpresasFornecedorasPage() {
     { label: "Sync",       key: "last_sync_at" },
     { label: "" },
   ]
-  const { sorted, sortKey, sortDir, toggle } = useSortable(rows as Record<string, unknown>[])
 
+  function handleSort(key: string) { toggle(key); setPage(1) }
   function handleSearch() { setQuery(q); setPage(1) }
 
   return (
@@ -88,7 +90,7 @@ export default function EmpresasFornecedorasPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={handleSort} />)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -98,7 +100,7 @@ export default function EmpresasFornecedorasPage() {
             {!isLoading && rows.length === 0 && (
               <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-400">Nenhuma empresa encontrada.</td></tr>
             )}
-            {(sorted as unknown as Company[]).map(c => (
+            {rows.map(c => (
               <tr key={c.company_id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3">
                   <p className="font-medium text-gray-900 truncate max-w-[200px]">{c.full_name || c.short_name}</p>

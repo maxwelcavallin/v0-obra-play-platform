@@ -30,8 +30,10 @@ export default function CotacoesMarketplacePage() {
   const [status, setStatus] = useState("")
   const [page, setPage] = useState(1)
 
+  const { sortKey, sortDir, toggle } = useSortable()
+
   const { data, isLoading } = useSWR(
-    `/api/admin/obraplay/cotacoes?q=${encodeURIComponent(query)}&status=${encodeURIComponent(status)}&page=${page}`,
+    `/api/admin/obraplay/cotacoes?q=${encodeURIComponent(query)}&status=${encodeURIComponent(status)}&page=${page}${sortKey ? `&sort=${sortKey}&dir=${sortDir}` : ""}`,
     fetcher
   )
 
@@ -49,8 +51,8 @@ export default function CotacoesMarketplacePage() {
     { label: "Status",       key: "status" },
     { label: "" },
   ]
-  const { sorted, sortKey, sortDir, toggle } = useSortable(rows as Record<string, unknown>[])
 
+  function handleSort(key: string) { toggle(key); setPage(1) }
   function handleSearch() { setQuery(q); setPage(1) }
 
   return (

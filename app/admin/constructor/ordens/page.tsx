@@ -18,12 +18,16 @@ const STATUS_COLOR: Record<string, "green" | "blue" | "orange" | "gray"> = {
 
 export default function ConstructorOrdensPage() {
   const [q, setQ] = useState("")
+  const [page, setPage] = useState(1)
+  const { sortKey, sortDir, toggle } = useSortable()
+
   const { data, isLoading } = useSWR(
-    `/api/admin/constructor/ordens?q=${encodeURIComponent(q)}`,
+    `/api/admin/constructor/ordens?q=${encodeURIComponent(q)}&page=${page}${sortKey ? `&sort=${sortKey}&dir=${sortDir}` : ""}`,
     fetcher
   )
   const items: Record<string, unknown>[] = data?.rows ?? []
   const total: number = data?.total ?? 0
+  const per: number = data?.per ?? 50
 
   const COLS: ColDef[] = [
     { label: "Código",     key: "identifier" },
@@ -34,7 +38,8 @@ export default function ConstructorOrdensPage() {
     { label: "Criada em",  key: "created_at" },
     { label: "" },
   ]
-  const { sorted, sortKey, sortDir, toggle } = useSortable(items)
+
+  function handleSort(key: string) { toggle(key); setPage(1) }
 
   return (
     <div className="max-w-[1280px] mx-auto">
@@ -55,7 +60,7 @@ export default function ConstructorOrdensPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={handleSort} />)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -63,7 +68,7 @@ export default function ConstructorOrdensPage() {
               <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400">Carregando...</td></tr>
             ) : items.length === 0 ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400">Nenhuma ordem encontrada.</td></tr>
-            ) : sorted.map((o) => (
+            ) : items.map((o) => (
               <tr key={String(o.id)} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3 font-mono font-semibold text-gray-900 text-xs">{String(o.identifier ?? o.obraplay_order_code ?? "—")}</td>
                 <td className="px-4 py-3">
@@ -84,8 +89,17 @@ export default function ConstructorOrdensPage() {
             ))}
           </tbody>
         </table>
-        <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
+        <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
           <p className="text-xs text-gray-400">{total} ordem{total !== 1 ? "s" : ""}</p>
+          {total > per && (
+            <div className="flex items-center gap-2">
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                className="px-3 py-1 text-xs rounded border border-gray-200 disabled:opacity-40">Anterior</button>
+              <span className="text-xs text-gray-500">Página {page} / {Math.ceil(total / per)}</span>
+              <button onClick={() => setPage(p => p + 1)} disabled={items.length < per}
+                className="px-3 py-1 text-xs rounded border border-gray-200 disabled:opacity-40">Próxima</button>
+            </div>
+          )}
         </div>
       </div>
     </div>

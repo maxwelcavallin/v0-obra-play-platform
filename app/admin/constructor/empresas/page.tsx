@@ -12,9 +12,10 @@ const fetcher = (url: string) => fetch(url).then(r => r.json())
 export default function EmpresasConstutorasPage() {
   const [q, setQ] = useState("")
   const [page, setPage] = useState(1)
+  const { sortKey, sortDir, toggle } = useSortable()
 
   const { data, isLoading } = useSWR(
-    `/api/admin/constructor/empresas?q=${encodeURIComponent(q)}&page=${page}`,
+    `/api/admin/constructor/empresas?q=${encodeURIComponent(q)}&page=${page}${sortKey ? `&sort=${sortKey}&dir=${sortDir}` : ""}`,
     fetcher
   )
 
@@ -32,8 +33,8 @@ export default function EmpresasConstutorasPage() {
     { label: "Cadastro", key: "created_at" },
     { label: "" },
   ]
-  const { sorted, sortKey, sortDir, toggle } = useSortable(rows)
 
+  function handleSort(key: string) { toggle(key); setPage(1) }
   function handleSearch(v: string) {
     setQ(v)
     setPage(1)
@@ -61,7 +62,7 @@ export default function EmpresasConstutorasPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={handleSort} />)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -76,7 +77,7 @@ export default function EmpresasConstutorasPage() {
                 </td>
               </tr>
             )}
-            {sorted.map((e: any) => (
+            {rows.map((e: any) => (
               <tr key={e.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3">
                   <p className="font-medium text-gray-900 truncate max-w-[180px]">{e.fantasy_name || e.company_name}</p>

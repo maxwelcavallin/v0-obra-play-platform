@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
 import { neon } from "@neondatabase/serverless"
 import { requirePlatformAdminApi } from "@/app/admin/middleware-check"
+import { buildOrderBy } from "@/lib/admin-sort"
+
+const SORT: Record<string, string> = {
+  identifier:   "c.identifier",
+  company_name: "co.fantasy_name",
+  obra_name:    "o.name",
+  status:       "c.status",
+  need_date:    "c.need_date",
+  created_at:   "c.created_at",
+  item_count:   "COUNT(ci.id)",
+}
 
 export async function GET(req: NextRequest) {
   const err = await requirePlatformAdminApi(req)
@@ -9,26 +20,27 @@ export async function GET(req: NextRequest) {
   const db = neon(process.env.DATABASE_URL!)
   const { searchParams } = new URL(req.url)
   const q = searchParams.get("q") ?? ""
+  const page = Math.max(1, Number(searchParams.get("page") ?? 1))
+  const per = 50
+  const orderBy = buildOrderBy(searchParams.get("sort"), searchParams.get("dir"), { columns: SORT, defaultOrder: "c.created_at DESC" })
 
-  const rows = await db`
-    SELECT
-      c.id, c.identifier, c.status, c.need_date, c.created_at,
+  const rows = await db(
+    `SELECT c.id, c.identifier, c.status, c.need_date, c.created_at,
       co.fantasy_name AS company_name, co.id AS company_id,
       o.name AS obra_name,
-      COUNT(ci.id)::int AS item_count
+      COUNT(ci.id)::int AS item_count,
+      COUNT(*) OVER() AS total_count
     FROM cotacoes c
     LEFT JOIN companies co ON co.id = c.company_id
     LEFT JOIN obras o ON o.id = c.obra_id
     LEFT JOIN cotacao_itens ci ON ci.cotacao_id = c.id
-    WHERE (
-      ${q} = '' OR
-      c.identifier ILIKE ${'%' + q + '%'} OR
-      co.fantasy_name ILIKE ${'%' + q + '%'}
-    )
+    WHERE ($1 = '' OR c.identifier ILIKE $2 OR co.fantasy_name ILIKE $2)
     GROUP BY c.id, co.fantasy_name, co.id, o.name
-    ORDER BY c.created_at DESC
-    LIMIT 200
-  `
+    ORDER BY ${orderBy}
+    LIMIT $3 OFFSET $4`,
+    [q, `%${q}%`, per, (page - 1) * per]
+  )
 
-  return NextResponse.json({ cotacoes: rows })
+  const total = rows[0] ? Number(rows[0].total_count) : 0
+  return NextResponse.json({ cotacoes: rows, total, page, per })
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react"
 
 export type SortDir = "asc" | "desc" | null
@@ -8,10 +8,15 @@ export type SortDir = "asc" | "desc" | null
 export interface ColDef {
   label: string
   key?: string        // campo do objeto; omitir em colunas não-sortáveis (ações, etc.)
-  numeric?: boolean   // true → ordena como número
+  numeric?: boolean   // informativo — ordenação é feita server-side
 }
 
-export function useSortable<T extends Record<string, unknown>>(rows: T[]) {
+/**
+ * Hook de estado de ordenação server-side.
+ * Retorna sortKey/sortDir para montar query params, e toggle para alternar.
+ * Ciclo: sem sort → asc → desc → sem sort.
+ */
+export function useSortable(_rows?: unknown[]) {
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<SortDir>(null)
 
@@ -27,20 +32,8 @@ export function useSortable<T extends Record<string, unknown>>(rows: T[]) {
     }
   }
 
-  const sorted = useMemo(() => {
-    if (!sortKey || !sortDir) return rows
-    return [...rows].sort((a, b) => {
-      const av = a[sortKey] ?? ""
-      const bv = b[sortKey] ?? ""
-      const an = Number(av)
-      const bn = Number(bv)
-      const numeric = !Number.isNaN(an) && !Number.isNaN(bn)
-      let cmp = numeric
-        ? an - bn
-        : String(av).localeCompare(String(bv), "pt-BR", { sensitivity: "base" })
-      return sortDir === "desc" ? -cmp : cmp
-    })
-  }, [rows, sortKey, sortDir])
+  // sorted é igual a _rows — a ordenação real acontece no banco via query params
+  const sorted = _rows ?? []
 
   return { sorted, sortKey, sortDir, toggle }
 }
@@ -70,8 +63,8 @@ export function SortableTh({ col, sortKey, sortDir, onToggle, className = "" }: 
     >
       <span className="inline-flex items-center gap-1">
         {col.label}
-        {active && sortDir === "asc"  && <ChevronUp  size={12} className="text-[#1565C0]" />}
-        {active && sortDir === "desc" && <ChevronDown size={12} className="text-[#1565C0]" />}
+        {active && sortDir === "asc"  && <ChevronUp   size={12} className="text-[#1565C0]" />}
+        {active && sortDir === "desc" && <ChevronDown  size={12} className="text-[#1565C0]" />}
         {!active && <ChevronsUpDown size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />}
       </span>
     </th>

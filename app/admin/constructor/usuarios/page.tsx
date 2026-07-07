@@ -19,9 +19,11 @@ export default function UsuariosConstructorPage() {
   const [query, setQuery] = useState("")
   const [statusFiltro, setStatusFiltro] = useState<"todos" | "ativo" | "inativo">("todos")
   const [page, setPage] = useState(1)
+  const { sortKey, sortDir, toggle } = useSortable()
 
+  const statusParam = statusFiltro === "todos" ? "" : statusFiltro === "ativo" ? "active" : "inactive"
   const { data, isLoading } = useSWR(
-    `/api/admin/constructor/usuarios?q=${encodeURIComponent(query)}&status=${statusFiltro === "todos" ? "" : statusFiltro === "ativo" ? "active" : "inactive"}&page=${page}`,
+    `/api/admin/constructor/usuarios?q=${encodeURIComponent(query)}&status=${statusParam}&page=${page}${sortKey ? `&sort=${sortKey}&dir=${sortDir}` : ""}`,
     fetcher
   )
 
@@ -37,8 +39,8 @@ export default function UsuariosConstructorPage() {
     { label: "Status",   key: "is_active" },
     { label: "" },
   ]
-  const { sorted, sortKey, sortDir, toggle } = useSortable(rows as Record<string, unknown>[])
 
+  function handleSort(key: string) { toggle(key); setPage(1) }
   function handleSearch() { setQuery(q); setPage(1) }
 
   return (
@@ -73,7 +75,7 @@ export default function UsuariosConstructorPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={handleSort} />)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -83,7 +85,7 @@ export default function UsuariosConstructorPage() {
             {!isLoading && rows.length === 0 && (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400">Nenhum usuário encontrado.</td></tr>
             )}
-            {(sorted as unknown as Usuario[]).map(u => (
+            {rows.map(u => (
               <tr key={u.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
                 <td className="px-4 py-3 text-gray-500 text-xs">{u.email}</td>

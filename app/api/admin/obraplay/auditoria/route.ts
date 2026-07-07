@@ -53,5 +53,22 @@ export async function GET(req: NextRequest) {
     ORDER BY volume_total_micros DESC
   `
 
+  // Sort server-side sobre o resultado in-memory (poucos registros por mês)
+  const sortParam = new URL(req.url).searchParams.get("sort")
+  const dirParam  = new URL(req.url).searchParams.get("dir")
+  const SORT_KEYS: Record<string, string> = {
+    name: "name", received: "received", answered: "answered",
+    ocs_total: "ocs_total", volume_total_micros: "volume_total_micros",
+  }
+  if (sortParam && SORT_KEYS[sortParam]) {
+    rows.sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+      const av = Number(a[sortParam] ?? 0)
+      const bv = Number(b[sortParam] ?? 0)
+      const sv = String(a[sortParam] ?? "").localeCompare(String(b[sortParam] ?? ""), "pt-BR")
+      const cmp = !isNaN(av) && !isNaN(bv) ? av - bv : sv
+      return dirParam === "asc" ? cmp : -cmp
+    })
+  }
+
   return NextResponse.json({ rows })
 }
