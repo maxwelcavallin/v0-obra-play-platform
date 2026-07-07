@@ -25,8 +25,15 @@ export default function RespostaDetalhe() {
   const r = data
   const itens: any[] = r.itens ?? []
 
-  // Totais calculados a partir dos micros
-  const subtotal = itens.reduce((acc: number, it: any) => acc + (Number(it.total_quantity_micros) || 0), 0)
+  // Totais calculados corretamente:
+  // unit_price_micros está em micros (÷1_000_000 = R$)
+  // quantity_answered é número normal (não micros)
+  // total por item = unit_price_micros * quantity_answered / 1_000_000
+  const subtotal = itens.reduce((acc: number, it: any) => {
+    const price = Number(it.unit_price_micros) || 0
+    const qty = Number(it.quantity_answered) || 0
+    return acc + (price * qty)
+  }, 0)
   const frete = itens[0]?.total_freight_micros ? Number(itens[0].total_freight_micros) : 0
 
   return (
@@ -63,12 +70,10 @@ export default function RespostaDetalhe() {
               <p className="mt-3 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">{r.observations}</p>
             )}
           </div>
-          {subtotal > 0 && (
-            <div className="text-right shrink-0">
-              <p className="text-xs text-gray-400 mb-0.5">Total estimado</p>
-              <p className="text-2xl font-bold text-gray-900">{fmtBRL(subtotal / 1_000_000)}</p>
-            </div>
-          )}
+          <div className="text-right shrink-0">
+            <p className="text-xs text-gray-400 mb-0.5">Total estimado</p>
+            <p className="text-2xl font-bold text-gray-900">{fmtBRL((subtotal + frete) / 1_000_000)}</p>
+          </div>
         </div>
       </div>
 
@@ -93,14 +98,18 @@ export default function RespostaDetalhe() {
                     <tr key={`${it.cotacao_item_id}-${it.op_item_id}`}>
                       <td className="py-3 pr-4 font-medium text-gray-900">{it.item_name}</td>
                       <td className="py-3 pr-4 text-gray-700">
-                        {it.total_quantity_micros ? (Number(it.total_quantity_micros) / 1_000_000).toLocaleString("pt-BR") : Number(it.item_quantity).toLocaleString("pt-BR")}
+                        {/* quantity_answered já é número normal, não micros */}
+                        {Number(it.quantity_answered).toLocaleString("pt-BR")}
                       </td>
                       <td className="py-3 pr-4 text-gray-500">{it.item_unit}</td>
                       <td className="py-3 pr-4 text-gray-700">
-                        {it.unit_price_micros ? fmtBRL(Number(it.unit_price_micros) / 1_000_000) : "—"}
+                        {Number(it.unit_price_micros) > 0 ? fmtBRL(Number(it.unit_price_micros) / 1_000_000) : "—"}
                       </td>
                       <td className="py-3 pr-4 font-medium text-gray-900">
-                        {it.total_quantity_micros ? fmtBRL(Number(it.total_quantity_micros) / 1_000_000) : "—"}
+                        {/* total = preço_unitário × quantidade_respondida */}
+                        {Number(it.unit_price_micros) > 0 && Number(it.quantity_answered) > 0
+                          ? fmtBRL((Number(it.unit_price_micros) * Number(it.quantity_answered)) / 1_000_000)
+                          : "—"}
                       </td>
                       <td className="py-3 pr-4">
                         {it.available
