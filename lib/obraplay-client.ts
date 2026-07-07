@@ -291,6 +291,30 @@ export const obraplay = {
   },
 
   quotations: {
+    async list(params: {
+      page?: number
+      page_size?: number
+      search?: string
+      status?: string
+      created_at__gte?: string  // ISO date
+      created_at__lte?: string
+      ordering?: string
+    }): Promise<OPListResponse<any>> {
+      const qs = new URLSearchParams()
+      if (params.search)           qs.set("search",           params.search)
+      if (params.status)           qs.set("status",           params.status)
+      if (params.created_at__gte)  qs.set("created_at__gte",  params.created_at__gte)
+      if (params.created_at__lte)  qs.set("created_at__lte",  params.created_at__lte)
+      if (params.ordering)         qs.set("ordering",         params.ordering)
+      qs.set("page",      String(params.page      ?? 1))
+      qs.set("page_size", String(params.page_size ?? 50))
+      return request<OPListResponse<any>>(`/api/quotations/?${qs}`)
+    },
+
+    async get(id: number): Promise<any> {
+      return request<any>(`/api/quotations/${id}/`)
+    },
+
     async createNested(payload: OPQuotationNestedPayload): Promise<OPQuotationCreated> {
       return request<OPQuotationCreated>("/api/quotations/nested/", {
         method: "POST",
@@ -310,6 +334,26 @@ export const obraplay = {
         method: "POST",
         body: JSON.stringify(payload),
       })
+    },
+
+    async listAnswers(params: {
+      page?: number
+      page_size?: number
+      search?: string
+      quotation?: number
+      answered_at__gte?: string  // ISO date
+      answered_at__lte?: string
+      ordering?: string
+    }): Promise<OPListResponse<any>> {
+      const qs = new URLSearchParams()
+      if (params.search)              qs.set("search",              params.search)
+      if (params.quotation)           qs.set("quotation",           String(params.quotation))
+      if (params.answered_at__gte)    qs.set("answered_at__gte",    params.answered_at__gte)
+      if (params.answered_at__lte)    qs.set("answered_at__lte",    params.answered_at__lte)
+      if (params.ordering)            qs.set("ordering",            params.ordering)
+      qs.set("page",      String(params.page      ?? 1))
+      qs.set("page_size", String(params.page_size ?? 50))
+      return request<OPListResponse<any>>(`/api/quotation_answers/?${qs}`)
     },
 
     async getAnswers(opQuotationId: number): Promise<any[]> {
@@ -339,11 +383,24 @@ export const obraplay = {
       return request<any>(`/api/orders/${id}/`)
     },
 
-    async list(params: { company?: number; page?: number }): Promise<any> {
+    async list(params: {
+      company?: number
+      page?: number
+      page_size?: number
+      search?: string
+      created_at__gte?: string
+      created_at__lte?: string
+      ordering?: string
+    }): Promise<OPListResponse<any>> {
       const qs = new URLSearchParams()
-      if (params.company) qs.set("company", String(params.company))
-      qs.set("page", String(params.page ?? 1))
-      return request<any>(`/api/orders/?${qs}`)
+      if (params.company)           qs.set("company",          String(params.company))
+      if (params.search)            qs.set("search",           params.search)
+      if (params.created_at__gte)   qs.set("created_at__gte",  params.created_at__gte)
+      if (params.created_at__lte)   qs.set("created_at__lte",  params.created_at__lte)
+      if (params.ordering)          qs.set("ordering",         params.ordering)
+      qs.set("page",      String(params.page      ?? 1))
+      qs.set("page_size", String(params.page_size ?? 50))
+      return request<OPListResponse<any>>(`/api/orders/?${qs}`)
     },
 
     async cancel(opOrderId: number, cancelReason: string): Promise<any> {

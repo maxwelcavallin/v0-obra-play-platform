@@ -73,7 +73,7 @@ export default function RespostasCotacaoPage() {
         <div className="flex items-center gap-3">
           <div>
             <h1 className="text-lg font-bold text-gray-900">Respostas de Cotação</h1>
-            <p className="text-sm text-gray-400">Banco de dados local — Constructor</p>
+            <p className="text-sm text-gray-400">API ObraPlay em tempo real</p>
           </div>
           <ReadonlyBadge />
         </div>
