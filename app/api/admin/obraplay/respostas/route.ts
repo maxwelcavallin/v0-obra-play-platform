@@ -1,4 +1,4 @@
-// route – admin/obraplay/respostas
+// route – admin/obraplay/respostas  (spec v2 – /auth/users/quotation_answers/)
 import { NextRequest, NextResponse } from "next/server"
 import { neon } from "@neondatabase/serverless"
 import { requirePlatformAdminApi } from "@/app/admin/middleware-check"
@@ -41,32 +41,66 @@ function extractId(v: unknown): number | null {
   return null
 }
 
+/** Calcula o subtotal de uma resposta somando os itens disponíveis (em micros ÷ 1M) */
+function calcSubtotal(answered_items: any[]): number {
+  if (!Array.isArray(answered_items)) return 0
+  return answered_items
+    .filter(i => i.available === true)
+    .reduce((acc, i) => {
+      const price = Number(i.unit_price_micros ?? 0) / 1_000_000
+      const qty   = Number(i.total_quantity_micros ?? 0) / 1_000_000
+      return acc + price * qty
+    }, 0)
+}
+
 export async function GET(req: NextRequest) {
   const err = await requirePlatformAdminApi(req)
   if (err) return err
 
   const { searchParams } = new URL(req.url)
-  const q       = searchParams.get("q")    ?? ""
-  const daysRaw = searchParams.get("days")
-  const days    = daysRaw === "todos" ? null : Math.max(1, Number(daysRaw ?? 15))
-  const page    = Math.max(1, Number(searchParams.get("page") ?? 1))
+  const q        = searchParams.get("q")       ?? ""
+  const daysRaw  = searchParams.get("days")
+  const days     = daysRaw === "todos" ? null : Math.max(1, Number(daysRaw ?? 15))
+  const page     = Math.max(1, Number(searchParams.get("page") ?? 1))
   const sortParam = searchParams.get("sort") ?? ""
   const sortDir   = searchParams.get("dir")  ?? "desc"
+  const statusFilter = searchParams.get("status") ?? ""
+  const tipoFilter   = searchParams.get("tipo")   ?? ""  // "marketplace" | "proprio"
 
   const ORDER_MAP: Record<string, string> = {
-    answered_at:    "answered_at",
-    supplier_name:  "supplier__short_name",
-    payment_method: "payment_method",
+    answered_at:   "published_at",
+    supplier_name: "company__short_name",
+    valid_until:   "valid_until",
   }
   const ordering = sortParam && ORDER_MAP[sortParam]
     ? `${sortDir === "asc" ? "" : "-"}${ORDER_MAP[sortParam]}`
-    : "-answered_at"
+    : "-published_at"
+
+  // Mapeia filtro de tipo para parâmetro autofilled
+  let autofilledParam: boolean | undefined = undefined
+  if (tipoFilter === "marketplace") autofilledParam = false
+  if (tipoFilter === "proprio")     autofilledParam = true
+
+  // Mapeia filtro de status para parâmetros booleanos da API
+  let isAnswered: boolean | undefined  = undefined
+  let isPending:  boolean | undefined  = undefined
+  let isExpired:  boolean | undefined  = undefined
+  let isConverted: boolean | undefined = undefined
+  if (statusFilter === "Respondida")  isAnswered  = true
+  if (statusFilter === "Em aberto")   isPending   = true
+  if (statusFilter === "Expirada")    isExpired   = true
+  if (statusFilter === "Convertida")  isConverted = true
 
   const baseParams = {
-    search:    q || undefined,
     page,
-    page_size: 50,
+    page_size: 20,
     ordering,
+    ...(q ? { search: q } : {}),
+    ...(autofilledParam  != null ? { autofilled:   autofilledParam }  : {}),
+    ...(isAnswered       != null ? { is_answered:  isAnswered }       : {}),
+    ...(isPending        != null ? { is_pending:   isPending }        : {}),
+    ...(isExpired        != null ? { is_expired:   isExpired }        : {}),
+    ...(isConverted      != null ? { is_converted: isConverted }      : {}),
   }
 
   let opResult: { results: any[]; count: number } = { results: [], count: 0 }
@@ -75,7 +109,7 @@ export async function GET(req: NextRequest) {
   try {
     opResult = await obraplay.quotations.listAnswers({
       ...baseParams,
-      answered_at__gte: cutoffDate(days),
+      published_at__gte: cutoffDate(days),
     })
   } catch (e: any) {
     console.error("[respostas] API error (with date filter):", e?.message)
@@ -94,6 +128,7 @@ export async function GET(req: NextRequest) {
   const opRows: any[] = opResult.results ?? []
   const total: number = opResult.count ?? 0
 
+  // Enriquece com dados locais via obraplay_quotation_id
   const opQuotationIds = [...new Set(
     opRows
       .map(r => extractId(r.quotation))
@@ -132,8 +167,8 @@ export async function GET(req: NextRequest) {
            o.name            AS obra_name,
            COUNT(ci.id)::int AS item_count
          FROM cotacoes c
-         LEFT JOIN companies co ON co.id = c.company_id
-         LEFT JOIN obras      o  ON o.id  = c.obra_id
+         LEFT JOIN companies     co ON co.id = c.company_id
+         LEFT JOIN obras          o  ON o.id  = c.obra_id
          LEFT JOIN cotacao_itens ci ON ci.cotacao_id = c.id
          WHERE c.obraplay_quotation_id = ANY(ARRAY[${placeholders}]::int[])
          GROUP BY c.id, c.obraplay_quotation_id, c.identifier,
@@ -143,14 +178,14 @@ export async function GET(req: NextRequest) {
       )
       for (const row of local) {
         quotationMap[row.obraplay_quotation_id] = {
-          company_name:       row.company_name    ?? "—",
+          company_name:       row.company_name     ?? "—",
           cotacao_id:         row.id,
           cotacao_identifier: row.identifier,
-          requester_name:     row.requester_name  ?? null,
-          requester_email:    row.requester_email ?? row.company_email ?? null,
-          requester_phone:    row.requester_phone ?? row.company_phone ?? null,
-          obra_name:          row.obra_name        ?? null,
-          item_count:         row.item_count       ?? 0,
+          requester_name:     row.requester_name   ?? null,
+          requester_email:    row.requester_email  ?? row.company_email ?? null,
+          requester_phone:    row.requester_phone  ?? row.company_phone ?? null,
+          obra_name:          row.obra_name         ?? null,
+          item_count:         row.item_count        ?? 0,
         }
       }
     } catch (dbErr: any) {
@@ -165,46 +200,77 @@ export async function GET(req: NextRequest) {
       : null
     const local = quotationId != null ? (quotationMap[quotationId] ?? null) : null
 
-    const answered_at = scalar(r.answered_at) ?? null
-    const status      = answered_at ? "Respondida" : "Em aberto"
+    // Status baseado em answered_at (campo published_at / answered_at)
+    const answeredAt = scalar(r.answered_at) ?? scalar(r.published_at) ?? null
+    const status     = answeredAt ? "Respondida" : "Em aberto"
 
-    const supplierRaw = r.supplier != null
-      ? (r.supplier.display_name ?? r.supplier.full_name ?? r.supplier.short_name ?? null)
-      : (r.supplier_name ?? null)
-    const supplierName = scalar(supplierRaw) ?? "—"
-
-    const companyRaw = quotationObj?.company != null
-      ? (quotationObj.company.display_name ?? quotationObj.company.short_name ?? null)
+    // Fornecedor: item.company (objeto) conforme spec
+    const companyObj = (typeof r.company === "object" && r.company != null)
+      ? (r.company as Record<string, any>)
       : null
-    const companyName = local?.company_name ?? scalar(companyRaw) ?? "—"
+    const supplierName = companyObj
+      ? (companyObj.short_name ?? companyObj.full_name ?? companyObj.display_name ?? "—")
+      : (scalar(r.company) ?? "—")
 
-    const quotationIdDisplay = quotationId != null ? `OP #${quotationId}` : "—"
+    // Nome do solicitante: item.name (campo raiz, não dentro de quotation)
+    const requesterName  = scalar(r.name)  ?? local?.requester_name  ?? null
+    const requesterEmail = scalar(r.email) ?? local?.requester_email ?? null
+    const requesterPhone = scalar(r.phone) ?? local?.requester_phone ?? null
+
+    // Cidade/estado do solicitante
+    const city  = scalar(r.city)  ?? null
+    const state = scalar(r.state) ?? null
+
+    // Itens disponíveis (answered_items.filter(i => i.available).length)
+    const answeredItems: any[] = Array.isArray(r.answered_items) ? r.answered_items : []
+    const availableItems = answeredItems.filter(i => i.available === true)
+    const itemCount      = availableItems.length
+
+    // Valor total calculado pelos itens disponíveis
+    const subtotal = calcSubtotal(answeredItems)
+
+    // Tipo: marketplace (autofilled=false) ou próprio (autofilled=true)
+    const tipo = r.autofilled === true ? "Próprio" : "Marketplace"
 
     return {
       op_answer_id:         r.id,
       quotation_id:         quotationId,
-      quotation_code:       scalar(quotationObj?.code) ?? scalar(r.quotation_code) ?? null,
-      cotacao_id:           local?.cotacao_id            ?? null,
-      cotacao_identifier:   local?.cotacao_identifier    ?? scalar(quotationObj?.code) ?? quotationIdDisplay,
-      company_name:         companyName,
-      requester_name:       local?.requester_name        ?? scalar(quotationObj?.creator?.name) ?? null,
-      requester_email:      local?.requester_email       ?? null,
-      requester_phone:      local?.requester_phone       ?? null,
-      obra_name:            local?.obra_name              ?? scalar(quotationObj?.name) ?? null,
-      items_from_quotation: local?.item_count             ?? (typeof quotationObj?.items_count === "number" ? quotationObj.items_count : null),
+      quotation_code:       scalar(quotationObj?.code) ?? null,
+      cotacao_id:           local?.cotacao_id           ?? null,
+      cotacao_identifier:   local?.cotacao_identifier   ?? scalar(quotationObj?.code) ?? (quotationId ? `OP #${quotationId}` : "—"),
+      // Solicitante (construtor)
+      company_name:         local?.company_name         ?? "—",
+      requester_name:       requesterName,
+      requester_email:      requesterEmail,
+      requester_phone:      requesterPhone,
+      city,
+      state,
+      obra_name:            local?.obra_name             ?? null,
+      items_from_quotation: local?.item_count            ?? (quotationObj?.items_count ?? null),
+      // Fornecedor
       supplier_name:        supplierName,
-      supplier_city:        scalar(r.supplier?.city)     ?? null,
-      supplier_email:       scalar(r.supplier_email)     ?? scalar(r.supplier?.email) ?? null,
-      supplier_foreign_id:  r.supplier?.id               ?? null,
-      payment_method:       scalar(r.payment_method)     ?? null,
-      arrival_estimate:     scalar(r.arrival_estimate)   ?? null,
+      supplier_email:       scalar(companyObj?.email)   ?? null,
+      supplier_phone:       scalar(companyObj?.phone)   ?? null,
+      supplier_foreign_id:  companyObj?.id              ?? null,
+      // Condições
+      payment_method:       scalar(r.installments)      ?? null,
+      answered_at:          answeredAt,
       valid_until:          scalar(r.valid_until)        ?? null,
-      answered_at,
+      // Itens e valor
+      item_count:           itemCount,
+      subtotal:             subtotal > 0 ? subtotal : null,
+      tipo,
       status,
-      item_count:           Array.isArray(r.answered_items) ? r.answered_items.length : (r.items_count ?? 0),
-      observations:         scalar(r.observations)       ?? null,
+      observations:         scalar(r.observations)      ?? null,
     }
   })
 
-  return NextResponse.json({ rows, total, page, per: 50, days: days ?? "todos", _warning: opError })
+  return NextResponse.json({
+    rows,
+    total,
+    page,
+    per: 20,
+    days: days ?? "todos",
+    _warning: opError,
+  })
 }

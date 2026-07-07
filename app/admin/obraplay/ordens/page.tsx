@@ -4,37 +4,57 @@ import { useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { Search, RefreshCw, ExternalLink, Copy } from "lucide-react"
-import { ReadonlyBadge, Badge, fmtDate, fmtBRLReal } from "@/components/admin/readonly-badge"
+import { ReadonlyBadge, Badge, fmtBRLReal } from "@/components/admin/readonly-badge"
 import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 type Ordem = {
   id: number
-  key: string | null
   obraplay_order_code: string | null
+  key: string | null
+  frontend_url: string | null
   status: string
-  supplier_name: string
-  supplier_cnpj: string | null
-  supplier_email: string | null
+  // Comprador
   company_name: string
-  company_cnpj: string | null
+  requester_name: string | null
+  requester_email: string | null
+  requester_phone: string | null
+  // Fornecedor
+  supplier_name: string
+  supplier_email: string | null
+  supplier_phone: string | null
+  // Relacionamentos
   quotation_answer: number | null
-  total: number | null
-  payment_method: string | null
-  created_at: string | null
   cotacao_identifier: string | null
-  obraplay_sync_error: string | null
   local_id: string | null
+  // Condições
+  payment_method: string | null
+  installments: string | null
+  arrival_estimate: string | null
+  created_at: string | null
+  // Valor
+  total: number | null
+  obraplay_sync_error: string | null
 }
 
 const PERIOD_OPTIONS = [
-  { label: "Últimos 15 dias", value: "15" },
-  { label: "Últimos 30 dias", value: "30" },
-  { label: "Últimos 60 dias", value: "60" },
-  { label: "Últimos 90 dias", value: "90" },
+  { label: "Últimos 15 dias",    value: "15" },
+  { label: "Últimos 30 dias",    value: "30" },
+  { label: "Últimos 60 dias",    value: "60" },
+  { label: "Últimos 90 dias",    value: "90" },
   { label: "Todos os registros", value: "todos" },
 ]
+
+const STATUS_COLORS: Record<string, "green" | "blue" | "orange" | "red" | "gray"> = {
+  "Finalizada":               "green",
+  "Entregue":                 "green",
+  "Em processamento":         "blue",
+  "Enviada ao fornecedor":    "blue",
+  "Pendente":                 "orange",
+  "Recusada":                 "red",
+  "Cancelada":                "gray",
+}
 
 function fmtDateTime(d?: string | null) {
   if (!d) return "—"
@@ -49,38 +69,43 @@ function fmtDateTime(d?: string | null) {
 
 function CopyBtn({ value }: { value: string }) {
   return (
-    <button onClick={() => navigator.clipboard.writeText(value)} title="Copiar"
-      className="ml-1 text-gray-300 hover:text-gray-600 transition-colors">
+    <button
+      onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(value) }}
+      title="Copiar"
+      className="ml-1 text-gray-300 hover:text-gray-600 transition-colors"
+    >
       <Copy size={10} />
     </button>
   )
 }
 
 export default function OrdensObraPlayPage() {
-  const [q, setQ] = useState("")
-  const [query, setQuery] = useState("")
+  const [q, setQ]           = useState("")
+  const [query, setQuery]   = useState("")
   const [syncErr, setSyncErr] = useState("")
-  const [days, setDays] = useState("15")
-  const [page, setPage] = useState(1)
+  const [days, setDays]     = useState("15")
+  const [page, setPage]     = useState(1)
 
   const { sortKey, sortDir, toggle } = useSortable()
 
   const swrKey = `/api/admin/obraplay/ordens?q=${encodeURIComponent(query)}&sync_err=${syncErr}&days=${days}&page=${page}${sortKey ? `&sort=${sortKey}&dir=${sortDir}` : ""}`
   const { data, isLoading, isValidating, mutate } = useSWR(swrKey, fetcher)
 
-  const rows: Ordem[]          = data?.rows ?? []
-  const total: number          = data?.total ?? 0
-  const syncing                = isValidating && !isLoading
-  const warning: string | null = data?._warning ?? null
-  const apiError: string | null = data?.error ?? null
+  const rows: Ordem[]           = data?.rows   ?? []
+  const total: number           = data?.total  ?? 0
+  const syncing                 = isValidating && !isLoading
+  const warning: string | null  = data?._warning  ?? null
+  const apiError: string | null = data?.error      ?? null
+  const totalPages              = Math.ceil(total / 20)
 
   const COLS: ColDef[] = [
     { label: "Código OP",     key: "obraplay_order_code" },
+    { label: "Status",        key: "status" },
     { label: "Comprador",     key: "company_name" },
     { label: "Fornecedor",    key: "supplier_name" },
-    { label: "Resp. Cotação", key: "quotation_answer", numeric: true },
     { label: "Cotação",       key: "cotacao_identifier" },
     { label: "Pagamento",     key: "payment_method" },
+    { label: "Entrega prev.", key: "arrival_estimate" },
     { label: "Total",         key: "total", numeric: true },
     { label: "Criada",        key: "created_at" },
     { label: "" },
@@ -90,7 +115,8 @@ export default function OrdensObraPlayPage() {
   function handleSearch() { setQuery(q); setPage(1) }
 
   return (
-    <div className="max-w-[1400px] mx-auto">
+    <div className="max-w-[1500px] mx-auto">
+      {/* Header */}
       <div className="flex items-start justify-between mb-5 gap-3 flex-wrap">
         <div className="flex items-center gap-3">
           <div>
@@ -100,27 +126,43 @@ export default function OrdensObraPlayPage() {
           <ReadonlyBadge />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <select value={days} onChange={e => { setDays(e.target.value); setPage(1) }}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-[#1565C0] bg-white font-medium text-gray-700">
+          {/* Período */}
+          <select
+            value={days}
+            onChange={e => { setDays(e.target.value); setPage(1) }}
+            className="text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-[#1565C0] bg-white font-medium text-gray-700"
+          >
             {PERIOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
 
-          <select value={syncErr} onChange={e => { setSyncErr(e.target.value); setPage(1) }}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-[#1565C0] bg-white">
+          {/* Erros de sync */}
+          <select
+            value={syncErr}
+            onChange={e => { setSyncErr(e.target.value); setPage(1) }}
+            className="text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-[#1565C0] bg-white"
+          >
             <option value="">Todas as OCs</option>
             <option value="yes">Somente com erro de sync</option>
           </select>
 
+          {/* Busca */}
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input value={q} onChange={e => setQ(e.target.value)}
+            <input
+              value={q}
+              onChange={e => setQ(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleSearch() }}
               placeholder="Código, fornecedor ou empresa..."
-              className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg bg-white w-56 outline-none focus:border-[#1565C0]" />
+              className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg bg-white w-56 outline-none focus:border-[#1565C0]"
+            />
           </div>
 
-          <button onClick={() => mutate()} disabled={syncing}
-            className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white hover:border-[#1565C0] hover:text-[#1565C0] transition-colors disabled:opacity-50">
+          {/* Sincronizar */}
+          <button
+            onClick={() => mutate()}
+            disabled={syncing}
+            className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white hover:border-[#1565C0] hover:text-[#1565C0] transition-colors disabled:opacity-50"
+          >
             <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
             {syncing ? "Atualizando..." : "Sincronizar"}
           </button>
@@ -143,13 +185,23 @@ export default function OrdensObraPlayPage() {
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
               {COLS.map(col => (
-                <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={handleSort} />
+                <SortableTh
+                  key={col.label}
+                  col={col}
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onToggle={handleSort}
+                />
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {isLoading && (
-              <tr><td colSpan={COLS.length} className="px-4 py-8 text-center text-sm text-gray-400">Carregando...</td></tr>
+              <tr>
+                <td colSpan={COLS.length} className="px-4 py-8 text-center text-sm text-gray-400">
+                  Carregando...
+                </td>
+              </tr>
             )}
             {!isLoading && rows.length === 0 && (
               <tr>
@@ -159,74 +211,119 @@ export default function OrdensObraPlayPage() {
               </tr>
             )}
             {rows.map(o => (
-              <tr key={o.id} className="hover:bg-gray-50 transition-colors">
+              <tr key={o.id} className="hover:bg-[#F8FAFE] transition-colors">
                 {/* Código OP */}
-                <td className="px-3 py-2 whitespace-nowrap">
-                  <span className="font-mono font-semibold text-gray-900 text-xs">{o.obraplay_order_code ?? `#${o.id}`}</span>
+                <td className="px-3 py-2.5 whitespace-nowrap">
+                  <span className="font-mono font-semibold text-gray-900 text-xs">
+                    {o.obraplay_order_code ?? `#${o.id}`}
+                  </span>
                   <CopyBtn value={o.obraplay_order_code ?? String(o.id)} />
-                  {o.key && (
-                    <p className="text-[10px] text-gray-400 mt-0.5 font-mono truncate max-w-[120px]" title={o.key}>{o.key}</p>
-                  )}
                   {o.obraplay_sync_error && (
-                    <Badge color="red">Erro sync</Badge>
+                    <div className="mt-0.5">
+                      <Badge color="red">Erro sync</Badge>
+                    </div>
                   )}
+                </td>
+                {/* Status */}
+                <td className="px-3 py-2.5 whitespace-nowrap">
+                  <Badge color={STATUS_COLORS[o.status] ?? "gray"}>{o.status}</Badge>
                 </td>
                 {/* Comprador */}
-                <td className="px-3 py-2">
+                <td className="px-3 py-2.5">
                   <p className="text-xs font-medium text-gray-900 whitespace-nowrap">{o.company_name}</p>
-                  {o.company_cnpj && <p className="text-[10px] text-gray-400">{o.company_cnpj}</p>}
+                  {o.requester_name  && <p className="text-[10px] text-gray-400">{o.requester_name}</p>}
+                  {o.requester_email && <p className="text-[10px] text-gray-400">{o.requester_email}</p>}
                 </td>
                 {/* Fornecedor */}
-                <td className="px-3 py-2">
+                <td className="px-3 py-2.5">
                   <p className="text-xs font-medium text-gray-900 whitespace-nowrap">{o.supplier_name}</p>
-                  {o.supplier_cnpj && <p className="text-[10px] text-gray-400">{o.supplier_cnpj}</p>}
                   {o.supplier_email && <p className="text-[10px] text-gray-400">{o.supplier_email}</p>}
+                  {o.supplier_phone && <p className="text-[10px] text-gray-400">{o.supplier_phone}</p>}
                 </td>
-                {/* Resp. cotação */}
-                <td className="px-3 py-2 text-center">
-                  {o.quotation_answer
-                    ? <span className="font-mono text-xs text-gray-600">#{o.quotation_answer}</span>
-                    : <span className="text-gray-300 text-xs">—</span>
+                {/* Cotação */}
+                <td className="px-3 py-2.5 whitespace-nowrap text-xs">
+                  {o.cotacao_identifier
+                    ? <span className="font-mono bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{o.cotacao_identifier}</span>
+                    : o.quotation_answer
+                      ? <span className="font-mono text-[11px] text-gray-500">Resp. #{o.quotation_answer}</span>
+                      : <span className="text-gray-300">—</span>
                   }
                 </td>
-                {/* Cotação local */}
-                <td className="px-3 py-2 text-xs text-gray-500 whitespace-nowrap">{o.cotacao_identifier ?? "—"}</td>
                 {/* Pagamento */}
-                <td className="px-3 py-2">
-                  {o.payment_method
-                    ? <Badge color="gray">{o.payment_method}</Badge>
+                <td className="px-3 py-2.5">
+                  {(o.payment_method || o.installments)
+                    ? <Badge color="gray">{o.payment_method ?? o.installments}</Badge>
                     : <span className="text-gray-300 text-xs">—</span>
                   }
                 </td>
-                {/* Total */}
-                <td className="px-3 py-2 text-xs font-medium text-gray-900 whitespace-nowrap">
-                  {o.total != null ? fmtBRLReal(o.total) : "—"}
+                {/* Entrega prevista */}
+                <td className="px-3 py-2.5 text-[11px] text-gray-500 whitespace-nowrap">
+                  {fmtDateTime(o.arrival_estimate)}
+                </td>
+                {/* Total — calculado via order_items */}
+                <td className="px-3 py-2.5 text-xs font-semibold text-gray-900 whitespace-nowrap">
+                  {isLoading
+                    ? <span className="inline-block w-16 h-3 bg-gray-100 rounded animate-pulse" />
+                    : o.total != null
+                      ? fmtBRLReal(o.total)
+                      : <span className="text-gray-400 font-normal">Calculando...</span>
+                  }
                 </td>
                 {/* Criada */}
-                <td className="px-3 py-2 text-[11px] text-gray-500 whitespace-nowrap">{fmtDateTime(o.created_at)}</td>
-                {/* Ver */}
-                <td className="px-3 py-2">
-                  <Link href={`/admin/obraplay/ordens/${o.local_id ?? o.id}`}
-                    className="text-[#1565C0] hover:underline flex items-center gap-1 text-xs whitespace-nowrap">
-                    Ver <ExternalLink size={11} />
-                  </Link>
+                <td className="px-3 py-2.5 text-[11px] text-gray-500 whitespace-nowrap">
+                  {fmtDateTime(o.created_at)}
+                </td>
+                {/* Ações */}
+                <td className="px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/admin/obraplay/ordens/${o.local_id ?? o.id}`}
+                      className="text-[#1565C0] hover:underline flex items-center gap-1 text-xs whitespace-nowrap"
+                    >
+                      Ver <ExternalLink size={11} />
+                    </Link>
+                    {o.frontend_url && (
+                      <a
+                        href={o.frontend_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-gray-400 hover:text-gray-700 transition-colors"
+                        title="Abrir no ObraPlay"
+                      >
+                        <ExternalLink size={11} />
+                      </a>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
 
+        {/* Rodapé com paginação */}
         <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
           <p className="text-xs text-gray-400">
             {total} ordem{total !== 1 ? "s" : ""}
             {days !== "todos" && <span className="ml-1 text-gray-300">· últimos {days} dias</span>}
           </p>
           <div className="flex items-center gap-2">
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-              className="text-xs px-2 py-1 rounded border border-gray-200 disabled:opacity-40 hover:border-gray-400">Anterior</button>
-            <span className="text-xs text-gray-500">Página {page}</span>
-            <button onClick={() => setPage(p => p + 1)} disabled={rows.length < 50}
-              className="text-xs px-2 py-1 rounded border border-gray-200 disabled:opacity-40 hover:border-gray-400">Próxima</button>
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="text-xs px-2 py-1 rounded border border-gray-200 disabled:opacity-40 hover:border-gray-400"
+            >
+              Anterior
+            </button>
+            <span className="text-xs text-gray-500">
+              Página {page}{totalPages > 0 ? ` de ${totalPages}` : ""}
+            </span>
+            <button
+              onClick={() => setPage(p => p + 1)}
+              disabled={page >= totalPages && totalPages > 0}
+              className="text-xs px-2 py-1 rounded border border-gray-200 disabled:opacity-40 hover:border-gray-400"
+            >
+              Próxima
+            </button>
           </div>
         </div>
       </div>

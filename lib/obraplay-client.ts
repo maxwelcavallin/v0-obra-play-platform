@@ -341,23 +341,36 @@ export const obraplay = {
       page_size?: number
       search?: string
       quotation?: number
-      answered_at__gte?: string  // ISO date
-      answered_at__lte?: string
+      /** published_at é o campo correto de data na API /auth/users/quotation_answers/ */
+      published_at__gte?: string
+      published_at__lte?: string
+      /** parâmetros adicionais conforme spec */
+      is_answered?: boolean
+      is_pending?: boolean
+      is_expired?: boolean
+      is_converted?: boolean
+      autofilled?: boolean
       ordering?: string
     }): Promise<OPListResponse<any>> {
       const qs = new URLSearchParams()
-      if (params.search)              qs.set("search",              params.search)
-      if (params.quotation)           qs.set("quotation",           String(params.quotation))
-      if (params.answered_at__gte)    qs.set("answered_at__gte",    params.answered_at__gte)
-      if (params.answered_at__lte)    qs.set("answered_at__lte",    params.answered_at__lte)
-      if (params.ordering)            qs.set("ordering",            params.ordering)
+      if (params.search)               qs.set("search",               params.search)
+      if (params.quotation)            qs.set("quotation",            String(params.quotation))
+      if (params.published_at__gte)    qs.set("published_at__gte",    params.published_at__gte)
+      if (params.published_at__lte)    qs.set("published_at__lte",    params.published_at__lte)
+      if (params.is_answered != null)  qs.set("is_answered",          String(params.is_answered))
+      if (params.is_pending  != null)  qs.set("is_pending",           String(params.is_pending))
+      if (params.is_expired  != null)  qs.set("is_expired",           String(params.is_expired))
+      if (params.is_converted != null) qs.set("is_converted",         String(params.is_converted))
+      if (params.autofilled  != null)  qs.set("autofilled",           String(params.autofilled))
+      if (params.ordering)             qs.set("ordering",             params.ordering)
       qs.set("page",      String(params.page      ?? 1))
-      qs.set("page_size", String(params.page_size ?? 50))
-      return request<OPListResponse<any>>(`/api/quotation_answers/?${qs}`)
+      qs.set("page_size", String(params.page_size ?? 20))
+      // Endpoint correto conforme spec: /auth/users/quotation_answers/
+      return request<OPListResponse<any>>(`/auth/users/quotation_answers/?${qs}`)
     },
 
     async getAnswers(opQuotationId: number): Promise<any[]> {
-      const res = await request<any>(`/api/quotation_answers/?quotation=${opQuotationId}&page_size=100`)
+      const res = await request<any>(`/auth/users/quotation_answers/?quotation=${opQuotationId}&page_size=100`)
       return res?.results ?? res ?? []
     },
 
@@ -388,19 +401,32 @@ export const obraplay = {
       page?: number
       page_size?: number
       search?: string
+      supplier_name?: string
       created_at__gte?: string
       created_at__lte?: string
+      arrival_estimate__gte?: string
+      arrival_estimate__lte?: string
       ordering?: string
     }): Promise<OPListResponse<any>> {
       const qs = new URLSearchParams()
-      if (params.company)           qs.set("company",          String(params.company))
-      if (params.search)            qs.set("search",           params.search)
-      if (params.created_at__gte)   qs.set("created_at__gte",  params.created_at__gte)
-      if (params.created_at__lte)   qs.set("created_at__lte",  params.created_at__lte)
-      if (params.ordering)          qs.set("ordering",         params.ordering)
+      if (params.company)                  qs.set("company",               String(params.company))
+      if (params.search)                   qs.set("search",                params.search)
+      if (params.supplier_name)            qs.set("supplier_name",         params.supplier_name)
+      if (params.created_at__gte)          qs.set("created_at__gte",       params.created_at__gte)
+      if (params.created_at__lte)          qs.set("created_at__lte",       params.created_at__lte)
+      if (params.arrival_estimate__gte)    qs.set("arrival_estimate__gte", params.arrival_estimate__gte)
+      if (params.arrival_estimate__lte)    qs.set("arrival_estimate__lte", params.arrival_estimate__lte)
+      if (params.ordering)                 qs.set("ordering",              params.ordering)
       qs.set("page",      String(params.page      ?? 1))
-      qs.set("page_size", String(params.page_size ?? 50))
-      return request<OPListResponse<any>>(`/api/orders/?${qs}`)
+      qs.set("page_size", String(params.page_size ?? 20))
+      // Endpoint correto conforme spec: /auth/users/orders/
+      return request<OPListResponse<any>>(`/auth/users/orders/?${qs}`)
+    },
+
+    /** Busca itens de uma OC específica para calcular o valor total na listagem */
+    async listItems(orderId: number): Promise<any[]> {
+      const res = await request<OPListResponse<any>>(`/auth/users/order_items/?order=${orderId}&page_size=100`)
+      return res?.results ?? []
     },
 
     async cancel(opOrderId: number, cancelReason: string): Promise<any> {

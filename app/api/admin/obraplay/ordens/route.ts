@@ -1,14 +1,44 @@
+// route – admin/obraplay/ordens  (spec v2 – /auth/users/orders/)
 import { NextRequest, NextResponse } from "next/server"
 import { neon } from "@neondatabase/serverless"
 import { requirePlatformAdminApi } from "@/app/admin/middleware-check"
 import { obraplay } from "@/lib/obraplay-client"
 
-// Calcula a data ISO de corte a partir do número de dias
 function cutoffDate(days: number | null): string | undefined {
   if (!days) return undefined
   const d = new Date()
   d.setDate(d.getDate() - days)
-  return d.toISOString().split("T")[0] // YYYY-MM-DD
+  return d.toISOString().split("T")[0]
+}
+
+function toStr(val: unknown): string {
+  if (val == null) return ""
+  if (typeof val === "string") return val
+  if (typeof val === "number") return String(val)
+  if (typeof val === "object") {
+    const o = val as Record<string, unknown>
+    if (o.code != null) return String(o.code)
+    if (o.name != null) return String(o.name)
+    if (o.id   != null) return String(o.id)
+    return ""
+  }
+  return String(val)
+}
+
+function scalar(v: unknown): string | null {
+  const s = toStr(v)
+  return s.length > 0 ? s : null
+}
+
+/** Calcula o total de uma OC a partir dos itens retornados por /auth/users/order_items/?order={id} */
+function calcOrderTotal(items: any[]): number {
+  if (!Array.isArray(items) || items.length === 0) return 0
+  return items.reduce((acc, item) => {
+    const price    = Number(item.unit_price_micros    ?? 0) / 1_000_000
+    const qty      = Number(item.total_quantity_micros ?? 0) / 1_000_000
+    const discount = Number(item.total_discount_micros ?? 0) / 1_000_000
+    return acc + (price * qty) - discount
+  }, 0)
 }
 
 export async function GET(req: NextRequest) {
@@ -24,12 +54,9 @@ export async function GET(req: NextRequest) {
   const sortParam = searchParams.get("sort") ?? ""
   const sortDir   = searchParams.get("dir")  ?? "desc"
 
-  // Mapeia colunas frontend → campos de ordering da API ObraPlay
   const ORDER_MAP: Record<string, string> = {
     created_at:          "created_at",
-    supplier_name:       "supplier_company__short_name",
-    company_name:        "company__short_name",
-    total:               "total",
+    supplier_name:       "supplier_name",
     obraplay_order_code: "code",
   }
   const ordering = sortParam && ORDER_MAP[sortParam]
@@ -37,10 +64,10 @@ export async function GET(req: NextRequest) {
     : "-created_at"
 
   const baseParams = {
-    search:    q || undefined,
     page,
-    page_size: 50,
+    page_size: 20,
     ordering,
+    ...(q ? { search: q } : {}),
   }
 
   let opResult: { results: any[]; count: number } = { results: [], count: 0 }
@@ -52,12 +79,12 @@ export async function GET(req: NextRequest) {
       created_at__gte: cutoffDate(days),
     })
   } catch (e: any) {
-    console.error("[v0] ordens API error (with date filter):", e?.message)
+    console.error("[ordens] API error (with date filter):", e?.message)
     try {
       opResult = await obraplay.orders.list(baseParams)
-      opError  = "Filtro de período ignorado (parâmetro não suportado pela API)"
+      opError = "Filtro de período ignorado (parâmetro não suportado pela API)"
     } catch (e2: any) {
-      console.error("[v0] ordens API error (without date filter):", e2?.message)
+      console.error("[ordens] API error (without date filter):", e2?.message)
       return NextResponse.json(
         { error: "Falha ao buscar ordens na API ObraPlay", detail: e2?.message, rows: [], total: 0 },
         { status: 502 }
@@ -68,17 +95,35 @@ export async function GET(req: NextRequest) {
   const opRows: any[]  = opResult.results ?? []
   const total: number  = opResult.count   ?? 0
 
-  // Enriquece com dados locais: empresa e cotação pelo foreign_id / code
-  const db = neon(process.env.DATABASE_URL!)
+  // Busca itens de cada OC em paralelo para calcular o total (Opção B da spec)
+  const orderTotals: Record<number, number> = {}
+  if (opRows.length > 0) {
+    const itemResults = await Promise.allSettled(
+      opRows.map(o => obraplay.orders.listItems(o.id))
+    )
+    itemResults.forEach((result, idx) => {
+      if (result.status === "fulfilled") {
+        orderTotals[opRows[idx].id] = calcOrderTotal(result.value)
+      }
+    })
+  }
 
+  // Enriquece com dados locais pelo obraplay_order_code
+  const db = neon(process.env.DATABASE_URL!)
   const opCodes = opRows.map(r => r.code).filter(Boolean)
-  let localMap: Record<string, { company_name: string; cotacao_identifier: string; local_id: string; obraplay_sync_error: string | null }> = {}
+  let localMap: Record<string, {
+    company_name: string
+    cotacao_identifier: string | null
+    local_id: string
+    obraplay_sync_error: string | null
+    status: string | null
+  }> = {}
 
   if (opCodes.length > 0) {
     try {
       const placeholders = opCodes.map((_, i) => `$${i + 1}`).join(",")
       const local = await db.query(
-        `SELECT oc.id AS local_id, oc.obraplay_order_code, oc.obraplay_sync_error,
+        `SELECT oc.id AS local_id, oc.obraplay_order_code, oc.obraplay_sync_error, oc.status,
                 c.identifier AS cotacao_identifier,
                 co.fantasy_name AS company_name
          FROM ordens_compra oc
@@ -91,48 +136,51 @@ export async function GET(req: NextRequest) {
         if (row.obraplay_order_code) localMap[row.obraplay_order_code] = row
       }
     } catch (dbErr: any) {
-      console.error("[v0] ordens DB enrich error:", dbErr?.message)
+      console.error("[ordens] DB enrich error:", dbErr?.message)
     }
-  }
-
-  // Garante que o valor é string/number/null — nunca um objeto
-  function scalar(v: any): string | null {
-    if (v == null) return null
-    if (typeof v === "string") return v || null
-    if (typeof v === "number") return String(v)
-    if (typeof v === "object") return (v.code ?? v.name ?? v.id) ?? null
-    return String(v)
   }
 
   let rows = opRows.map(o => {
-    const local = localMap[o.code] ?? null
-    // total da API ObraPlay vem em micros (int) ou em reais (string decimal)
-    // Detecta: se for número inteiro grande (> 10000), assume micros
-    let totalReais: number | null = null
-    if (o.total != null) {
-      const raw = Number(o.total)
-      totalReais = Number.isInteger(raw) && raw > 10000
-        ? raw / 1_000_000
-        : raw
+    const local    = localMap[o.code] ?? null
+    const totalVal = orderTotals[o.id] ?? null
+
+    // Status: prioriza banco local (sincronizado via webhook), depois inferido
+    let status = local?.status ?? null
+    if (!status) {
+      if (o.arrival_estimate && new Date(o.arrival_estimate) < new Date()) {
+        status = "Entregue"
+      } else {
+        status = "Em processamento"
+      }
     }
+
     return {
-      id:                    o.id,
-      key:                   scalar(o.key)             ?? null,
-      obraplay_order_id:     o.id,
-      obraplay_order_code:   scalar(o.code)            ?? null,
-      status:                scalar(o.status)          ?? "—",
-      supplier_name:         scalar(o.supplier_company?.display_name ?? o.supplier_company?.full_name ?? o.supplier_company?.short_name ?? o.supplier_name ?? o.supplier_company) ?? "—",
-      supplier_cnpj:         scalar(o.supplier_company?.cnpj)        ?? null,
-      supplier_email:        scalar(o.supplier_email ?? o.supplier_company?.email) ?? null,
-      company_name:          local?.company_name ?? scalar(o.company?.display_name ?? o.company?.full_name ?? o.company?.short_name ?? o.company_name ?? o.company) ?? "—",
-      company_cnpj:          scalar(o.company?.cnpj)   ?? null,
-      quotation_answer:      o.quotation_answer         ?? null,
-      total:                 totalReais,
-      payment_method:        scalar(o.payment_method)  ?? null,
-      created_at:            scalar(o.created_at)      ?? null,
-      cotacao_identifier:    local?.cotacao_identifier ?? scalar(o.quotation_code) ?? null,
-      obraplay_sync_error:   local?.obraplay_sync_error ?? null,
-      local_id:              local?.local_id           ?? null,
+      id:                   o.id,
+      obraplay_order_code:  scalar(o.code)             ?? null,
+      key:                  scalar(o.key)               ?? null,
+      frontend_url:         scalar(o.frontend_url)      ?? null,
+      status,
+      // Comprador
+      company_name:         local?.company_name         ?? scalar(o.name) ?? "—",
+      requester_name:       scalar(o.name)              ?? null,
+      requester_email:      scalar(o.email)             ?? null,
+      requester_phone:      scalar(o.phone)             ?? null,
+      // Fornecedor
+      supplier_name:        scalar(o.supplier_name)     ?? "—",
+      supplier_email:       scalar(o.supplier_email)    ?? null,
+      supplier_phone:       scalar(o.supplier_phone)    ?? null,
+      // Relacionamentos
+      quotation_answer:     o.quotation_answer           ?? null,
+      cotacao_identifier:   local?.cotacao_identifier    ?? null,
+      local_id:             local?.local_id              ?? null,
+      // Condições
+      payment_method:       scalar(o.payment_method)    ?? null,
+      installments:         scalar(o.installments)      ?? null,
+      arrival_estimate:     scalar(o.arrival_estimate)  ?? null,
+      created_at:           scalar(o.created_at)        ?? null,
+      // Valor calculado via order_items
+      total:                totalVal,
+      obraplay_sync_error:  local?.obraplay_sync_error  ?? null,
     }
   })
 
@@ -140,5 +188,12 @@ export async function GET(req: NextRequest) {
     rows = rows.filter(r => r.obraplay_sync_error)
   }
 
-  return NextResponse.json({ rows, total, page, per: 50, days: days ?? "todos", _warning: opError })
+  return NextResponse.json({
+    rows,
+    total,
+    page,
+    per: 20,
+    days: days ?? "todos",
+    _warning: opError,
+  })
 }
