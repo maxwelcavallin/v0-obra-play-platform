@@ -117,16 +117,20 @@ export async function GET(req: NextRequest) {
     }
     return {
       id:                    o.id,
+      key:                   scalar(o.key)             ?? null,
       obraplay_order_id:     o.id,
       obraplay_order_code:   scalar(o.code)            ?? null,
       status:                scalar(o.status)          ?? "—",
-      supplier_name:         scalar(o.supplier_company?.short_name ?? o.supplier_name ?? o.supplier_company) ?? "—",
-      supplier_email:        scalar(o.supplier_email)  ?? null,
+      supplier_name:         scalar(o.supplier_company?.display_name ?? o.supplier_company?.full_name ?? o.supplier_company?.short_name ?? o.supplier_name ?? o.supplier_company) ?? "—",
+      supplier_cnpj:         scalar(o.supplier_company?.cnpj)        ?? null,
+      supplier_email:        scalar(o.supplier_email ?? o.supplier_company?.email) ?? null,
+      company_name:          local?.company_name ?? scalar(o.company?.display_name ?? o.company?.full_name ?? o.company?.short_name ?? o.company_name ?? o.company) ?? "—",
+      company_cnpj:          scalar(o.company?.cnpj)   ?? null,
+      quotation_answer:      o.quotation_answer         ?? null,
       total:                 totalReais,
       payment_method:        scalar(o.payment_method)  ?? null,
       created_at:            scalar(o.created_at)      ?? null,
       cotacao_identifier:    local?.cotacao_identifier ?? scalar(o.quotation_code) ?? null,
-      company_name:          local?.company_name       ?? scalar(o.company?.short_name ?? o.company_name ?? o.company) ?? "—",
       obraplay_sync_error:   local?.obraplay_sync_error ?? null,
       local_id:              local?.local_id           ?? null,
     }
