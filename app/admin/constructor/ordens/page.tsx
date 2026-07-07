@@ -17,15 +17,12 @@ const STATUS_COLOR: Record<string, "green" | "blue" | "orange" | "gray"> = {
 
 export default function ConstructorOrdensPage() {
   const [q, setQ] = useState("")
-  const { data, isLoading } = useSWR("/api/admin/constructor/ordens", fetcher)
-  const items: Record<string, unknown>[] = data?.ordens ?? []
-
-  const filtered = items.filter((o: Record<string, unknown>) =>
-    !q ||
-    String(o.code ?? "").toLowerCase().includes(q.toLowerCase()) ||
-    String(o.company_name ?? "").toLowerCase().includes(q.toLowerCase()) ||
-    String(o.supplier_name ?? "").toLowerCase().includes(q.toLowerCase())
+  const { data, isLoading } = useSWR(
+    `/api/admin/constructor/ordens?q=${encodeURIComponent(q)}`,
+    fetcher
   )
+  const items: Record<string, unknown>[] = data?.rows ?? []
+  const total: number = data?.total ?? 0
 
   return (
     <div className="max-w-[1280px] mx-auto">
@@ -56,9 +53,9 @@ export default function ConstructorOrdensPage() {
               <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400">Carregando...</td></tr>
             ) : filtered.length === 0 ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400">Nenhuma ordem encontrada.</td></tr>
-            ) : filtered.map((o) => (
+            ) : items.map((o) => (
               <tr key={String(o.id)} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 font-mono font-semibold text-gray-900 text-xs">{String(o.code ?? "—")}</td>
+                <td className="px-4 py-3 font-mono font-semibold text-gray-900 text-xs">{String(o.identifier ?? o.obraplay_order_code ?? "—")}</td>
                 <td className="px-4 py-3">
                   <Link href={`/admin/constructor/empresas/${o.company_id}`} className="font-medium text-[#1565C0] hover:underline text-sm">
                     {String(o.company_name ?? "—")}
@@ -78,7 +75,7 @@ export default function ConstructorOrdensPage() {
           </tbody>
         </table>
         <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
-          <p className="text-xs text-gray-400">{filtered.length} ordem{filtered.length !== 1 ? "s" : ""}</p>
+          <p className="text-xs text-gray-400">{total} ordem{total !== 1 ? "s" : ""}</p>
         </div>
       </div>
     </div>
