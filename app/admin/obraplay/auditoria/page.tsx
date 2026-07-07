@@ -26,8 +26,10 @@ export default function AuditoriaCredenciadosPage() {
   const [drawer, setDrawer] = useState<FornecedorAuditoria | null>(null)
   const [expandedCotacao, setExpandedCotacao] = useState<string | null>(null)
 
+  const { sortKey, sortDir, toggle } = useSortable()
+
   const { data, isLoading } = useSWR(
-    `/api/admin/obraplay/auditoria?mes=${mes}&ano=${ano}&q=${encodeURIComponent(busca)}`,
+    `/api/admin/obraplay/auditoria?mes=${mes}&ano=${ano}&q=${encodeURIComponent(busca)}${sortKey ? `&sort=${sortKey}&dir=${sortDir}` : ""}`,
     fetcher
   )
 
@@ -42,7 +44,8 @@ export default function AuditoriaCredenciadosPage() {
     { label: "Vol. Total",   key: "volume_total_micros",  numeric: true },
     { label: "Ticket Médio", key: "volume_total_micros",  numeric: true },
   ]
-  const { sorted, sortKey, sortDir, toggle } = useSortable(rows as unknown as Record<string, unknown>[])
+
+  function handleSort(key: string) { toggle(key) }
 
   function exportCSV() {
     const header = "Período,Fornecedor,CNPJ,Cotações Recebidas,Respondidas,Taxa%,OCs,Volume Total,Ticket Médio"
@@ -100,7 +103,7 @@ export default function AuditoriaCredenciadosPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              {COLS.map(col => <SortableTh key={col.label + col.key} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
+              {COLS.map(col => <SortableTh key={col.label + col.key} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={handleSort} />)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -110,7 +113,7 @@ export default function AuditoriaCredenciadosPage() {
             {!isLoading && rows.length === 0 && (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400">Nenhum dado para o período selecionado.</td></tr>
             )}
-            {(sorted as unknown as FornecedorAuditoria[]).map(f => {
+            {rows.map(f => {
               const taxa = f.received > 0 ? ((f.answered / f.received) * 100).toFixed(1) : "0"
               const ticket = f.ocs_total > 0 ? fmtBRL(f.volume_total_micros / f.ocs_total / 1_000_000) : "—"
               return (
@@ -137,7 +140,7 @@ export default function AuditoriaCredenciadosPage() {
           </tbody>
         </table>
         <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
-          <p className="text-xs text-gray-400">{sorted.length} fornecedor{sorted.length !== 1 ? "es" : ""} — {MESES[mes - 1]}/{ano}</p>
+          <p className="text-xs text-gray-400">{rows.length} fornecedor{rows.length !== 1 ? "es" : ""} — {MESES[mes - 1]}/{ano}</p>
         </div>
       </div>
 

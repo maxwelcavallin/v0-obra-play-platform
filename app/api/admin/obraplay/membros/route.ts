@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const per = 50
   const orderBy = buildOrderBy(searchParams.get("sort"), searchParams.get("dir"), { columns: SORT, defaultOrder: "mm.last_sync_at DESC NULLS LAST, mm.name ASC" })
 
-  const rows = await db(
+  const rows = await db.query(
     `SELECT mm.id, mm.member_id, mm.name, mm.email, mm.phone, mm.role, mm.is_active, mm.last_sync_at,
       mc.short_name AS company_name, mc.company_id,
       COUNT(*) OVER() AS total_count

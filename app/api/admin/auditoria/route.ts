@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const offset = (page - 1) * per
   const orderBy = buildOrderBy(searchParams.get("sort"), searchParams.get("dir"), { columns: SORT, defaultOrder: "created_at DESC" })
 
-  const logs = await db(
+  const logs = await db.query(
     `SELECT id, admin_name, action, entity_type, entity_id, details, created_at
     FROM admin_audit_log
     WHERE ($1 = '' OR admin_name ILIKE $2 OR action ILIKE $2)
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     [search, `%${search}%`, per, offset]
   )
 
-  const [{ total }] = await db(
+  const [{ total }] = await db.query(
     `SELECT COUNT(*) AS total FROM admin_audit_log WHERE ($1 = '' OR admin_name ILIKE $2 OR action ILIKE $2)`,
     [search, `%${search}%`]
   )

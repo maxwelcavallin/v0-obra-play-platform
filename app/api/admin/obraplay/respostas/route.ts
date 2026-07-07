@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const per = 50
   const orderBy = buildOrderBy(searchParams.get("sort"), searchParams.get("dir"), { columns: SORT, defaultOrder: "sub.answered_at DESC NULLS LAST" })
 
-  const rows = await db(
+  const rows = await db.query(
     `SELECT * FROM (
       SELECT DISTINCT ON (cr.cotacao_id, cr.op_answer_id)
         cr.cotacao_id, cr.op_answer_id, cr.cotacao_identifier,

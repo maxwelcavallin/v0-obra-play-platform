@@ -68,7 +68,7 @@ export default function ConstructorCotacoesPage() {
           <tbody className="divide-y divide-gray-50">
             {isLoading ? (
               <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-400">Carregando...</td></tr>
-            ) : filtered.length === 0 ? (
+            ) : items.length === 0 ? (
               <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-400">Nenhuma cotação encontrada.</td></tr>
             ) : items.map((c) => (
               <tr key={String(c.id)} className="hover:bg-gray-50 transition-colors">

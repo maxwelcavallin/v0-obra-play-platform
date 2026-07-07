@@ -89,17 +89,17 @@ export default function CotacoesMarketplacePage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={handleSort} />)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {isLoading && (
               <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-400">Carregando...</td></tr>
             )}
-            {!isLoading && sorted.length === 0 && (
+            {!isLoading && rows.length === 0 && (
               <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-400">Nenhuma cotação encontrada.</td></tr>
             )}
-            {(sorted as unknown as Cotacao[]).map(c => (
+            {rows.map(c => (
               <tr key={c.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3">
                   <span className="font-mono font-semibold text-gray-900 text-xs">{c.identifier}</span>

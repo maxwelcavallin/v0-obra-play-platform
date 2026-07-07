@@ -1,8 +1,11 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState } from "react"
+import useSWR from "swr"
 import { Shield, Search } from "lucide-react"
 import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
+
+const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 interface AuditLog {
   id: string
@@ -28,29 +31,20 @@ function fmtDatetime(d: string) {
 }
 
 export default function AuditoriaPage() {
-  const [logs, setLogs] = useState<AuditLog[]>([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const [searchQ, setSearchQ] = useState("")
   const [page, setPage] = useState(1)
-  const [total, setTotal] = useState(0)
   const PER = 50
 
-  const fetchLogs = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ page: String(page) })
-      if (search) params.set("search", search)
-      const res = await fetch(`/api/admin/auditoria?${params}`)
-      const data = await res.json()
-      setLogs(data.logs ?? [])
-      setTotal(data.total ?? 0)
-    } finally {
-      setLoading(false)
-    }
-  }, [page, search])
+  const { sortKey, sortDir, toggle } = useSortable()
 
-  useEffect(() => { fetchLogs() }, [fetchLogs])
+  const { data, isLoading: loading } = useSWR(
+    `/api/admin/auditoria?page=${page}${searchQ ? `&search=${encodeURIComponent(searchQ)}` : ""}${sortKey ? `&sort=${sortKey}&dir=${sortDir}` : ""}`,
+    fetcher
+  )
 
+  const logs: AuditLog[] = data?.logs ?? []
+  const total: number = data?.total ?? 0
   const totalPages = Math.ceil(total / PER)
 
   const COLS: ColDef[] = [
@@ -59,7 +53,8 @@ export default function AuditoriaPage() {
     { label: "Ação",     key: "action" },
     { label: "Entidade", key: "entity_type" },
   ]
-  const { sorted, sortKey, sortDir, toggle } = useSortable(logs as unknown as Record<string, unknown>[])
+
+  function handleSort(key: string) { toggle(key); setPage(1) }
 
   return (
     <div className="p-6 space-y-5">
@@ -76,7 +71,8 @@ export default function AuditoriaPage() {
           type="text"
           placeholder="Buscar por ação ou admin..."
           value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1) }}
+          onChange={e => setSearch(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") { setSearchQ(search); setPage(1) } }}
           className="w-full pl-9 pr-4 py-2 border border-[#EEEEEE] rounded-xl text-sm text-[#212121] placeholder-[#9E9E9E] focus:outline-none focus:border-[#1565C0] bg-white"
         />
       </div>
@@ -85,7 +81,7 @@ export default function AuditoriaPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#F5F5F5]">
-              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={handleSort} />)}
             </tr>
           </thead>
           <tbody>
@@ -102,7 +98,7 @@ export default function AuditoriaPage() {
                   <p className="text-sm text-[#9E9E9E]">Nenhuma ação registrada ainda</p>
                 </td>
               </tr>
-            ) : (sorted as unknown as AuditLog[]).map(log => (
+            ) : logs.map(log => (
               <tr key={log.id} className="border-b border-[#F5F5F5] hover:bg-[#FAFAFA] transition-colors">
                 <td className="px-4 py-3 text-[#9E9E9E] text-xs whitespace-nowrap">{fmtDatetime(log.created_at)}</td>
                 <td className="px-4 py-3 font-medium text-[#212121]">{log.admin_name}</td>

@@ -57,7 +57,7 @@ export default function ConstructorInsumosPage() {
           <tbody className="divide-y divide-gray-50">
             {isLoading ? (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">Carregando...</td></tr>
-            ) : filtered.length === 0 ? (
+            ) : items.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-12 text-center">
                   <Package size={32} className="mx-auto text-gray-200 mb-3" />

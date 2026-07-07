@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   const offset = (page - 1) * per
   const orderBy = buildOrderBy(searchParams.get("sort"), searchParams.get("dir"), { columns: SORT, defaultOrder: "si.created_at DESC" })
 
-  const items = await db(
+  const items = await db.query(
     `SELECT si.id, si.name, si.slug, si.unit, si.description, si.image_url,
            si.min_price_micros, si.max_price_micros, si.avg_price_micros,
            si.is_active, si.last_synced_at, si.created_at,
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     [search, `%${search}%`, category, per, offset]
   )
 
-  const [{ total }] = await db(
+  const [{ total }] = await db.query(
     `SELECT COUNT(*) AS total FROM showcase_items si
     LEFT JOIN showcase_categories sc ON sc.id = si.category_id
     WHERE ($1 = '' OR si.name ILIKE $2) AND ($3 = '' OR sc.slug = $3)`,

@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
   const per = 50
   const orderBy = buildOrderBy(searchParams.get("sort"), searchParams.get("dir"), { columns: SORT, defaultOrder: "mc.last_sync_at DESC NULLS LAST, mc.short_name ASC" })
 
-  const rows = await db(
+  const rows = await db.query(
     `SELECT mc.company_id, mc.short_name, mc.full_name, mc.city, mc.state,
       mc.verified_cnpj, mc.has_confirmed_address, mc.has_confirmed_shipping,
       mc.has_confirmed_configuration, mc.rating, mc.total_reviews,

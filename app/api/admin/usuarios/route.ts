@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   const offset = (page - 1) * limit
   const orderBy = buildOrderBy(searchParams.get("sort"), searchParams.get("dir"), { columns: SORT, defaultOrder: "u.created_at DESC" })
 
-  const rows = await db(
+  const rows = await db.query(
     `SELECT u.id, u.name, u.email, u.phone, u.is_active, u.is_platform_admin, u.created_at,
       COUNT(cu.company_id)::int AS company_count
     FROM users u
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
     [search, `%${search}%`, status, limit, offset]
   )
 
-  const [{ total }] = await db(
+  const [{ total }] = await db.query(
     `SELECT COUNT(*)::int AS total FROM users
     WHERE ($1 = '' OR name ILIKE $2 OR email ILIKE $2)
       AND ($3 = 'all' OR ($3 = 'active' AND is_active = true) OR ($3 = 'inactive' AND is_active = false))`,

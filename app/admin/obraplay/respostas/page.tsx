@@ -21,8 +21,10 @@ export default function RespostasCotacaoPage() {
   const [query, setQuery] = useState("")
   const [page, setPage] = useState(1)
 
+  const { sortKey, sortDir, toggle } = useSortable()
+
   const { data, isLoading } = useSWR(
-    `/api/admin/obraplay/respostas?q=${encodeURIComponent(query)}&page=${page}`,
+    `/api/admin/obraplay/respostas?q=${encodeURIComponent(query)}&page=${page}${sortKey ? `&sort=${sortKey}&dir=${sortDir}` : ""}`,
     fetcher
   )
 
@@ -37,8 +39,8 @@ export default function RespostasCotacaoPage() {
     { label: "Pagamento",     key: "payment_method" },
     { label: "Itens",         key: "item_count", numeric: true },
   ]
-  const { sorted, sortKey, sortDir, toggle } = useSortable(rows as Record<string, unknown>[])
 
+  function handleSort(key: string) { toggle(key); setPage(1) }
   function handleSearch() { setQuery(q); setPage(1) }
 
   return (
@@ -64,7 +66,7 @@ export default function RespostasCotacaoPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={handleSort} />)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -74,7 +76,7 @@ export default function RespostasCotacaoPage() {
             {!isLoading && rows.length === 0 && (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">Nenhuma resposta encontrada.</td></tr>
             )}
-            {(sorted as unknown as Resposta[]).map(r => (
+            {rows.map(r => (
               <tr key={`${r.op_answer_id}-${r.cotacao_id}`} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3 font-medium text-gray-900">{r.supplier_name}</td>
                 <td className="px-4 py-3 text-gray-500 text-xs">{r.supplier_city ?? "—"}</td>

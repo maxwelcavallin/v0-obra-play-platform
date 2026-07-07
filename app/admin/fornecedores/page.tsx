@@ -27,8 +27,10 @@ export default function AdminFornecedores() {
   const [page, setPage]       = useState(1)
   const [syncing, setSyncing] = useState(false)
 
+  const { sortKey, sortDir, toggle } = useSortable()
+
   const { data, isLoading, mutate } = useSWR(
-    `/api/admin/fornecedores?search=${encodeURIComponent(query)}&level=${level}&page=${page}`,
+    `/api/admin/fornecedores?search=${encodeURIComponent(query)}&level=${level}&page=${page}${sortKey ? `&sort=${sortKey}&dir=${sortDir}` : ""}`,
     fetcher,
     { refreshInterval: 30000 }
   )
@@ -37,6 +39,8 @@ export default function AdminFornecedores() {
     setQuery(search)
     setPage(1)
   }, [search])
+
+  function handleSort(key: string) { toggle(key); setPage(1) }
 
   async function handleSync() {
     setSyncing(true)
@@ -65,7 +69,6 @@ export default function AdminFornecedores() {
     { label: "Última sync", key: "last_sync_at" },
   ]
   const rows = data?.rows ?? []
-  const { sorted, sortKey, sortDir, toggle } = useSortable(rows)
 
   return (
     <div className="px-8 py-8 max-w-6xl mx-auto">
@@ -138,11 +141,11 @@ export default function AdminFornecedores() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#EEEEEE]">
-                {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
+                {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={handleSort} />)}
               </tr>
             </thead>
             <tbody>
-              {(sorted as any[]).map((s) => (
+              {rows.map((s: any) => (
                 <tr key={s.company_id} className="border-b border-[#F5F5F5] hover:bg-[#FAFAFA] transition-colors">
                   <td className="px-5 py-3.5">
                     <p className="text-sm font-medium text-[#212121]">{s.short_name}</p>

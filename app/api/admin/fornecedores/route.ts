@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
   const offset = (page - 1) * limit
   const orderBy = buildOrderBy(searchParams.get("sort"), searchParams.get("dir"), { columns: SORT, defaultOrder: DEFAULT_ORDER })
 
-  const rows = await db(
+  const rows = await db.query(
     `SELECT mc.company_id, mc.short_name, mc.full_name, mc.city, mc.state, mc.email,
       mc.verified_cnpj, mc.has_confirmed_address, mc.has_confirmed_shipping,
       mc.has_confirmed_configuration,
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
     [search, `%${search}%`, level, limit, offset]
   )
 
-  const [{ total }] = await db(
+  const [{ total }] = await db.query(
     `SELECT COUNT(*)::int AS total FROM mirror_companies mc
     WHERE mc.has_confirmed_configuration = true
       AND ($1 = '' OR mc.short_name ILIKE $2 OR mc.full_name ILIKE $2 OR mc.city ILIKE $2)

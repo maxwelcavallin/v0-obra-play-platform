@@ -20,8 +20,10 @@ export default function AdminUsuarios() {
   const [query, setQuery]     = useState("")
   const [toggling, setToggling] = useState<string | null>(null)
 
+  const { sortKey, sortDir, toggle } = useSortable()
+
   const { data, isLoading, mutate } = useSWR(
-    `/api/admin/usuarios?search=${encodeURIComponent(query)}&status=${status}&page=${page}`,
+    `/api/admin/usuarios?search=${encodeURIComponent(query)}&status=${status}&page=${page}${sortKey ? `&sort=${sortKey}&dir=${sortDir}` : ""}`,
     fetcher
   )
 
@@ -29,6 +31,8 @@ export default function AdminUsuarios() {
     setQuery(search)
     setPage(1)
   }, [search])
+
+  function handleSort(key: string) { toggle(key); setPage(1) }
 
   async function toggleStatus(userId: string, currentActive: boolean) {
     setToggling(userId)
@@ -59,7 +63,6 @@ export default function AdminUsuarios() {
     { label: "" },
   ]
   const rows = data?.rows ?? []
-  const { sorted, sortKey, sortDir, toggle } = useSortable(rows)
 
   return (
     <div className="px-8 py-8 max-w-6xl mx-auto">
@@ -104,11 +107,11 @@ export default function AdminUsuarios() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#EEEEEE]">
-                {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
+                {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={handleSort} />)}
               </tr>
             </thead>
             <tbody>
-              {(sorted as any[]).map((u) => (
+              {rows.map((u: any) => (
                 <tr key={u.id} className="border-b border-[#F5F5F5] hover:bg-[#FAFAFA] transition-colors">
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-2">

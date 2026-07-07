@@ -1,9 +1,12 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useCallback } from "react"
+import useSWR from "swr"
 import { Search, RefreshCw, ToggleLeft, ToggleRight, Package, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
 import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
+
+const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 interface ShowcaseItem {
   id: string
@@ -27,30 +30,22 @@ function fmtDate(d?: string | null) {
 }
 
 export default function AdminVitrinePage() {
-  const [items, setItems] = useState<ShowcaseItem[]>([])
-  const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [search, setSearch] = useState("")
+  const [searchQ, setSearchQ] = useState("")
   const [page, setPage] = useState(1)
-  const [total, setTotal] = useState(0)
   const [syncResult, setSyncResult] = useState<{ total_synced: number; ts: string } | null>(null)
   const PER = 50
 
-  const fetchItems = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ page: String(page) })
-      if (search) params.set("search", search)
-      const res = await fetch(`/api/admin/vitrine/items?${params}`)
-      const data = await res.json()
-      setItems(data.items ?? [])
-      setTotal(data.total ?? 0)
-    } finally {
-      setLoading(false)
-    }
-  }, [page, search])
+  const { sortKey, sortDir, toggle } = useSortable()
 
-  useEffect(() => { fetchItems() }, [fetchItems])
+  const swrKey = `/api/admin/vitrine/items?page=${page}${searchQ ? `&search=${encodeURIComponent(searchQ)}` : ""}${sortKey ? `&sort=${sortKey}&dir=${sortDir}` : ""}`
+  const { data, isLoading: loading, mutate } = useSWR(swrKey, fetcher)
+
+  const items: ShowcaseItem[] = data?.items ?? []
+  const total: number = data?.total ?? 0
+
+  function handleSort(key: string) { toggle(key); setPage(1) }
 
   async function handleSync() {
     setSyncing(true)
@@ -60,7 +55,7 @@ export default function AdminVitrinePage() {
       if (!data.ok) throw new Error(data.error)
       setSyncResult({ total_synced: data.total_synced, ts: new Date().toLocaleTimeString("pt-BR") })
       toast.success(`Sync concluído — ${data.total_synced} itens atualizados`)
-      fetchItems()
+      mutate()
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erro no sync")
     } finally {
@@ -74,7 +69,7 @@ export default function AdminVitrinePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: item.id, is_active: !item.is_active }),
     })
-    setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_active: !i.is_active } : i))
+    mutate()
   }
 
   const totalPages = Math.ceil(total / PER)
@@ -86,7 +81,6 @@ export default function AdminVitrinePage() {
     { label: "Último sync",   key: "last_synced_at" },
     { label: "Ativo",         key: "is_active" },
   ]
-  const { sorted, sortKey, sortDir, toggle } = useSortable(items as unknown as Record<string, unknown>[])
 
   return (
     <div className="p-6 space-y-5">
@@ -120,7 +114,8 @@ export default function AdminVitrinePage() {
           type="text"
           placeholder="Buscar itens..."
           value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1) }}
+          onChange={e => setSearch(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") { setSearchQ(search); setPage(1) } }}
           className="w-full pl-9 pr-4 py-2 border border-[#EEEEEE] rounded-xl text-sm text-[#212121] placeholder-[#9E9E9E] focus:outline-none focus:border-[#1565C0] bg-white"
         />
       </div>
@@ -130,7 +125,7 @@ export default function AdminVitrinePage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#F5F5F5]">
-              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={handleSort} />)}
             </tr>
           </thead>
           <tbody>
@@ -151,7 +146,7 @@ export default function AdminVitrinePage() {
                   </p>
                 </td>
               </tr>
-            ) : (sorted as unknown as ShowcaseItem[]).map(item => (
+            ) : items.map(item => (
               <tr key={item.id} className="border-b border-[#F5F5F5] hover:bg-[#FAFAFA] transition-colors">
                 <td className="px-4 py-3">
                   <div>
