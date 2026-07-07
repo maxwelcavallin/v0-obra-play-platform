@@ -12,12 +12,21 @@ function cutoffDate(days: number | null): string | undefined {
 
 // Garante que o valor é string/number/null — nunca um objeto
 function scalar(v: any): string | null {
-  if (v == null) return null
-  if (typeof v === "string") return v || null
-  if (typeof v === "number") return String(v)
+  if (v == null) {
+    return null
+  }
+  if (typeof v === "string") {
+    return v.length > 0 ? v : null
+  }
+  if (typeof v === "number") {
+    return String(v)
+  }
   if (typeof v === "object") {
-    const s = v.code ?? v.name ?? String(v.id ?? "")
-    return s || null
+    const picked = v.code != null ? String(v.code)
+      : v.name != null ? String(v.name)
+      : v.id   != null ? String(v.id)
+      : ""
+    return picked.length > 0 ? picked : null
   }
   return String(v)
 }
