@@ -15,7 +15,7 @@ function scalar(v: any): string | null {
   if (v == null) return null
   if (typeof v === "string") return v || null
   if (typeof v === "number") return String(v)
-  if (typeof v === "object") return v.code ?? v.name ?? String(v.id ?? "") || null
+  if (typeof v === "object") return (v.code ?? v.name ?? String(v.id ?? "")) || null
   return String(v)
 }
 
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
       opResult = await obraplay.quotations.listAnswers(baseParams)
       opError = "Filtro de período ignorado (parâmetro não suportado pela API)"
     } catch (e2: any) {
-      console.error("[respostas] API error (without date filter):", e2?.message)
+      console.error("[v0] respostas API error (without date filter):", e2?.message)
       return NextResponse.json(
         { error: "Falha ao buscar respostas na API ObraPlay", detail: e2?.message, rows: [], total: 0 },
         { status: 502 }
