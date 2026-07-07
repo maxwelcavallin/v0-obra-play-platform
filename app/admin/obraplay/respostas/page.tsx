@@ -50,9 +50,11 @@ export default function RespostasCotacaoPage() {
   const swrKey = `/api/admin/obraplay/respostas?q=${encodeURIComponent(query)}&days=${days}&page=${page}${sortKey ? `&sort=${sortKey}&dir=${sortDir}` : ""}`
   const { data, isLoading, isValidating, mutate } = useSWR(swrKey, fetcher)
 
-  const rows: Resposta[] = data?.rows ?? []
-  const total: number = data?.total ?? 0
-  const syncing = isValidating && !isLoading
+  const rows: Resposta[]   = data?.rows ?? []
+  const total: number      = data?.total ?? 0
+  const syncing            = isValidating && !isLoading
+  const warning: string | null = data?._warning ?? null
+  const apiError: string | null = data?.error ?? null
 
   const COLS: ColDef[] = [
     { label: "Fornecedor",    key: "supplier_name" },
@@ -105,6 +107,17 @@ export default function RespostasCotacaoPage() {
           </button>
         </div>
       </div>
+
+      {apiError && (
+        <div className="mb-3 px-4 py-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
+          Erro ao buscar dados: {apiError}. Tente sincronizar novamente.
+        </div>
+      )}
+      {warning && (
+        <div className="mb-3 px-4 py-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
+          Aviso: {warning}
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <table className="w-full text-sm">

@@ -36,47 +36,76 @@ export async function GET(req: NextRequest) {
     ? `${sortDir === "asc" ? "" : "-"}${ORDER_MAP[sortParam]}`
     : "-created_at"
 
-  // Busca na API ObraPlay
-  const opResult = await obraplay.orders.list({
-    search:           q || undefined,
+  const baseParams = {
+    search:    q || undefined,
     page,
-    page_size:        50,
-    created_at__gte:  cutoffDate(days),
+    page_size: 50,
     ordering,
-  })
+  }
+
+  let opResult: { results: any[]; count: number } = { results: [], count: 0 }
+  let opError: string | null = null
+
+  try {
+    opResult = await obraplay.orders.list({
+      ...baseParams,
+      created_at__gte: cutoffDate(days),
+    })
+  } catch (e: any) {
+    console.error("[v0] ordens API error (with date filter):", e?.message)
+    try {
+      opResult = await obraplay.orders.list(baseParams)
+      opError  = "Filtro de período ignorado (parâmetro não suportado pela API)"
+    } catch (e2: any) {
+      console.error("[v0] ordens API error (without date filter):", e2?.message)
+      return NextResponse.json(
+        { error: "Falha ao buscar ordens na API ObraPlay", detail: e2?.message, rows: [], total: 0 },
+        { status: 502 }
+      )
+    }
+  }
 
   const opRows: any[]  = opResult.results ?? []
   const total: number  = opResult.count   ?? 0
 
-  // Enriquece com dados locais: empresa e cotação pelo foreign_id (= identifier da OC local)
+  // Enriquece com dados locais: empresa e cotação pelo foreign_id / code
   const db = neon(process.env.DATABASE_URL!)
 
-  // Coleta os foreign_ids presentes nesta página para busca em lote
-  const foreignIds = opRows
-    .map(r => r.foreign_id)
-    .filter(Boolean)
-
+  const opCodes = opRows.map(r => r.code).filter(Boolean)
   let localMap: Record<string, { company_name: string; cotacao_identifier: string; local_id: string; obraplay_sync_error: string | null }> = {}
-  if (foreignIds.length > 0) {
-    const placeholders = foreignIds.map((_, i) => `$${i + 1}`).join(",")
-    const local = await db.query(
-      `SELECT oc.id, oc.obraplay_order_code, oc.obraplay_sync_error,
-              c.identifier AS cotacao_identifier,
-              co.fantasy_name AS company_name
-       FROM ordens_compra oc
-       LEFT JOIN cotacoes  c  ON c.id  = oc.cotacao_id
-       LEFT JOIN companies co ON co.id = c.company_id
-       WHERE oc.obraplay_order_code = ANY(ARRAY[${placeholders}])`,
-      foreignIds
-    )
-    for (const row of local) {
-      if (row.obraplay_order_code) localMap[row.obraplay_order_code] = row
+
+  if (opCodes.length > 0) {
+    try {
+      const placeholders = opCodes.map((_, i) => `$${i + 1}`).join(",")
+      const local = await db.query(
+        `SELECT oc.id AS local_id, oc.obraplay_order_code, oc.obraplay_sync_error,
+                c.identifier AS cotacao_identifier,
+                co.fantasy_name AS company_name
+         FROM ordens_compra oc
+         LEFT JOIN cotacoes  c  ON c.id  = oc.cotacao_id
+         LEFT JOIN companies co ON co.id = c.company_id
+         WHERE oc.obraplay_order_code = ANY(ARRAY[${placeholders}])`,
+        opCodes
+      )
+      for (const row of local) {
+        if (row.obraplay_order_code) localMap[row.obraplay_order_code] = row
+      }
+    } catch (dbErr: any) {
+      console.error("[v0] ordens DB enrich error:", dbErr?.message)
     }
   }
 
-  // Filtra por erro de sync (somente OCs que existem localmente com obraplay_sync_error)
   let rows = opRows.map(o => {
     const local = localMap[o.code] ?? null
+    // total da API ObraPlay vem em micros (int) ou em reais (string decimal)
+    // Detecta: se for número inteiro grande (> 1000), assume micros
+    let totalReais: number | null = null
+    if (o.total != null) {
+      const raw = Number(o.total)
+      totalReais = Number.isInteger(raw) && raw > 10000
+        ? raw / 1_000_000
+        : raw
+    }
     return {
       id:                    o.id,
       obraplay_order_id:     o.id,
@@ -84,7 +113,7 @@ export async function GET(req: NextRequest) {
       status:                o.status ?? "—",
       supplier_name:         o.supplier_company?.short_name ?? o.supplier_name ?? "—",
       supplier_email:        o.supplier_email ?? null,
-      total:                 o.total != null ? Number(o.total) / 1_000_000 : null,
+      total:                 totalReais,
       payment_method:        o.payment_method ?? null,
       created_at:            o.created_at,
       cotacao_identifier:    local?.cotacao_identifier ?? o.quotation_code ?? null,
@@ -98,5 +127,5 @@ export async function GET(req: NextRequest) {
     rows = rows.filter(r => r.obraplay_sync_error)
   }
 
-  return NextResponse.json({ rows, total, page, per: 50, days: days ?? "todos" })
+  return NextResponse.json({ rows, total, page, per: 50, days: days ?? "todos", _warning: opError })
 }

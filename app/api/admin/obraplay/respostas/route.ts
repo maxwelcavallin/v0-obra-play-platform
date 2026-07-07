@@ -7,7 +7,7 @@ function cutoffDate(days: number | null): string | undefined {
   if (!days) return undefined
   const d = new Date()
   d.setDate(d.getDate() - days)
-  return d.toISOString().split("T")[0]
+  return d.toISOString().split("T")[0] // YYYY-MM-DD
 }
 
 export async function GET(req: NextRequest) {
@@ -31,14 +31,36 @@ export async function GET(req: NextRequest) {
     ? `${sortDir === "asc" ? "" : "-"}${ORDER_MAP[sortParam]}`
     : "-answered_at"
 
-  // Busca respostas de cotação na API ObraPlay
-  const opResult = await obraplay.quotations.listAnswers({
-    search:              q || undefined,
+  // Monta parâmetros — tenta com o filtro de data; se falhar, tenta sem
+  const baseParams = {
+    search:    q || undefined,
     page,
-    page_size:           50,
-    answered_at__gte:    cutoffDate(days),
+    page_size: 50,
     ordering,
-  })
+  }
+
+  let opResult: { results: any[]; count: number } = { results: [], count: 0 }
+  let opError: string | null = null
+
+  try {
+    opResult = await obraplay.quotations.listAnswers({
+      ...baseParams,
+      answered_at__gte: cutoffDate(days),
+    })
+  } catch (e: any) {
+    // Se o parâmetro de data não for aceito pela API, tenta sem ele
+    console.error("[v0] respostas API error (with date filter):", e?.message)
+    try {
+      opResult = await obraplay.quotations.listAnswers(baseParams)
+      opError  = "Filtro de período ignorado (parâmetro não suportado pela API)"
+    } catch (e2: any) {
+      console.error("[v0] respostas API error (without date filter):", e2?.message)
+      return NextResponse.json(
+        { error: "Falha ao buscar respostas na API ObraPlay", detail: e2?.message, rows: [], total: 0 },
+        { status: 502 }
+      )
+    }
+  }
 
   const opRows: any[] = opResult.results ?? []
   const total: number = opResult.count   ?? 0
@@ -50,21 +72,26 @@ export async function GET(req: NextRequest) {
   let quotationMap: Record<number, { company_name: string; cotacao_id: string; cotacao_identifier: string }> = {}
 
   if (opQuotationIds.length > 0) {
-    const placeholders = opQuotationIds.map((_, i) => `$${i + 1}`).join(",")
-    const local = await db.query(
-      `SELECT c.id, c.obraplay_quotation_id, c.identifier,
-              co.fantasy_name AS company_name
-       FROM cotacoes c
-       LEFT JOIN companies co ON co.id = c.company_id
-       WHERE c.obraplay_quotation_id = ANY(ARRAY[${placeholders}]::int[])`,
-      opQuotationIds
-    )
-    for (const row of local) {
-      quotationMap[row.obraplay_quotation_id] = {
-        company_name:       row.company_name,
-        cotacao_id:         row.id,
-        cotacao_identifier: row.identifier,
+    try {
+      const placeholders = opQuotationIds.map((_, i) => `$${i + 1}`).join(",")
+      const local = await db.query(
+        `SELECT c.id, c.obraplay_quotation_id, c.identifier,
+                co.fantasy_name AS company_name
+         FROM cotacoes c
+         LEFT JOIN companies co ON co.id = c.company_id
+         WHERE c.obraplay_quotation_id = ANY(ARRAY[${placeholders}]::int[])`,
+        opQuotationIds
+      )
+      for (const row of local) {
+        quotationMap[row.obraplay_quotation_id] = {
+          company_name:       row.company_name,
+          cotacao_id:         row.id,
+          cotacao_identifier: row.identifier,
+        }
       }
+    } catch (dbErr: any) {
+      console.error("[v0] respostas DB enrich error:", dbErr?.message)
+      // Continua sem enriquecimento local
     }
   }
 
@@ -89,5 +116,5 @@ export async function GET(req: NextRequest) {
     }
   })
 
-  return NextResponse.json({ rows, total, page, per: 50, days: days ?? "todos" })
+  return NextResponse.json({ rows, total, page, per: 50, days: days ?? "todos", _warning: opError })
 }
