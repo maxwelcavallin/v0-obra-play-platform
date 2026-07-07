@@ -95,10 +95,19 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Garante que o valor é string/number/null — nunca um objeto
+  function scalar(v: any): string | null {
+    if (v == null) return null
+    if (typeof v === "string") return v || null
+    if (typeof v === "number") return String(v)
+    if (typeof v === "object") return v.code ?? v.name ?? v.id ?? null
+    return String(v)
+  }
+
   let rows = opRows.map(o => {
     const local = localMap[o.code] ?? null
     // total da API ObraPlay vem em micros (int) ou em reais (string decimal)
-    // Detecta: se for número inteiro grande (> 1000), assume micros
+    // Detecta: se for número inteiro grande (> 10000), assume micros
     let totalReais: number | null = null
     if (o.total != null) {
       const raw = Number(o.total)
@@ -109,17 +118,17 @@ export async function GET(req: NextRequest) {
     return {
       id:                    o.id,
       obraplay_order_id:     o.id,
-      obraplay_order_code:   o.code ?? null,
-      status:                o.status ?? "—",
-      supplier_name:         o.supplier_company?.short_name ?? o.supplier_name ?? "—",
-      supplier_email:        o.supplier_email ?? null,
+      obraplay_order_code:   scalar(o.code)            ?? null,
+      status:                scalar(o.status)          ?? "—",
+      supplier_name:         scalar(o.supplier_company?.short_name ?? o.supplier_name ?? o.supplier_company) ?? "—",
+      supplier_email:        scalar(o.supplier_email)  ?? null,
       total:                 totalReais,
-      payment_method:        o.payment_method ?? null,
-      created_at:            o.created_at,
-      cotacao_identifier:    local?.cotacao_identifier ?? o.quotation_code ?? null,
-      company_name:          local?.company_name ?? o.company?.short_name ?? o.company_name ?? "—",
+      payment_method:        scalar(o.payment_method)  ?? null,
+      created_at:            scalar(o.created_at)      ?? null,
+      cotacao_identifier:    local?.cotacao_identifier ?? scalar(o.quotation_code) ?? null,
+      company_name:          local?.company_name       ?? scalar(o.company?.short_name ?? o.company_name ?? o.company) ?? "—",
       obraplay_sync_error:   local?.obraplay_sync_error ?? null,
-      local_id:              local?.local_id ?? null,
+      local_id:              local?.local_id           ?? null,
     }
   })
 

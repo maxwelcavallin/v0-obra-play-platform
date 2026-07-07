@@ -95,24 +95,34 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Helper: garante que o valor é string/number/null — nunca um objeto
+  function scalar(v: any): string | null {
+    if (v == null) return null
+    if (typeof v === "string") return v || null
+    if (typeof v === "number") return String(v)
+    // Objeto: tenta extrair campo "code" ou "name" (padrão comum da API ObraPlay)
+    if (typeof v === "object") return v.code ?? v.name ?? v.id ?? null
+    return String(v)
+  }
+
   const rows = opRows.map(r => {
     const local = quotationMap[r.quotation] ?? null
     return {
       op_answer_id:          r.id,
       quotation_id:          r.quotation,
       cotacao_id:            local?.cotacao_id         ?? null,
-      cotacao_identifier:    local?.cotacao_identifier ?? r.quotation_code ?? String(r.quotation ?? "—"),
-      company_name:          local?.company_name       ?? r.company?.short_name ?? "—",
-      supplier_name:         r.supplier?.short_name    ?? r.supplier_name       ?? "—",
-      supplier_city:         r.supplier?.city          ?? null,
-      supplier_email:        r.supplier_email          ?? r.supplier?.email     ?? null,
+      cotacao_identifier:    local?.cotacao_identifier ?? scalar(r.quotation_code) ?? String(r.quotation ?? "—"),
+      company_name:          local?.company_name       ?? scalar(r.company?.short_name ?? r.company) ?? "—",
+      supplier_name:         scalar(r.supplier?.short_name ?? r.supplier_name ?? r.supplier) ?? "—",
+      supplier_city:         scalar(r.supplier?.city)  ?? null,
+      supplier_email:        scalar(r.supplier_email ?? r.supplier?.email) ?? null,
       supplier_foreign_id:   r.supplier?.id            ?? null,
-      payment_method:        r.payment_method          ?? null,
-      answered_at:           r.answered_at             ?? null,
-      arrival_estimate:      r.arrival_estimate        ?? null,
-      valid_until:           r.valid_until             ?? null,
+      payment_method:        scalar(r.payment_method)  ?? null,
+      answered_at:           scalar(r.answered_at)     ?? null,
+      arrival_estimate:      scalar(r.arrival_estimate) ?? null,
+      valid_until:           scalar(r.valid_until)     ?? null,
       item_count:            Array.isArray(r.answered_items) ? r.answered_items.length : (r.items_count ?? 0),
-      observations:          r.observations            ?? null,
+      observations:          scalar(r.observations)    ?? null,
     }
   })
 
