@@ -15,7 +15,10 @@ function scalar(v: any): string | null {
   if (v == null) return null
   if (typeof v === "string") return v || null
   if (typeof v === "number") return String(v)
-  if (typeof v === "object") return (v.code ?? v.name ?? String(v.id ?? "")) || null
+  if (typeof v === "object") {
+    const s = v.code ?? v.name ?? String(v.id ?? "")
+    return s || null
+  }
   return String(v)
 }
 
