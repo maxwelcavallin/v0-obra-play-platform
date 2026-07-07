@@ -80,9 +80,9 @@ export default function ConstructorAgentePage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-medium text-gray-900">{String(k.name)}</p>
-                        {k.revoked_at && (
+                        {k.revoked_at ? (
                           <span className="text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded font-semibold">Revogada</span>
-                        )}
+                        ) : null}
                       </div>
                       <div className="flex items-center gap-3 mt-1">
                         <span className="font-mono text-xs text-gray-500">{String(k.key_prefix)}••••••••</span>
@@ -97,12 +97,12 @@ export default function ConstructorAgentePage() {
                         <Clock size={11} />
                         <span>Criada {fmtDate(String(k.created_at))}</span>
                       </div>
-                      {k.last_used_at && (
+                      {k.last_used_at ? (
                         <div className="flex items-center gap-1 text-xs text-gray-400 justify-end mt-0.5">
                           <Activity size={11} />
                           <span>Último uso {fmtDate(String(k.last_used_at))}</span>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 ))}

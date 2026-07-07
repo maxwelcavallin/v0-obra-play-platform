@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Shield, Search } from "lucide-react"
+import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
 interface AuditLog {
   id: string
@@ -52,6 +53,14 @@ export default function AuditoriaPage() {
 
   const totalPages = Math.ceil(total / PER)
 
+  const COLS: ColDef[] = [
+    { label: "Data",     key: "created_at" },
+    { label: "Admin",    key: "admin_name" },
+    { label: "Ação",     key: "action" },
+    { label: "Entidade", key: "entity_type" },
+  ]
+  const { sorted, sortKey, sortDir, toggle } = useSortable(logs as unknown as Record<string, unknown>[])
+
   return (
     <div className="p-6 space-y-5">
       <div className="flex items-start justify-between gap-4">
@@ -76,10 +85,7 @@ export default function AuditoriaPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#F5F5F5]">
-              <th className="text-left px-4 py-3 text-xs font-semibold text-[#9E9E9E] uppercase tracking-wide">Data</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-[#9E9E9E] uppercase tracking-wide">Admin</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-[#9E9E9E] uppercase tracking-wide">Ação</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-[#9E9E9E] uppercase tracking-wide hidden md:table-cell">Entidade</th>
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
             </tr>
           </thead>
           <tbody>
@@ -96,7 +102,7 @@ export default function AuditoriaPage() {
                   <p className="text-sm text-[#9E9E9E]">Nenhuma ação registrada ainda</p>
                 </td>
               </tr>
-            ) : logs.map(log => (
+            ) : (sorted as unknown as AuditLog[]).map(log => (
               <tr key={log.id} className="border-b border-[#F5F5F5] hover:bg-[#FAFAFA] transition-colors">
                 <td className="px-4 py-3 text-[#9E9E9E] text-xs whitespace-nowrap">{fmtDatetime(log.created_at)}</td>
                 <td className="px-4 py-3 font-medium text-[#212121]">{log.admin_name}</td>

@@ -4,6 +4,7 @@ import { useState } from "react"
 import useSWR from "swr"
 import { Download, X, ChevronDown, ChevronUp, TrendingUp } from "lucide-react"
 import { ReadonlyBadge, Badge, fmtBRL } from "@/components/admin/readonly-badge"
+import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -31,6 +32,17 @@ export default function AuditoriaCredenciadosPage() {
   )
 
   const rows: FornecedorAuditoria[] = data?.rows ?? []
+
+  const COLS: ColDef[] = [
+    { label: "Fornecedor",   key: "name" },
+    { label: "Recebidas",    key: "received",             numeric: true },
+    { label: "Respondidas",  key: "answered",             numeric: true },
+    { label: "Taxa %",       key: "answered",             numeric: true },
+    { label: "OCs",          key: "ocs_total",            numeric: true },
+    { label: "Vol. Total",   key: "volume_total_micros",  numeric: true },
+    { label: "Ticket Médio", key: "volume_total_micros",  numeric: true },
+  ]
+  const { sorted, sortKey, sortDir, toggle } = useSortable(rows as unknown as Record<string, unknown>[])
 
   function exportCSV() {
     const header = "Período,Fornecedor,CNPJ,Cotações Recebidas,Respondidas,Taxa%,OCs,Volume Total,Ticket Médio"
@@ -88,9 +100,7 @@ export default function AuditoriaCredenciadosPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              {["Fornecedor","Recebidas","Respondidas","Taxa %","OCs","Vol. Total","Ticket Médio"].map(h => (
-                <th key={h} className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">{h}</th>
-              ))}
+              {COLS.map(col => <SortableTh key={col.label + col.key} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -100,7 +110,7 @@ export default function AuditoriaCredenciadosPage() {
             {!isLoading && rows.length === 0 && (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400">Nenhum dado para o período selecionado.</td></tr>
             )}
-            {rows.map(f => {
+            {(sorted as unknown as FornecedorAuditoria[]).map(f => {
               const taxa = f.received > 0 ? ((f.answered / f.received) * 100).toFixed(1) : "0"
               const ticket = f.ocs_total > 0 ? fmtBRL(f.volume_total_micros / f.ocs_total / 1_000_000) : "—"
               return (
@@ -127,7 +137,7 @@ export default function AuditoriaCredenciadosPage() {
           </tbody>
         </table>
         <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
-          <p className="text-xs text-gray-400">{rows.length} fornecedor{rows.length !== 1 ? "es" : ""} — {MESES[mes - 1]}/{ano}</p>
+          <p className="text-xs text-gray-400">{sorted.length} fornecedor{sorted.length !== 1 ? "es" : ""} — {MESES[mes - 1]}/{ano}</p>
         </div>
       </div>
 
