@@ -35,13 +35,13 @@ const PERIOD_OPTIONS = [
 export default function OrdensObraPlayPage() {
   const [q, setQ] = useState("")
   const [query, setQuery] = useState("")
-  const [status, setStatus] = useState("")
+  const [syncErr, setSyncErr] = useState("")
   const [days, setDays] = useState("15")
   const [page, setPage] = useState(1)
 
   const { sortKey, sortDir, toggle } = useSortable()
 
-  const swrKey = `/api/admin/obraplay/ordens?q=${encodeURIComponent(query)}&status=${encodeURIComponent(status)}&days=${days}&page=${page}${sortKey ? `&sort=${sortKey}&dir=${sortDir}` : ""}`
+  const swrKey = `/api/admin/obraplay/ordens?q=${encodeURIComponent(query)}&sync_err=${syncErr}&days=${days}&page=${page}${sortKey ? `&sort=${sortKey}&dir=${sortDir}` : ""}`
   const { data, isLoading, isValidating, mutate } = useSWR(swrKey, fetcher)
 
   const rows: Ordem[] = data?.rows ?? []
@@ -79,15 +79,11 @@ export default function OrdensObraPlayPage() {
             {PERIOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
 
-          {/* Status */}
-          <select value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}
+          {/* Filtro erro de sync */}
+          <select value={syncErr} onChange={e => { setSyncErr(e.target.value); setPage(1) }}
             className="text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-[#1565C0] bg-white">
-            <option value="">Todos os status</option>
-            <option value="Enviada ao fornecedor">Enviada ao fornecedor</option>
-            <option value="Confirmada">Confirmada</option>
-            <option value="Em andamento">Em andamento</option>
-            <option value="Entregue">Entregue</option>
-            <option value="Cancelada">Cancelada</option>
+            <option value="">Todas as OCs</option>
+            <option value="yes">Somente com erro de sync</option>
           </select>
 
           {/* Busca */}
