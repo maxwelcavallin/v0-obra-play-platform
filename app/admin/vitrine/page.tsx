@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { Search, RefreshCw, ToggleLeft, ToggleRight, Package, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
+import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
 interface ShowcaseItem {
   id: string
@@ -78,6 +79,15 @@ export default function AdminVitrinePage() {
 
   const totalPages = Math.ceil(total / PER)
 
+  const COLS: ColDef[] = [
+    { label: "Item",          key: "name" },
+    { label: "Categoria",     key: "category_name" },
+    { label: "Faixa de preço",key: "min_price_micros", numeric: true },
+    { label: "Último sync",   key: "last_synced_at" },
+    { label: "Ativo",         key: "is_active" },
+  ]
+  const { sorted, sortKey, sortDir, toggle } = useSortable(items as unknown as Record<string, unknown>[])
+
   return (
     <div className="p-6 space-y-5">
       {/* Header */}
@@ -120,11 +130,7 @@ export default function AdminVitrinePage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#F5F5F5]">
-              <th className="text-left px-4 py-3 text-xs font-semibold text-[#9E9E9E] uppercase tracking-wide">Item</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-[#9E9E9E] uppercase tracking-wide hidden sm:table-cell">Categoria</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-[#9E9E9E] uppercase tracking-wide hidden md:table-cell">Faixa de preço</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-[#9E9E9E] uppercase tracking-wide hidden lg:table-cell">Último sync</th>
-              <th className="text-center px-4 py-3 text-xs font-semibold text-[#9E9E9E] uppercase tracking-wide">Ativo</th>
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
             </tr>
           </thead>
           <tbody>
@@ -145,7 +151,7 @@ export default function AdminVitrinePage() {
                   </p>
                 </td>
               </tr>
-            ) : items.map(item => (
+            ) : (sorted as unknown as ShowcaseItem[]).map(item => (
               <tr key={item.id} className="border-b border-[#F5F5F5] hover:bg-[#FAFAFA] transition-colors">
                 <td className="px-4 py-3">
                   <div>

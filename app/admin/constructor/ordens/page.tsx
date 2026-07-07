@@ -5,6 +5,7 @@ import Link from "next/link"
 import useSWR from "swr"
 import { Search, ExternalLink } from "lucide-react"
 import { Badge, fmtDate, fmtBRL } from "@/components/admin/readonly-badge"
+import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -23,6 +24,17 @@ export default function ConstructorOrdensPage() {
   )
   const items: Record<string, unknown>[] = data?.rows ?? []
   const total: number = data?.total ?? 0
+
+  const COLS: ColDef[] = [
+    { label: "Código",     key: "identifier" },
+    { label: "Empresa",    key: "company_name" },
+    { label: "Fornecedor", key: "supplier_name" },
+    { label: "Status",     key: "status" },
+    { label: "Total",      key: "total", numeric: true },
+    { label: "Criada em",  key: "created_at" },
+    { label: "" },
+  ]
+  const { sorted, sortKey, sortDir, toggle } = useSortable(items)
 
   return (
     <div className="max-w-[1280px] mx-auto">
@@ -43,9 +55,7 @@ export default function ConstructorOrdensPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              {["Código", "Empresa", "Fornecedor", "Status", "Total", "Criada em", ""].map(h => (
-                <th key={h} className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3">{h}</th>
-              ))}
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -53,7 +63,7 @@ export default function ConstructorOrdensPage() {
               <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400">Carregando...</td></tr>
             ) : items.length === 0 ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400">Nenhuma ordem encontrada.</td></tr>
-            ) : items.map((o) => (
+            ) : sorted.map((o) => (
               <tr key={String(o.id)} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3 font-mono font-semibold text-gray-900 text-xs">{String(o.identifier ?? o.obraplay_order_code ?? "—")}</td>
                 <td className="px-4 py-3">

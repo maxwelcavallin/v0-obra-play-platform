@@ -5,6 +5,7 @@ import useSWR from "swr"
 import { Search, RefreshCw, MapPin, Clock, BadgeCheck, CheckCircle, MinusCircle } from "lucide-react"
 import { toast } from "sonner"
 import { RegistrationBadge } from "@/components/ui/registration-badge"
+import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -53,6 +54,18 @@ export default function AdminFornecedores() {
   }
 
   const totalPages = data ? Math.ceil(data.total / data.limit) : 1
+
+  const COLS: ColDef[] = [
+    { label: "Fornecedor",  key: "short_name" },
+    { label: "Nível",       key: "registration_type" },
+    { label: "Localidade",  key: "city" },
+    { label: "Membros",     key: "member_count",              numeric: true },
+    { label: "Resp. médio", key: "avg_response_time_minutes", numeric: true },
+    { label: "Respostas",   key: "finalized_answers_count",   numeric: true },
+    { label: "Última sync", key: "last_sync_at" },
+  ]
+  const rows = data?.rows ?? []
+  const { sorted, sortKey, sortDir, toggle } = useSortable(rows)
 
   return (
     <div className="px-8 py-8 max-w-6xl mx-auto">
@@ -125,28 +138,11 @@ export default function AdminFornecedores() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#EEEEEE]">
-                <th className="text-left text-[11px] font-semibold text-[#9E9E9E] uppercase tracking-wide px-5 py-3">Fornecedor</th>
-                <th className="text-left text-[11px] font-semibold text-[#9E9E9E] uppercase tracking-wide px-5 py-3">Nível</th>
-                <th className="text-left text-[11px] font-semibold text-[#9E9E9E] uppercase tracking-wide px-5 py-3">Localidade</th>
-                <th className="text-left text-[11px] font-semibold text-[#9E9E9E] uppercase tracking-wide px-5 py-3">Membros</th>
-                <th className="text-left text-[11px] font-semibold text-[#9E9E9E] uppercase tracking-wide px-5 py-3">Resp. médio</th>
-                <th className="text-left text-[11px] font-semibold text-[#9E9E9E] uppercase tracking-wide px-5 py-3">Respostas</th>
-                <th className="text-left text-[11px] font-semibold text-[#9E9E9E] uppercase tracking-wide px-5 py-3">Última sync</th>
+                {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
               </tr>
             </thead>
             <tbody>
-              {data?.rows?.map((s: {
-                company_id: number
-                short_name: string
-                full_name: string
-                city: string
-                state: string
-                registration_type: "certified" | "validated" | "basic"
-                member_count: number
-                avg_response_time_minutes: number
-                finalized_answers_count: number
-                last_sync_at: string
-              }) => (
+              {(sorted as any[]).map((s) => (
                 <tr key={s.company_id} className="border-b border-[#F5F5F5] hover:bg-[#FAFAFA] transition-colors">
                   <td className="px-5 py-3.5">
                     <p className="text-sm font-medium text-[#212121]">{s.short_name}</p>

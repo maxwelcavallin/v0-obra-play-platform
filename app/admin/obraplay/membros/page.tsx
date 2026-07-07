@@ -5,6 +5,7 @@ import useSWR from "swr"
 import Link from "next/link"
 import { Search } from "lucide-react"
 import { ReadonlyBadge, Badge, fmtDate } from "@/components/admin/readonly-badge"
+import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -26,6 +27,16 @@ export default function MembrosObraPlayPage() {
 
   const rows: Membro[] = data?.rows ?? []
   const total: number = data?.total ?? 0
+
+  const COLS: ColDef[] = [
+    { label: "Nome",    key: "name" },
+    { label: "E-mail",  key: "email" },
+    { label: "Empresa", key: "company_name" },
+    { label: "Papel",   key: "role" },
+    { label: "Status",  key: "is_active" },
+    { label: "Sync",    key: "last_sync_at" },
+  ]
+  const { sorted, sortKey, sortDir, toggle } = useSortable(rows as Record<string, unknown>[])
 
   function handleSearch() { setQuery(q); setPage(1) }
 
@@ -52,9 +63,7 @@ export default function MembrosObraPlayPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              {["Nome", "E-mail", "Empresa", "Papel", "Status", "Sync"].map(h => (
-                <th key={h} className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3">{h}</th>
-              ))}
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -64,7 +73,7 @@ export default function MembrosObraPlayPage() {
             {!isLoading && rows.length === 0 && (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">Nenhum membro encontrado.</td></tr>
             )}
-            {rows.map(m => (
+            {(sorted as unknown as Membro[]).map(m => (
               <tr key={m.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3 font-medium text-gray-900">{m.name}</td>
                 <td className="px-4 py-3 text-gray-500 text-xs">{m.email}</td>

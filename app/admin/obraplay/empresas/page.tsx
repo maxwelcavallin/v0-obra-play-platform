@@ -5,6 +5,7 @@ import useSWR from "swr"
 import Link from "next/link"
 import { Search, CheckCircle2, XCircle, ExternalLink } from "lucide-react"
 import { ReadonlyBadge, Badge, fmtDate } from "@/components/admin/readonly-badge"
+import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -36,6 +37,20 @@ export default function EmpresasFornecedorasPage() {
 
   const rows: Company[] = data?.rows ?? []
   const total: number = data?.total ?? 0
+
+  const COLS: ColDef[] = [
+    { label: "Empresa",    key: "short_name" },
+    { label: "Cidade/UF",  key: "city" },
+    { label: "Nível",      key: "registration_type" },
+    { label: "CNPJ Ver.",  key: "verified_cnpj" },
+    { label: "Endereço",   key: "has_confirmed_address" },
+    { label: "Entrega",    key: "has_confirmed_shipping" },
+    { label: "Respostas",  key: "finalized_answers_count", numeric: true },
+    { label: "T. Resposta",key: "avg_response_time_minutes", numeric: true },
+    { label: "Sync",       key: "last_sync_at" },
+    { label: "" },
+  ]
+  const { sorted, sortKey, sortDir, toggle } = useSortable(rows as Record<string, unknown>[])
 
   function handleSearch() { setQuery(q); setPage(1) }
 
@@ -73,15 +88,7 @@ export default function EmpresasFornecedorasPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3">Empresa</th>
-              <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3">Cidade/UF</th>
-              <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3">Nível</th>
-              <th className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3">CNPJ Ver.</th>
-              <th className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3">Endereço</th>
-              <th className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3">Entrega</th>
-              <th className="text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3">Respostas</th>
-              <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3">Sync</th>
-              <th className="px-4 py-3" />
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -91,7 +98,7 @@ export default function EmpresasFornecedorasPage() {
             {!isLoading && rows.length === 0 && (
               <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-400">Nenhuma empresa encontrada.</td></tr>
             )}
-            {rows.map(c => (
+            {(sorted as unknown as Company[]).map(c => (
               <tr key={c.company_id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3">
                   <p className="font-medium text-gray-900 truncate max-w-[200px]">{c.full_name || c.short_name}</p>

@@ -4,6 +4,7 @@ import { useState } from "react"
 import useSWR from "swr"
 import { Search, Package } from "lucide-react"
 import { fmtDate } from "@/components/admin/readonly-badge"
+import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -18,6 +19,16 @@ export default function ConstructorInsumosPage() {
     String(i.category ?? "").toLowerCase().includes(q.toLowerCase()) ||
     String(i.unit ?? "").toLowerCase().includes(q.toLowerCase())
   )
+
+  const COLS: ColDef[] = [
+    { label: "Nome",           key: "name" },
+    { label: "Categoria",      key: "category" },
+    { label: "Unidade",        key: "unit" },
+    { label: "Código interno", key: "internal_code" },
+    { label: "Empresa",        key: "company_name" },
+    { label: "Criado em",      key: "created_at" },
+  ]
+  const { sorted, sortKey, sortDir, toggle } = useSortable(filtered)
 
   return (
     <div className="max-w-[1280px] mx-auto">
@@ -38,9 +49,7 @@ export default function ConstructorInsumosPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              {["Nome", "Categoria", "Unidade", "Código interno", "Empresa", "Criado em"].map(h => (
-                <th key={h} className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3">{h}</th>
-              ))}
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -53,7 +62,7 @@ export default function ConstructorInsumosPage() {
                   <p className="text-sm text-gray-400">Nenhum insumo encontrado.</p>
                 </td>
               </tr>
-            ) : filtered.map((i) => (
+            ) : sorted.map((i) => (
               <tr key={String(i.id)} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3 font-medium text-gray-900 text-sm">{String(i.name ?? "—")}</td>
                 <td className="px-4 py-3 text-sm text-gray-500">{String(i.category ?? "—")}</td>
@@ -66,7 +75,7 @@ export default function ConstructorInsumosPage() {
           </tbody>
         </table>
         <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
-          <p className="text-xs text-gray-400">{filtered.length} insumo{filtered.length !== 1 ? "s" : ""}</p>
+          <p className="text-xs text-gray-400">{sorted.length} insumo{sorted.length !== 1 ? "s" : ""}</p>
         </div>
       </div>
     </div>

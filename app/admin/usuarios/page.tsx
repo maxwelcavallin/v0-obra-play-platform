@@ -4,6 +4,7 @@ import { useState, useCallback } from "react"
 import useSWR from "swr"
 import { Search, RefreshCw, Check, X, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
+import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -49,6 +50,17 @@ export default function AdminUsuarios() {
 
   const totalPages = data ? Math.ceil(data.total / data.limit) : 1
 
+  const COLS: ColDef[] = [
+    { label: "Nome",     key: "name" },
+    { label: "Email",    key: "email" },
+    { label: "Empresas", key: "company_count", numeric: true },
+    { label: "Cadastro", key: "created_at" },
+    { label: "Status",   key: "is_active" },
+    { label: "" },
+  ]
+  const rows = data?.rows ?? []
+  const { sorted, sortKey, sortDir, toggle } = useSortable(rows)
+
   return (
     <div className="px-8 py-8 max-w-6xl mx-auto">
       <div className="mb-6">
@@ -92,24 +104,11 @@ export default function AdminUsuarios() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#EEEEEE]">
-                <th className="text-left text-[11px] font-semibold text-[#9E9E9E] uppercase tracking-wide px-5 py-3">Nome</th>
-                <th className="text-left text-[11px] font-semibold text-[#9E9E9E] uppercase tracking-wide px-5 py-3">Email</th>
-                <th className="text-left text-[11px] font-semibold text-[#9E9E9E] uppercase tracking-wide px-5 py-3">Empresas</th>
-                <th className="text-left text-[11px] font-semibold text-[#9E9E9E] uppercase tracking-wide px-5 py-3">Cadastro</th>
-                <th className="text-left text-[11px] font-semibold text-[#9E9E9E] uppercase tracking-wide px-5 py-3">Status</th>
-                <th className="px-5 py-3" />
+                {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
               </tr>
             </thead>
             <tbody>
-              {data?.rows?.map((u: {
-                id: string
-                name: string
-                email: string
-                company_count: number
-                created_at: string
-                is_active: boolean
-                is_platform_admin: boolean
-              }) => (
+              {(sorted as any[]).map((u) => (
                 <tr key={u.id} className="border-b border-[#F5F5F5] hover:bg-[#FAFAFA] transition-colors">
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-2">

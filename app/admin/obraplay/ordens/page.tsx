@@ -5,6 +5,7 @@ import useSWR from "swr"
 import Link from "next/link"
 import { Search, ExternalLink } from "lucide-react"
 import { ReadonlyBadge, Badge, fmtDate, fmtBRL } from "@/components/admin/readonly-badge"
+import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -36,6 +37,18 @@ export default function OrdensObraPlayPage() {
   const rows: Ordem[] = data?.rows ?? []
   const total: number = data?.total ?? 0
 
+  const COLS: ColDef[] = [
+    { label: "Código OP",  key: "obraplay_order_code" },
+    { label: "Empresa",    key: "company_name" },
+    { label: "Fornecedor", key: "supplier_name" },
+    { label: "Status",     key: "status" },
+    { label: "Cotação",    key: "cotacao_identifier" },
+    { label: "Valor",      key: "total", numeric: true },
+    { label: "Criada",     key: "created_at" },
+    { label: "" },
+  ]
+  const { sorted, sortKey, sortDir, toggle } = useSortable(rows as Record<string, unknown>[])
+
   function handleSearch() { setQuery(q); setPage(1) }
 
   return (
@@ -61,9 +74,7 @@ export default function OrdensObraPlayPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              {["Código OP", "Empresa", "Fornecedor", "Status", "Cotação", "Valor", "Criada", ""].map(h => (
-                <th key={h} className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3">{h}</th>
-              ))}
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -73,7 +84,7 @@ export default function OrdensObraPlayPage() {
             {!isLoading && rows.length === 0 && (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400">Nenhuma ordem encontrada.</td></tr>
             )}
-            {rows.map(o => (
+            {(sorted as unknown as Ordem[]).map(o => (
               <tr key={o.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3">
                   <span className="font-mono font-semibold text-gray-900 text-xs">{o.obraplay_order_code ?? "—"}</span>

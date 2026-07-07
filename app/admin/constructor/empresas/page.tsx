@@ -5,6 +5,7 @@ import useSWR from "swr"
 import Link from "next/link"
 import { Search, ExternalLink, Building2 } from "lucide-react"
 import { Badge, fmtDate } from "@/components/admin/readonly-badge"
+import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -21,6 +22,17 @@ export default function EmpresasConstutorasPage() {
   const total: number = data?.total ?? 0
   const per: number = data?.per ?? 50
   const totalPages = Math.max(1, Math.ceil(total / per))
+
+  const COLS: ColDef[] = [
+    { label: "Empresa",  key: "fantasy_name" },
+    { label: "CNPJ",     key: "cnpj" },
+    { label: "Cidade/UF",key: "city" },
+    { label: "Usuários", key: "user_count",    numeric: true },
+    { label: "Cotações", key: "cotacao_count", numeric: true },
+    { label: "Cadastro", key: "created_at" },
+    { label: "" },
+  ]
+  const { sorted, sortKey, sortDir, toggle } = useSortable(rows)
 
   function handleSearch(v: string) {
     setQ(v)
@@ -49,9 +61,7 @@ export default function EmpresasConstutorasPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              {["Empresa", "CNPJ", "Cidade/UF", "Usuários", "Cotações", "Cadastro", ""].map(h => (
-                <th key={h} className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3">{h}</th>
-              ))}
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -66,7 +76,7 @@ export default function EmpresasConstutorasPage() {
                 </td>
               </tr>
             )}
-            {rows.map((e: any) => (
+            {sorted.map((e: any) => (
               <tr key={e.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3">
                   <p className="font-medium text-gray-900 truncate max-w-[180px]">{e.fantasy_name || e.company_name}</p>

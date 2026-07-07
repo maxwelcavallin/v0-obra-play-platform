@@ -5,6 +5,7 @@ import useSWR from "swr"
 import Link from "next/link"
 import { Search, ExternalLink } from "lucide-react"
 import { ReadonlyBadge, Badge, fmtDate, fmtBRL } from "@/components/admin/readonly-badge"
+import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -27,6 +28,16 @@ export default function RespostasCotacaoPage() {
 
   const rows: Resposta[] = data?.rows ?? []
   const total: number = data?.total ?? 0
+
+  const COLS: ColDef[] = [
+    { label: "Fornecedor",    key: "supplier_name" },
+    { label: "Cidade",        key: "supplier_city" },
+    { label: "Cotação",       key: "cotacao_identifier" },
+    { label: "Data resposta", key: "answered_at" },
+    { label: "Pagamento",     key: "payment_method" },
+    { label: "Itens",         key: "item_count", numeric: true },
+  ]
+  const { sorted, sortKey, sortDir, toggle } = useSortable(rows as Record<string, unknown>[])
 
   function handleSearch() { setQuery(q); setPage(1) }
 
@@ -53,9 +64,7 @@ export default function RespostasCotacaoPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              {["Fornecedor", "Cidade", "Cotação", "Data resposta", "Pagamento", "Itens"].map(h => (
-                <th key={h} className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3">{h}</th>
-              ))}
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -65,7 +74,7 @@ export default function RespostasCotacaoPage() {
             {!isLoading && rows.length === 0 && (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">Nenhuma resposta encontrada.</td></tr>
             )}
-            {rows.map(r => (
+            {(sorted as unknown as Resposta[]).map(r => (
               <tr key={`${r.op_answer_id}-${r.cotacao_id}`} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3 font-medium text-gray-900">{r.supplier_name}</td>
                 <td className="px-4 py-3 text-gray-500 text-xs">{r.supplier_city ?? "—"}</td>

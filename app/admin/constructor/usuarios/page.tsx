@@ -5,6 +5,7 @@ import useSWR from "swr"
 import Link from "next/link"
 import { Search, ExternalLink } from "lucide-react"
 import { Badge, fmtDate } from "@/components/admin/readonly-badge"
+import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -26,6 +27,17 @@ export default function UsuariosConstructorPage() {
 
   const rows: Usuario[] = data?.rows ?? []
   const total: number = data?.total ?? 0
+
+  const COLS: ColDef[] = [
+    { label: "Nome",     key: "name" },
+    { label: "E-mail",   key: "email" },
+    { label: "Telefone", key: "phone" },
+    { label: "Empresas", key: "companies_count", numeric: true },
+    { label: "Cadastro", key: "created_at" },
+    { label: "Status",   key: "is_active" },
+    { label: "" },
+  ]
+  const { sorted, sortKey, sortDir, toggle } = useSortable(rows as Record<string, unknown>[])
 
   function handleSearch() { setQuery(q); setPage(1) }
 
@@ -61,9 +73,7 @@ export default function UsuariosConstructorPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              {["Nome", "E-mail", "Telefone", "Empresas", "Cadastro", "Status", ""].map(h => (
-                <th key={h} className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3">{h}</th>
-              ))}
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -73,7 +83,7 @@ export default function UsuariosConstructorPage() {
             {!isLoading && rows.length === 0 && (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400">Nenhum usuário encontrado.</td></tr>
             )}
-            {rows.map(u => (
+            {(sorted as unknown as Usuario[]).map(u => (
               <tr key={u.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
                 <td className="px-4 py-3 text-gray-500 text-xs">{u.email}</td>

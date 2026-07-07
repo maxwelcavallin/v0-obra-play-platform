@@ -5,6 +5,7 @@ import useSWR from "swr"
 import Link from "next/link"
 import { Search, ExternalLink } from "lucide-react"
 import { ReadonlyBadge, Badge, fmtDate } from "@/components/admin/readonly-badge"
+import { useSortable, SortableTh, ColDef } from "@/components/admin/sortable-header"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -36,6 +37,19 @@ export default function CotacoesMarketplacePage() {
 
   const rows: Cotacao[] = data?.rows ?? []
   const total: number = data?.total ?? 0
+
+  const COLS: ColDef[] = [
+    { label: "Código",       key: "identifier" },
+    { label: "Empresa",      key: "company_name" },
+    { label: "Obra",         key: "obra_name" },
+    { label: "Itens",        key: "item_count",      numeric: true },
+    { label: "Fornecedores", key: "supplier_count",  numeric: true },
+    { label: "Respostas",    key: "response_count",  numeric: true },
+    { label: "Necessidade",  key: "need_date" },
+    { label: "Status",       key: "status" },
+    { label: "" },
+  ]
+  const { sorted, sortKey, sortDir, toggle } = useSortable(rows as Record<string, unknown>[])
 
   function handleSearch() { setQuery(q); setPage(1) }
 
@@ -73,19 +87,17 @@ export default function CotacoesMarketplacePage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              {["Código", "Empresa", "Obra", "Itens", "Fornecedores", "Respostas", "Necessidade", "Status", ""].map(h => (
-                <th key={h} className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3">{h}</th>
-              ))}
+              {COLS.map(col => <SortableTh key={col.label} col={col} sortKey={sortKey} sortDir={sortDir} onToggle={toggle} />)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {isLoading && (
               <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-400">Carregando...</td></tr>
             )}
-            {!isLoading && rows.length === 0 && (
+            {!isLoading && sorted.length === 0 && (
               <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-400">Nenhuma cotação encontrada.</td></tr>
             )}
-            {rows.map(c => (
+            {(sorted as unknown as Cotacao[]).map(c => (
               <tr key={c.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3">
                   <span className="font-mono font-semibold text-gray-900 text-xs">{c.identifier}</span>
