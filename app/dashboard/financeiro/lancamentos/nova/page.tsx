@@ -56,6 +56,8 @@ function NovaLancamentoForm() {
   const ocSupplierName = params.get("supplier_name")
   const ocObraId       = params.get("obra_id")
   const ocObraName     = params.get("obra_name")
+  const ocDueDate      = params.get("due_date")
+  const ocCatHint      = params.get("cat_hint")
 
   const [tab, setTab]         = useState<TabType>(typeQ)
   const [saving, setSaving]   = useState(false)
@@ -98,13 +100,23 @@ function NovaLancamentoForm() {
 
   useEffect(() => {
     if (!ocId || editId) return
-    if (ocDesc)   setDesc(ocDesc)
-    if (ocObraId) setObraId(ocObraId)
+    if (ocDesc)    setDesc(ocDesc)
+    if (ocObraId)  setObraId(ocObraId)
+    if (ocDueDate) setDueDate(ocDueDate)
     if (ocAmount) {
       const cents = Math.round(Number(ocAmount) * 100)
       if (cents > 0) setAmount(formatMoneyInput(cents))
     }
-  }, [ocId, ocAmount, ocDesc, ocObraId, editId])
+  }, [ocId, ocAmount, ocDesc, ocObraId, ocDueDate, editId])
+
+  // Pré-seleciona categoria "Materiais de construção" quando vem de OC
+  useEffect(() => {
+    if (!ocCatHint || !categorias.length || catId) return
+    const found = categorias.find(c =>
+      c.name.toLowerCase().includes("material") || c.name.toLowerCase().includes("insumo")
+    )
+    if (found) setCatId(found.id)
+  }, [ocCatHint, categorias])
 
   useEffect(() => {
     if (!editId) return
@@ -332,7 +344,7 @@ function NovaLancamentoForm() {
                 <div className="flex items-center gap-2">
                   <select value={installments} onChange={e => setInstallments(Number(e.target.value))}
                     className="flex-1 text-sm text-[#212121] bg-[#F5F5F5] rounded-xl px-3 py-2 outline-none">
-                    {Array.from({length: 59}, (_,i) => i+2).map(n => (
+                    {Array.from({length: 23}, (_,i) => i+2).map(n => (
                       <option key={n} value={n}>{n}x</option>
                     ))}
                   </select>
@@ -345,17 +357,20 @@ function NovaLancamentoForm() {
                     </div>
                   )}
                 </div>
-                {datesPreview.length > 0 && (
+                {datesPreview.length > 0 && parseBRL(amount) > 0 && (
                   <div className="mt-3">
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <CalendarDays size={12} className="text-[#9E9E9E]" />
-                      <p className="text-[10px] text-[#9E9E9E] font-medium">Datas geradas</p>
+                      <p className="text-[10px] text-[#9E9E9E] font-medium">Preview das parcelas</p>
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-col gap-1">
                       {datesPreview.map((d, i) => (
-                        <span key={i} className="text-[10px] bg-[#F0F4FB] text-[#1565C0] font-semibold px-2 py-0.5 rounded-full">
-                          {i+1}. {fmtDate(d)}
-                        </span>
+                        <div key={i} className="flex items-center justify-between text-[11px] bg-[#F0F4FB] rounded-lg px-3 py-1.5">
+                          <span className="text-[#1565C0] font-semibold">Parcela {i+1}: {fmtDate(d)}</span>
+                          <span className="text-[#212121] font-bold">
+                            R$ {(parseBRL(amount) / installments).toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2})}
+                          </span>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -373,10 +388,13 @@ function NovaLancamentoForm() {
             className="w-full text-sm text-[#212121] outline-none bg-transparent resize-none" />
         </div>
 
-        {/* Anexos — disponível na edição */}
-        {editId && activeCompany?.id && (
+        {/* Anexos — bloqueado na criação, disponível na edição */}
+        {activeCompany?.id && (
           <div className="bg-white rounded-2xl px-4 py-4 shadow-sm">
-            <AnexosSection transactionId={editId} companyId={activeCompany.id} />
+            {editId
+              ? <AnexosSection transactionId={editId} companyId={activeCompany.id} />
+              : <AnexosSection transactionId="" companyId={activeCompany.id} pendingMode />
+            }
           </div>
         )}
       </div>

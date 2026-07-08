@@ -331,19 +331,21 @@ export default function OrdemCompraDetalhePage() {
         {oc.status !== "Cancelada" && (
           <button
             onClick={() => {
-              const params = new URLSearchParams({
-                type: "despesa",
-                oc_id: oc.id,
-                description: `Pagamento OC ${oc.identifier} — ${oc.supplier_name}`,
-                amount: String(oc.total ?? 0),
+              const p: Record<string, string> = {
+                type:          "despesa",
+                oc_id:         oc.id,
+                description:   `${oc.supplier_name} — ${oc.identifier}`,
+                amount:        String(oc.total ?? 0),
                 supplier_name: oc.supplier_name,
-                ...(oc.obra_id   ? { obra_id:   oc.obra_id }   : {}),
-                ...(oc.obra_name ? { obra_name: oc.obra_name } : {}),
-              })
-              router.push(`/dashboard/financeiro/lancamentos/nova?${params.toString()}`)
+                cat_hint:      "Materiais de construção",
+              }
+              if (oc.arrival_estimate) p.due_date = oc.arrival_estimate
+              if (oc.obra_id)   p.obra_id   = oc.obra_id
+              if (oc.obra_name) p.obra_name = oc.obra_name
+              router.push(`/dashboard/financeiro/lancamentos/nova?${new URLSearchParams(p).toString()}`)
             }}
             className="w-full py-3.5 rounded-2xl bg-[#1565C0] text-white font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#0D47A1] transition-colors shadow-sm">
-            <TrendingUp size={16} />
+            <DollarSign size={16} />
             Gerar lançamento financeiro
           </button>
         )}
