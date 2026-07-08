@@ -26,6 +26,7 @@ type Ordem = {
   supplier_phone: string | null
   // Relacionamentos
   quotation_answer: number | null
+  quotation_code: string | null
   cotacao_identifier: string | null
   local_id: string | null
   // Condições
@@ -47,13 +48,13 @@ const PERIOD_OPTIONS = [
 ]
 
 const STATUS_COLORS: Record<string, "green" | "blue" | "orange" | "red" | "gray"> = {
-  "Finalizada":               "green",
-  "Entregue":                 "green",
-  "Em processamento":         "blue",
-  "Enviada ao fornecedor":    "blue",
-  "Pendente":                 "orange",
-  "Recusada":                 "red",
-  "Cancelada":                "gray",
+  "Finalizada":            "green",
+  "Entregue":              "green",
+  "Em processamento":      "blue",
+  "Enviada ao fornecedor": "blue",
+  "Pendente":              "orange",
+  "Recusada":              "red",
+  "Cancelada":             "gray",
 }
 
 function fmtDateTime(d?: string | null) {
@@ -240,12 +241,12 @@ export default function OrdensObraPlayPage() {
                   {o.supplier_email && <p className="text-[10px] text-gray-400">{o.supplier_email}</p>}
                   {o.supplier_phone && <p className="text-[10px] text-gray-400">{o.supplier_phone}</p>}
                 </td>
-                {/* Cotação */}
+                {/* Cotação — usar quotation_code (readOnly), não quotation_answer (só é ID) */}
                 <td className="px-3 py-2.5 whitespace-nowrap text-xs">
                   {o.cotacao_identifier
                     ? <span className="font-mono bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{o.cotacao_identifier}</span>
-                    : o.quotation_answer
-                      ? <span className="font-mono text-[11px] text-gray-500">Resp. #{o.quotation_answer}</span>
+                    : o.quotation_code
+                      ? <span className="font-mono bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{o.quotation_code}</span>
                       : <span className="text-gray-300">—</span>
                   }
                 </td>

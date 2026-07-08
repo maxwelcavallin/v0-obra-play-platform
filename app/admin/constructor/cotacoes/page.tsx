@@ -35,6 +35,7 @@ export default function ConstructorCotacoesPage() {
     { label: "Empresa",       key: "company_name" },
     { label: "Obra",          key: "obra_name" },
     { label: "Status",        key: "status" },
+    { label: "ID Obra Play",  key: "obraplay_quotation_id" },
     { label: "Itens",         key: "item_count", numeric: true },
     { label: "Necessidade",   key: "need_date" },
     { label: "Criada em",     key: "created_at" },
@@ -67,12 +68,16 @@ export default function ConstructorCotacoesPage() {
           </thead>
           <tbody className="divide-y divide-gray-50">
             {isLoading ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-400">Carregando...</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-400">Carregando...</td></tr>
             ) : items.length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-400">Nenhuma cotação encontrada.</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-400">Nenhuma cotação encontrada.</td></tr>
             ) : items.map((c) => (
               <tr key={String(c.id)} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 font-mono font-semibold text-gray-900 text-xs">{String(c.identifier ?? "—")}</td>
+                <td className="px-4 py-3 font-mono font-semibold text-xs">
+                  <Link href={`/admin/constructor/cotacoes/${c.id}`} className="text-[#1565C0] hover:underline">
+                    {String(c.identifier ?? "—")}
+                  </Link>
+                </td>
                 <td className="px-4 py-3">
                   <Link href={`/admin/constructor/empresas/${c.company_id}`} className="font-medium text-[#1565C0] hover:underline text-sm">
                     {String(c.company_name ?? "—")}
@@ -80,6 +85,12 @@ export default function ConstructorCotacoesPage() {
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600">{String(c.obra_name ?? "—")}</td>
                 <td className="px-4 py-3"><Badge color={STATUS_COLOR[String(c.status)] ?? "gray"}>{String(c.status ?? "—")}</Badge></td>
+                <td className="px-4 py-3">
+                  {c.obraplay_quotation_id
+                    ? <span className="font-mono text-[11px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded">#{String(c.obraplay_quotation_id)}</span>
+                    : <span className="text-gray-300 text-xs">—</span>
+                  }
+                </td>
                 <td className="px-4 py-3 text-sm text-gray-600">{String(c.item_count ?? 0)}</td>
                 <td className="px-4 py-3 text-xs text-gray-500">{fmtDate(String(c.need_date ?? ""))}</td>
                 <td className="px-4 py-3 text-xs text-gray-500">{fmtDate(String(c.created_at ?? ""))}</td>

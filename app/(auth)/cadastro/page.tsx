@@ -3,7 +3,7 @@
 import { useState, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff, Loader2, Check, X, Info, ArrowLeft, ChevronDown } from "lucide-react"
+import { Eye, EyeOff, Loader2, Check, X, Info, ArrowLeft, ChevronDown, MessageCircle } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
 
@@ -187,10 +187,11 @@ export default function CadastroPage() {
             )}
           </div>
 
-          {/* Celular com seletor de código de país */}
+          {/* WhatsApp com seletor de código de país */}
           <div>
-            <label className="block text-[#757575] mb-0" style={{ fontSize: "0.75rem" }}>
-              Celular*
+            <label className="flex items-center gap-1 text-[#757575] mb-0" style={{ fontSize: "0.75rem" }}>
+              <MessageCircle size={13} style={{ color: "#25D366", flexShrink: 0 }} />
+              WhatsApp*
             </label>
             <div
               className={`flex items-center border-b transition-colors ${
@@ -259,14 +260,18 @@ export default function CadastroPage() {
                 autoComplete="tel"
                 value={form.phone}
                 onChange={(e) => update("phone", formatPhone(e.target.value))}
-                placeholder="(00) 00000-0000"
+                placeholder="+55 (41) 99999-9999"
                 className="flex-1 bg-transparent border-none outline-none text-[#212121] placeholder:text-[#9E9E9E]"
                 style={{ fontSize: "1rem" }}
               />
             </div>
-            {errors.phone && (
+            {errors.phone ? (
               <p className="text-[#F44336] mt-1" style={{ fontSize: "0.75rem" }}>
                 {errors.phone}
+              </p>
+            ) : (
+              <p className="mt-1 text-[#9E9E9E]" style={{ fontSize: "0.75rem" }}>
+                Usado para acessar o assistente Obra Play pelo WhatsApp
               </p>
             )}
           </div>

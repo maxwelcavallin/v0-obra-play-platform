@@ -191,38 +191,31 @@ export default function PublicMapaPage() {
   const hasAnswers = answeredSuppliers.length > 0
 
   return (
-    <div className="min-h-screen bg-[#F7F7F7] flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: "#F0F4F8" }}>
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="bg-[#212121] sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            {cotacao.company_logo ? (
-              <Image
-                src={cotacao.company_logo} alt={cotacao.company_name ?? "Empresa"}
-                width={30} height={30}
-                className="rounded-full object-cover bg-white/10 flex-shrink-0"
-              />
-            ) : (
-              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                <Package size={14} className="text-white/70" />
-              </div>
-            )}
-            <div className="min-w-0">
-              <p className="text-white font-semibold text-sm truncate leading-tight">
-                {cotacao.company_name ?? "Obra Play"}
-              </p>
-              <p className="text-white/40 text-[10px] leading-tight">Mapa de Cotação</p>
-            </div>
-          </div>
-          <span className="flex-shrink-0 text-[10px] text-white/50 border border-white/15 px-2.5 py-1 rounded-full">
-            Somente leitura
+      {/* ── AppBar #0D1B3E ─────────────────────────────────────────────────── */}
+      <header style={{ background: "#0D1B3E" }} className="sticky top-0 z-20">
+        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-3">
+          <span className="text-white font-bold tracking-tight" style={{ fontSize: "1.05rem" }}>
+            🏗️ OBRA PLAY
           </span>
         </div>
       </header>
 
+      {/* Badge somente leitura */}
+      <div style={{ background: "#0D1B3E" }} className="sticky top-14 z-10">
+        <div className="max-w-5xl mx-auto px-4 pb-2">
+          <span
+            className="inline-block text-white font-semibold rounded-full px-3 py-0.5"
+            style={{ background: "#F57C00", fontSize: "0.7rem", letterSpacing: "0.02em" }}
+          >
+            Somente leitura
+          </span>
+        </div>
+      </div>
+
       {/* ── Info da cotação ────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-[#EEEEEE]">
+      <div className="bg-white border-b border-[#EEEEEE]" style={{ borderRadius: "0 0 12px 12px" }}>
         <div className="max-w-5xl mx-auto px-4 py-4">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="min-w-0">
@@ -390,20 +383,28 @@ export default function PublicMapaPage() {
                                 className="px-3 py-3 text-center border-b border-[#F0F0F0]"
                                 style={{
                                   background: isBest ? "#E8F5E9" : "white",
-                                  outline: isBest ? "2px solid #A5D6A7" : undefined,
-                                  outlineOffset: "-2px",
-                                  borderBottomRightRadius: isLastItem && isLast ? "1rem" : undefined,
+                                  borderBottomRightRadius: isLastItem && isLast ? "12px" : undefined,
+                                  borderBottomLeftRadius: isLastItem && sIdx === 0 ? "12px" : undefined,
                                 }}
                               >
                                 {!r || !r.available || r.unit_price_micros == null ? (
-                                  <span className="text-xs text-[#DEDEDE]">Não possui</span>
+                                  <span className="text-sm text-[#BDBDBD]">—</span>
                                 ) : (
                                   <div className="flex flex-col items-center gap-0.5">
-                                    <span className={`text-sm font-bold ${isBest ? "text-[#2E7D32]" : "text-[#212121]"}`}>
+                                    <span
+                                      className="text-sm"
+                                      style={{
+                                        fontWeight: isBest ? 700 : 600,
+                                        color: isBest ? "#2E7D32" : "#212121",
+                                      }}
+                                    >
                                       {fmtBRL(r.unit_price_micros)}
                                     </span>
                                     <span className="text-[10px] text-[#BDBDBD]">/{item.unit}</span>
-                                    <span className={`text-[10px] ${isBest ? "font-semibold text-[#4CAF50]" : "text-[#DEDEDE]"}`}>
+                                    <span
+                                      className="text-[10px]"
+                                      style={{ color: isBest ? "#4CAF50" : "#BDBDBD", fontWeight: isBest ? 600 : 400 }}
+                                    >
                                       total {fmtBRL(r.unit_price_micros * item.quantity)}
                                     </span>
                                   </div>
@@ -499,16 +500,12 @@ export default function PublicMapaPage() {
       </div>
 
       {/* ── Footer ─────────────────────────────────────────────────────────── */}
-      <footer className="bg-white border-t border-[#EEEEEE] py-5 text-center">
-        <p className="text-xs text-[#BDBDBD]">
-          Gerado pelo{" "}
-          <a href="https://go.obraplay.com" target="_blank" rel="noopener noreferrer"
-             className="text-[#424242] font-semibold hover:underline">
-            Obra Play
-          </a>
+      <footer className="bg-white border-t border-[#EEEEEE] py-5 text-center" style={{ borderRadius: "12px 12px 0 0" }}>
+        <p className="text-xs font-semibold" style={{ color: "#0D1B3E" }}>
+          🏗️ Obra Play
         </p>
-        <p className="text-[10px] text-[#DEDEDE] mt-1">
-          Visualização exclusiva. Nenhuma ação pode ser executada por aqui.
+        <p className="text-[11px] text-[#9E9E9E] mt-1">
+          Visualização pública — gerado por Obra Play
         </p>
       </footer>
     </div>

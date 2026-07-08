@@ -98,6 +98,14 @@ function AddressBlock({ prefix, obra }: { prefix: "delivery" | "billing"; obra: 
   )
 }
 
+const DOC_TYPES = [
+  { value: "Planta",    label: "Planta" },
+  { value: "Contrato",  label: "Contrato" },
+  { value: "Laudo",     label: "Laudo" },
+  { value: "Alvará",    label: "Alvará" },
+  { value: "Outro",     label: "Outro" },
+]
+
 // --- Aba Documentos ---
 function TabDocumentos({ obraId }: { obraId: string }) {
   const [docs, setDocs] = useState<Documento[]>([])
@@ -105,8 +113,12 @@ function TabDocumentos({ obraId }: { obraId: string }) {
   const [showModal, setShowModal] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [docName, setDocName] = useState("")
+  const [docType, setDocType] = useState("Outro")
+  const [docNameError, setDocNameError] = useState("")
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [dropDragging, setDropDragging] = useState(false)
 
   useEffect(() => {
     authFetch(`/api/obras/${obraId}/documentos`)
@@ -118,17 +130,28 @@ function TabDocumentos({ obraId }: { obraId: string }) {
 
   function openModal() {
     setSelectedFile(null)
+    setDocName("")
+    setDocType("Outro")
+    setDocNameError("")
     if (fileInputRef.current) fileInputRef.current.value = ""
     setShowModal(true)
   }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
-    if (f) setSelectedFile(f)
+    if (f) {
+      setSelectedFile(f)
+      // Pré-preenche o nome com o nome do arquivo (sem extensão) se ainda não digitou
+      if (!docName.trim()) {
+        setDocName(f.name.replace(/\.[^.]+$/, ""))
+      }
+    }
   }
 
   async function handleUpload() {
-    if (!selectedFile) return
+    if (!selectedFile) { toast.error("Selecione um arquivo"); return }
+    if (!docName.trim()) { setDocNameError("Nome obrigatório"); return }
+    setDocNameError("")
     setUploading(true)
     try {
       // 1. Upload do arquivo para o Blob
@@ -144,9 +167,10 @@ function TabDocumentos({ obraId }: { obraId: string }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: selectedFile.name,
+          name: docName.trim(),
           file_url: upData.url,
           file_type: fileType,
+          doc_type: docType,
           file_size: selectedFile.size,
         }),
       })
@@ -156,6 +180,7 @@ function TabDocumentos({ obraId }: { obraId: string }) {
       setDocs((prev) => [saved, ...prev])
       setShowModal(false)
       setSelectedFile(null)
+      setDocName("")
       toast.success("Documento adicionado com sucesso!")
     } catch (err: any) {
       toast.error(err.message)
@@ -206,7 +231,7 @@ function TabDocumentos({ obraId }: { obraId: string }) {
     <>
       {/* Input oculto - sempre montado */}
       <input ref={fileInputRef} type="file" className="hidden"
-        accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.gif,.webp,.heic"
+        accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx"
         onChange={handleFileSelect} />
 
       <div className="flex items-center justify-between mb-3">
@@ -225,12 +250,12 @@ function TabDocumentos({ obraId }: { obraId: string }) {
             <FileText size={26} className="text-[#1565C0]" />
           </div>
           <div className="text-center">
-            <p className="text-sm font-semibold text-[#424242]">Nenhum documento</p>
-            <p className="text-xs text-[#9E9E9E] mt-1">Adicione PDFs, imagens, planilhas ou documentos Word</p>
+            <p className="text-sm font-semibold text-[#424242]">Nenhum documento cadastrado</p>
+            <p className="text-xs text-[#9E9E9E] mt-1">Adicione PDFs, imagens, planilhas ou contratos</p>
           </div>
           <button onClick={openModal}
             className="flex items-center gap-1.5 h-9 px-4 rounded-full bg-[#1565C0] text-white text-sm font-semibold hover:bg-[#1255A8] transition-colors mt-1">
-            <Upload size={14} /> Enviar documento
+            <Upload size={14} /> Adicionar
           </button>
         </div>
       ) : (
@@ -241,7 +266,14 @@ function TabDocumentos({ obraId }: { obraId: string }) {
                 <DocIcon type={doc.file_type} size={22} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[#212121] truncate">{doc.name}</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="text-sm font-medium text-[#212121] truncate max-w-[140px]">{doc.name}</p>
+                  {(doc as any).doc_type && (doc as any).doc_type !== "Outro" && (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#EEF2FA] text-[#1565C0]">
+                      {(doc as any).doc_type}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-[#9E9E9E] mt-0.5">
                   {formatBytes(doc.file_size)}
                   {doc.file_size ? " · " : ""}
@@ -282,27 +314,66 @@ function TabDocumentos({ obraId }: { obraId: string }) {
               </button>
             </div>
 
-            {/* Área de seleção */}
-            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}
-              className="w-full border-2 border-dashed border-[#E0E0E0] hover:border-[#1565C0] rounded-xl py-8 flex flex-col items-center gap-2 transition-colors">
+            {/* Campo: Nome */}
+            <div className="mb-3">
+              <label className="text-xs text-[#9E9E9E] font-semibold uppercase tracking-wide block mb-1">Nome *</label>
+              <input
+                type="text"
+                value={docName}
+                onChange={(e) => { setDocName(e.target.value); if (e.target.value.trim()) setDocNameError("") }}
+                placeholder="Ex: Planta baixa rev.2"
+                className={`w-full text-sm text-[#212121] border rounded-xl px-3 py-2.5 outline-none transition-colors ${docNameError ? "border-[#F44336]" : "border-[#E0E0E0] focus:border-[#1565C0]"}`}
+              />
+              {docNameError && <p className="text-xs text-[#F44336] mt-1">{docNameError}</p>}
+            </div>
+
+            {/* Campo: Tipo */}
+            <div className="mb-3">
+              <label className="text-xs text-[#9E9E9E] font-semibold uppercase tracking-wide block mb-1">Tipo</label>
+              <select
+                value={docType}
+                onChange={(e) => setDocType(e.target.value)}
+                className="w-full text-sm text-[#212121] border border-[#E0E0E0] focus:border-[#1565C0] rounded-xl px-3 py-2.5 outline-none bg-white"
+              >
+                {DOC_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+
+            {/* Área de seleção de arquivo — suporta click + drag-and-drop */}
+            <div
+              onClick={() => !uploading && fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setDropDragging(true) }}
+              onDragLeave={() => setDropDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault(); setDropDragging(false)
+                const f = e.dataTransfer.files?.[0]
+                if (f) {
+                  setSelectedFile(f)
+                  if (!docName.trim()) setDocName(f.name.replace(/\.[^.]+$/, ""))
+                }
+              }}
+              className={`w-full border-2 border-dashed rounded-xl py-6 flex flex-col items-center gap-2 transition-colors cursor-pointer select-none ${
+                dropDragging ? "border-[#1565C0] bg-[#E3F2FD]" : "border-[#E0E0E0] hover:border-[#1565C0]"
+              } ${uploading ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
               {selectedFile ? (
                 <>
                   <div className="w-10 h-10 rounded-lg bg-[#F5F5F5] flex items-center justify-center">
                     <DocIcon type={detectFileType(selectedFile.name)} size={22} />
                   </div>
                   <p className="text-sm font-medium text-[#212121] px-4 text-center">{selectedFile.name}</p>
-                  <p className="text-xs text-[#9E9E9E]">{formatBytes(selectedFile.size)} · Toque para trocar</p>
+                  <p className="text-xs text-[#9E9E9E]">{formatBytes(selectedFile.size)} · Clique para trocar</p>
                 </>
               ) : (
                 <>
-                  <Upload size={24} className="text-[#9E9E9E]" />
-                  <p className="text-sm text-[#9E9E9E]">Toque para selecionar arquivo</p>
-                  <p className="text-xs text-[#BDBDBD]">PDF, Word, Excel, imagens</p>
+                  <Upload size={24} className={dropDragging ? "text-[#1565C0]" : "text-[#9E9E9E]"} />
+                  <p className="text-sm text-[#9E9E9E]">Arraste ou clique para selecionar</p>
+                  <p className="text-xs text-[#BDBDBD]">PDF, JPG, PNG, DOCX, XLSX</p>
                 </>
               )}
-            </button>
+            </div>
 
-            <button onClick={handleUpload} disabled={!selectedFile || uploading}
+            <button onClick={handleUpload} disabled={uploading}
               className="mt-4 w-full h-12 rounded-xl bg-[#1565C0] text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50 transition-colors hover:bg-[#1255A8]">
               {uploading ? <><Loader2 size={18} className="animate-spin" /> Enviando...</> : <><Upload size={16} /> Confirmar envio</>}
             </button>
