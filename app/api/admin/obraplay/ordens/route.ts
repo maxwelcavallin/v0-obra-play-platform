@@ -144,15 +144,27 @@ export async function GET(req: NextRequest) {
     const local    = localMap[o.code] ?? null
     const totalVal = orderTotals[o.id] ?? null
 
-    // Status: prioriza banco local (sincronizado via webhook), depois inferido
-    let status = local?.status ?? null
-    if (!status) {
-      if (o.arrival_estimate && new Date(o.arrival_estimate) < new Date()) {
-        status = "Entregue"
-      } else {
-        status = "Em processamento"
-      }
-    }
+    // BUG 1 fix — empresa: order.company é OBJETO → usar short_name ?? full_name
+    const companyObj = (typeof o.company === "object" && o.company != null)
+      ? (o.company as Record<string, any>)
+      : null
+    const companyName = companyObj
+      ? String(companyObj.short_name ?? companyObj.full_name ?? companyObj.display_name ?? "—")
+      : (local?.company_name ?? scalar(o.name) ?? "—")
+
+    // BUG 2 fix — cotação: usar quotation_code (campo readOnly), NÃO quotation_answer (só é ID)
+    const quotationCode = scalar(o.quotation_code) ?? local?.cotacao_identifier ?? null
+
+    // BUG 3 fix — status: derivar das datas na ordem especificada
+    let status: string
+    if (o.canceled_at)   status = "Cancelada"
+    else if (o.refused_at)    status = "Recusada"
+    else if (o.finalized_at)  status = "Finalizada"
+    else if (o.processed_at)  status = "Em processamento"
+    else                      status = "Pendente"
+
+    // BUG 4 — total calculado via order_items (já feito via Promise.allSettled acima)
+    // totalVal já tem o valor correto calculado por calcOrderTotal
 
     return {
       id:                   o.id,
@@ -160,8 +172,8 @@ export async function GET(req: NextRequest) {
       key:                  scalar(o.key)               ?? null,
       frontend_url:         scalar(o.frontend_url)      ?? null,
       status,
-      // Comprador
-      company_name:         local?.company_name         ?? scalar(o.name) ?? "—",
+      // BUG 1: empresa pelo objeto
+      company_name:         companyName,
       requester_name:       scalar(o.name)              ?? null,
       requester_email:      scalar(o.email)             ?? null,
       requester_phone:      scalar(o.phone)             ?? null,
@@ -169,8 +181,9 @@ export async function GET(req: NextRequest) {
       supplier_name:        scalar(o.supplier_name)     ?? "—",
       supplier_email:       scalar(o.supplier_email)    ?? null,
       supplier_phone:       scalar(o.supplier_phone)    ?? null,
-      // Relacionamentos
+      // BUG 2: cotação pelo quotation_code
       quotation_answer:     o.quotation_answer           ?? null,
+      quotation_code:       quotationCode,
       cotacao_identifier:   local?.cotacao_identifier    ?? null,
       local_id:             local?.local_id              ?? null,
       // Condições
@@ -178,7 +191,7 @@ export async function GET(req: NextRequest) {
       installments:         scalar(o.installments)      ?? null,
       arrival_estimate:     scalar(o.arrival_estimate)  ?? null,
       created_at:           scalar(o.created_at)        ?? null,
-      // Valor calculado via order_items
+      // BUG 3: status por datas / BUG 4: total por order_items
       total:                totalVal,
       obraplay_sync_error:  local?.obraplay_sync_error  ?? null,
     }

@@ -200,44 +200,53 @@ export async function GET(req: NextRequest) {
       : null
     const local = quotationId != null ? (quotationMap[quotationId] ?? null) : null
 
-    // Status baseado em answered_at (campo published_at / answered_at)
-    const answeredAt = scalar(r.answered_at) ?? scalar(r.published_at) ?? null
-    const status     = answeredAt ? "Respondida" : "Em aberto"
+    // BUG 1 fix — cotação: quotation é OBJETO → usar quotationObj.code
+    const cotacaoCode = quotationObj?.code != null ? String(quotationObj.code) : null
 
-    // Fornecedor: item.company (objeto) conforme spec
+    // BUG 2 fix — fornecedor: usar item.company (objeto) → short_name ?? full_name
     const companyObj = (typeof r.company === "object" && r.company != null)
       ? (r.company as Record<string, any>)
       : null
     const supplierName = companyObj
-      ? (companyObj.short_name ?? companyObj.full_name ?? companyObj.display_name ?? "—")
+      ? String(companyObj.short_name ?? companyObj.full_name ?? companyObj.display_name ?? "—")
       : (scalar(r.company) ?? "—")
 
-    // Nome do solicitante: item.name (campo raiz, não dentro de quotation)
+    // BUG 3 fix — pagamento: payment_method é OBJETO → usar .name
+    const pmObj = (typeof r.payment_method === "object" && r.payment_method != null)
+      ? (r.payment_method as Record<string, any>)
+      : null
+    const paymentMethod = pmObj
+      ? String(pmObj.name ?? pmObj.code ?? "—")
+      : (scalar(r.payment_method) ?? null)
+
+    // BUG 4 fix — itens: filtrar answered_items por available === true
+    const answeredItems: any[] = Array.isArray(r.answered_items) ? r.answered_items : []
+    const availableItems = answeredItems.filter((i: any) => i.available === true)
+    const itemCount      = availableItems.length
+
+    // BUG 5 fix — valor: somar (unit_price_micros/1M) * (total_quantity_micros/1M) dos disponíveis
+    const subtotal = calcSubtotal(answeredItems)
+
+    // Status baseado em answered_at
+    const answeredAt = scalar(r.answered_at) ?? scalar(r.published_at) ?? null
+    const status     = answeredAt ? "Respondida" : "Em aberto"
+
+    // Tipo: own_supplier === false → Marketplace, true → Próprio (filtro usa autofilled mas campo é own_supplier)
+    const tipo = r.own_supplier === true ? "Próprio" : "Marketplace"
+
+    // Solicitante
     const requesterName  = scalar(r.name)  ?? local?.requester_name  ?? null
     const requesterEmail = scalar(r.email) ?? local?.requester_email ?? null
     const requesterPhone = scalar(r.phone) ?? local?.requester_phone ?? null
-
-    // Cidade/estado do solicitante
     const city  = scalar(r.city)  ?? null
     const state = scalar(r.state) ?? null
-
-    // Itens disponíveis (answered_items.filter(i => i.available).length)
-    const answeredItems: any[] = Array.isArray(r.answered_items) ? r.answered_items : []
-    const availableItems = answeredItems.filter(i => i.available === true)
-    const itemCount      = availableItems.length
-
-    // Valor total calculado pelos itens disponíveis
-    const subtotal = calcSubtotal(answeredItems)
-
-    // Tipo: marketplace (autofilled=false) ou próprio (autofilled=true)
-    const tipo = r.autofilled === true ? "Próprio" : "Marketplace"
 
     return {
       op_answer_id:         r.id,
       quotation_id:         quotationId,
-      quotation_code:       scalar(quotationObj?.code) ?? null,
+      quotation_code:       cotacaoCode,
       cotacao_id:           local?.cotacao_id           ?? null,
-      cotacao_identifier:   local?.cotacao_identifier   ?? scalar(quotationObj?.code) ?? (quotationId ? `OP #${quotationId}` : "—"),
+      cotacao_identifier:   local?.cotacao_identifier   ?? cotacaoCode ?? (quotationId ? `OP #${quotationId}` : "—"),
       // Solicitante (construtor)
       company_name:         local?.company_name         ?? "—",
       requester_name:       requesterName,
@@ -247,16 +256,16 @@ export async function GET(req: NextRequest) {
       state,
       obra_name:            local?.obra_name             ?? null,
       items_from_quotation: local?.item_count            ?? (quotationObj?.items_count ?? null),
-      // Fornecedor
+      // Fornecedor (BUG 2 corrigido)
       supplier_name:        supplierName,
       supplier_email:       scalar(companyObj?.email)   ?? null,
       supplier_phone:       scalar(companyObj?.phone)   ?? null,
       supplier_foreign_id:  companyObj?.id              ?? null,
-      // Condições
-      payment_method:       scalar(r.installments)      ?? null,
+      // Condições (BUG 3 corrigido)
+      payment_method:       paymentMethod,
       answered_at:          answeredAt,
       valid_until:          scalar(r.valid_until)        ?? null,
-      // Itens e valor
+      // Itens e valor (BUG 4 e 5 corrigidos)
       item_count:           itemCount,
       subtotal:             subtotal > 0 ? subtotal : null,
       tipo,
