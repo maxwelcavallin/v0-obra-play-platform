@@ -19,15 +19,23 @@ export async function GET(req: NextRequest) {
     FROM users
     WHERE (name ILIKE ${like} OR email ILIKE ${like} OR phone ILIKE ${like})
       AND is_active = true
-    LIMIT 4
+    LIMIT 3
   `
 
-  // Empresas construtoras
+  // Empresas construtoras (locais)
   const empresas = await sql`
     SELECT id, fantasy_name, cnpj, city
     FROM companies
     WHERE (fantasy_name ILIKE ${like} OR company_name ILIKE ${like} OR cnpj ILIKE ${like})
-    LIMIT 4
+    LIMIT 3
+  `
+
+  // Fornecedoras ObraPlay (mirror_companies)
+  const fornecedoras = await sql`
+    SELECT company_id, short_name, full_name, cnpj, city, state
+    FROM mirror_companies
+    WHERE (short_name ILIKE ${like} OR full_name ILIKE ${like} OR cnpj ILIKE ${like})
+    LIMIT 3
   `
 
   // Cotações Constructor
@@ -36,7 +44,7 @@ export async function GET(req: NextRequest) {
     FROM cotacoes c
     LEFT JOIN companies co ON co.id = c.company_id
     WHERE c.identifier ILIKE ${like}
-    LIMIT 4
+    LIMIT 3
   `
 
   // OCs Constructor
@@ -44,12 +52,18 @@ export async function GET(req: NextRequest) {
     SELECT id, identifier, supplier_name
     FROM ordens_compra
     WHERE identifier ILIKE ${like} OR supplier_name ILIKE ${like}
-    LIMIT 4
+    LIMIT 3
   `
 
   const results = [
+    ...fornecedoras.map((f: { company_id: number; short_name: string; full_name: string; cnpj: string; city: string; state: string }) => ({
+      type: "fornecedora_op",
+      label: f.full_name ?? f.short_name,
+      sublabel: `${f.cnpj ?? ""} · ${f.city ?? ""}, ${f.state ?? ""}`.replace(/^[\s·,]+|[\s·,]+$/g, ""),
+      href: `/admin/obraplay/empresas/${f.company_id}`,
+    })),
     ...empresas.map((e: { id: string; fantasy_name: string; cnpj: string; city: string }) => ({
-      type: "fornecedor",
+      type: "empresa_constructor",
       label: e.fantasy_name,
       sublabel: `${e.cnpj} · ${e.city ?? ""}`,
       href: `/admin/constructor/empresas/${e.id}`,

@@ -5,16 +5,24 @@ import { useParams } from "next/navigation"
 import Link from "next/link"
 import useSWR from "swr"
 import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react"
-import { ReadonlyBadge, Badge, fmtDate } from "@/components/admin/readonly-badge"
+import { Badge, fmtDate } from "@/components/admin/readonly-badge"
 
 const fetcher = (url: string) => fetch(url, { credentials: "include" }).then(r => r.json())
 
 const TABS = ["Itens", "Fornecedores"]
 
-export default function CotacaoDetalhe() {
+const STATUS_COLOR: Record<string, "green" | "blue" | "orange" | "gray"> = {
+  "Rascunho":   "gray",
+  "Enviada":    "blue",
+  "Respondida": "green",
+  "Expirada":   "gray",
+  "Cancelada":  "gray",
+}
+
+export default function ConstructorCotacaoDetalhe() {
   const { id } = useParams<{ id: string }>()
   const [tab, setTab] = useState("Itens")
-  const { data, isLoading } = useSWR(`/api/admin/obraplay/cotacoes/${id}`, fetcher)
+  const { data, isLoading } = useSWR(`/api/admin/constructor/cotacoes/${id}`, fetcher)
 
   const cotacao = data?.cotacao
   const itens: any[] = data?.itens ?? []
@@ -32,38 +40,40 @@ export default function CotacaoDetalhe() {
 
   return (
     <div className="max-w-[1100px] mx-auto">
-      <Link href="/admin/obraplay/cotacoes" className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 mb-4">
-        <ArrowLeft size={14} /> Cotações do Marketplace
+      <Link href="/admin/constructor/cotacoes" className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 mb-4">
+        <ArrowLeft size={14} /> Cotações
       </Link>
 
       {/* Header */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-lg font-bold text-gray-900 font-mono">{cotacao.identifier}</h1>
-              <Badge color={cotacao.status === "Respondida" ? "green" : cotacao.status === "Rascunho" ? "gray" : "blue"}>{cotacao.status}</Badge>
-              {cotacao.is_public && <Badge color="orange">Pública</Badge>}
-              <ReadonlyBadge />
-              {/* Botao cruzamento B5 — visivel quando esta cotacao tem vinculo local */}
-              <Link
-                href={`/admin/constructor/cotacoes/${id}`}
-                className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold border border-[#1565C0] text-[#1565C0] rounded-lg hover:bg-blue-50 transition-colors"
-              >
-                Ver no Constructor <ExternalLink size={11} />
-              </Link>
+              <Badge color={STATUS_COLOR[String(cotacao.status)] ?? "gray"}>{cotacao.status}</Badge>
             </div>
             <div className="mt-2 flex items-center gap-4 text-sm text-gray-500 flex-wrap">
-              {cotacao.company_name && <span>Empresa: <strong>{cotacao.company_name}</strong></span>}
+              {cotacao.company_name && (
+                <span>Empresa: <Link href={`/admin/constructor/empresas/${cotacao.company_id}`} className="text-[#1565C0] hover:underline font-medium">{cotacao.company_name}</Link></span>
+              )}
               {cotacao.obra_name && <span>Obra: <strong>{cotacao.obra_name}</strong></span>}
             </div>
             <div className="mt-1 flex items-center gap-4 text-xs text-gray-400 flex-wrap">
               <span>Criada: {fmtDate(cotacao.created_at)}</span>
               {cotacao.need_date && <span>Necessidade: {fmtDate(cotacao.need_date)}</span>}
               {cotacao.expiry_date && <span>Expira: {fmtDate(cotacao.expiry_date)}</span>}
-              {cotacao.obraplay_quotation_id && <span>OP ID: #{cotacao.obraplay_quotation_id}</span>}
             </div>
           </div>
+
+          {/* Botao cruzamento B5 */}
+          {cotacao.obraplay_quotation_id && (
+            <Link
+              href={`/admin/obraplay/cotacoes/${cotacao.obraplay_quotation_id}`}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-[#FF9800] text-[#E65100] rounded-lg hover:bg-orange-50 transition-colors shrink-0"
+            >
+              Ver no Obra Play <ExternalLink size={11} />
+            </Link>
+          )}
         </div>
       </div>
 
@@ -110,7 +120,7 @@ export default function CotacaoDetalhe() {
             ) : (
               <table className="w-full text-sm">
                 <thead><tr className="border-b border-gray-100">
-                  {["Fornecedor", "Cidade", "Tipo", "Respondeu", ""].map(h => (
+                  {["Fornecedor", "Cidade", "Respondeu", ""].map(h => (
                     <th key={h} className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide pb-2 pr-4">{h}</th>
                   ))}
                 </tr></thead>
@@ -126,18 +136,15 @@ export default function CotacaoDetalhe() {
                       </td>
                       <td className="py-3 pr-4 text-gray-500 text-xs">{f.supplier_city ?? "—"}</td>
                       <td className="py-3 pr-4">
-                        <Badge color={f.registration_type === "certified" ? "orange" : f.registration_type === "validated" ? "blue" : "gray"}>
-                          {f.registration_type === "certified" ? "Credenciado" : f.registration_type === "validated" ? "Validado" : "Básico"}
-                        </Badge>
-                      </td>
-                      <td className="py-3 pr-4">
                         {f.has_response
                           ? <Badge color="green">Respondeu</Badge>
                           : <Badge color="gray">Aguardando</Badge>}
                       </td>
-                      <td className="py-3">
-                        {f.id && (
-                          <Link href={`/admin/obraplay/respostas/${f.id}`} className="text-xs text-[#1565C0] hover:underline">Ver resposta</Link>
+                      <td className="py-3 text-xs text-gray-400 text-right">
+                        {f.mirror_company_id && (
+                          <Link href={`/admin/obraplay/empresas/${f.mirror_company_id}`} className="text-[#1565C0] hover:underline">
+                            Ver fornecedor
+                          </Link>
                         )}
                       </td>
                     </tr>

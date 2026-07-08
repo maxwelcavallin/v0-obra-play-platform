@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation"
 import { Search, X, Building2, FileText, ShoppingCart, UserCircle, Store, HardHat } from "lucide-react"
 
 type SearchResult = {
-  type: "fornecedor" | "cotacao" | "oc" | "usuario"
+  type: "fornecedor" | "fornecedora_op" | "empresa_constructor" | "cotacao" | "oc" | "usuario"
   label: string
   sublabel?: string
   href: string
@@ -29,11 +29,14 @@ function useGlobalSearch(query: string) {
   return { results, loading }
 }
 
-const TYPE_META = {
-  fornecedor: { label: "Empresa Fornecedora", icon: Building2, color: "text-[#FF9800]" },
-  cotacao:    { label: "Cotação",              icon: FileText,   color: "text-[#1565C0]" },
-  oc:         { label: "Ordem de Compra",      icon: ShoppingCart, color: "text-[#2E7D32]" },
-  usuario:    { label: "Usuário Constructor",  icon: UserCircle, color: "text-[#7B1FA2]" },
+const TYPE_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+  fornecedora_op:    { label: "Fornecedora ObraPlay", icon: Store,       color: "text-[#FF9800]" },
+  empresa_constructor: { label: "Empresa Constructor", icon: HardHat,   color: "text-[#1565C0]" },
+  // legado
+  fornecedor:        { label: "Empresa Fornecedora",  icon: Building2,   color: "text-[#FF9800]" },
+  cotacao:           { label: "Cotação",              icon: FileText,    color: "text-[#1565C0]" },
+  oc:                { label: "Ordem de Compra",      icon: ShoppingCart, color: "text-[#2E7D32]" },
+  usuario:           { label: "Usuário Constructor",  icon: UserCircle,  color: "text-[#7B1FA2]" },
 }
 
 export function AdminHeader({ breadcrumb, adminName }: { breadcrumb?: string; adminName: string }) {
@@ -72,7 +75,7 @@ export function AdminHeader({ breadcrumb, adminName }: { breadcrumb?: string; ad
     router.push(href)
   }
 
-  const grouped = ["fornecedor", "cotacao", "oc", "usuario"].reduce<Record<string, SearchResult[]>>((acc, t) => {
+  const grouped = ["fornecedora_op", "empresa_constructor", "fornecedor", "cotacao", "oc", "usuario"].reduce<Record<string, SearchResult[]>>((acc, t) => {
     const items = results.filter(r => r.type === t)
     if (items.length) acc[t] = items
     return acc
@@ -134,7 +137,7 @@ export function AdminHeader({ breadcrumb, adminName }: { breadcrumb?: string; ad
                   </div>
                 )}
                 {Object.entries(grouped).map(([type, items]) => {
-                  const meta = TYPE_META[type as keyof typeof TYPE_META]
+                  const meta = TYPE_META[type] ?? TYPE_META["fornecedor"]
                   const Icon = meta.icon
                   return (
                     <div key={type}>

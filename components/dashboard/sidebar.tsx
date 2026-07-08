@@ -30,6 +30,7 @@ interface NavItem {
   href: string
   icon: React.ComponentType<{ size?: number; className?: string }>
   badge?: number
+  badgeText?: string
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -37,7 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Clientes", href: "/dashboard/clientes", icon: Users },
   { label: "Obras", href: "/dashboard/obras", icon: Hammer },
   { label: "Insumos", href: "/dashboard/insumos", icon: Package },
-  { label: "Vitrine de Insumos", href: "/dashboard/vitrine", icon: Store },
+  { label: "Vitrine de Insumos", href: "/dashboard/vitrine", icon: Store, badgeText: "NOVO" },
   { label: "Cotações", href: "/dashboard/cotacoes", icon: ShoppingCart },
   { label: "Ordens de Compra", href: "/dashboard/ordens-compra", icon: FileText },
   { label: "Financeiro", href: "/dashboard/financeiro", icon: DollarSign },
@@ -143,6 +144,11 @@ function SidebarContent({ onClose }: SidebarContentProps) {
                     className={active ? "text-[#1565C0]" : "text-[#757575] group-hover:text-[#424242]"}
                   />
                   <span className="text-sm font-medium">{item.label}</span>
+                  {item.badgeText && (
+                    <span className="ml-auto text-[9px] bg-[#1565C0] text-white font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                      {item.badgeText}
+                    </span>
+                  )}
                   {item.badge && item.badge > 0 && (
                     <span className="ml-auto text-xs bg-[#FF9800] text-white font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
                       {item.badge}

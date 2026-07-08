@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
 
   const rows = await db.query(
     `SELECT c.id, c.identifier, c.status, c.need_date, c.created_at,
+      c.obraplay_quotation_id,
       co.fantasy_name AS company_name, co.id AS company_id,
       o.name AS obra_name,
       COUNT(ci.id)::int AS item_count,
